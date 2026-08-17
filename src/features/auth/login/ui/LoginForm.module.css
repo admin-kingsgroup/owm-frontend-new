@@ -1,0 +1,13 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 280px;
+}
+
+.error {
+  font-size: 0.75rem;
+  color: #f87171;
+  text-align: center;
+}

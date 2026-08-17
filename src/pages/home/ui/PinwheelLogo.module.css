@@ -1,0 +1,19 @@
+.blades {
+  transform-origin: 0px 0px;
+  animation: spin 20s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blades {
+    animation: none;
+  }
+}
