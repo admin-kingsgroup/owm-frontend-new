@@ -1,3 +1,47 @@
+:root {
+  /* Ledger Paper theme — warm parchment surfaces, ink-toned text, a violet-to-blue
+     brand gradient carried over from the login screen's logo mark. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+
+  --paper: #f6f1e4;
+  --paper-card: #fffdf7;
+  --ink: #2b2620;
+  --ink-soft: #75695a;
+  --ink-faint: #7d7160;
+  --border: #e4d9bf;
+  --border-soft: #ece3cd;
+
+  --sidebar: #211c15;
+  --sidebar-alt: #1a1610;
+  --sidebar-text: #f3ead6;
+  --sidebar-dim: #8a806c;
+
+  --violet: #7c6ae0;
+  --blue: #3f5fd6;
+  --brand-gradient: linear-gradient(135deg, var(--violet), var(--blue));
+  --focus-ring: rgba(63, 95, 214, 0.16);
+  /* Interactive-row/item backgrounds only — kept light enough that --ink-soft and
+     --ink-faint text sitting on it still clears 4.5:1. --border-soft is for 1px
+     dividers only; it's too dark to double as a hover fill without failing contrast. */
+  --hover-tint: rgba(63, 95, 214, 0.05);
+
+  --chip-bg: #efe7d3;
+  --chip-fg: #4a3f2c;
+
+  --success-fg: #3f6b3a;
+  --success-bd: #a9c19f;
+  --success-bg-soft: #eef4ea;
+  --warning-fg: #9c6b1f;
+  --warning-bd: #d9b877;
+  --warning-bg-soft: #faf1de;
+  --danger-fg: #8a3a2c;
+  --danger-bd: #d1a08f;
+  --danger-bg-soft: #fbeae4;
+  --neutral-fg: #7a7256;
+  --neutral-bd: #c9bfa2;
+}
+
 *,
 *::before,
 *::after {
@@ -13,15 +57,9 @@ body,
 }
 
 body {
-  font-family:
-    'Inter',
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  color: #111827;
-  background-color: #ffffff;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background-color: var(--paper);
   line-height: 1.5;
 }
 

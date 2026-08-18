@@ -5,18 +5,18 @@
   justify-content: center;
   text-align: center;
   padding: 3rem 1.5rem;
-  color: #6b7280;
+  color: var(--ink-soft);
 }
 
 .icon {
-  color: #9ca3af;
+  color: var(--ink-faint);
   margin-bottom: 0.75rem;
 }
 
 .title {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--ink);
   margin: 0;
 }
 

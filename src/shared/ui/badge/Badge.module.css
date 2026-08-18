@@ -5,33 +5,35 @@
   padding: 0 0.5rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
+  background-color: transparent;
+  border: 1px solid transparent;
 }
 
 .neutral {
-  background-color: #f3f4f6;
-  color: #374151;
+  color: var(--neutral-fg);
+  border-color: var(--neutral-bd);
 }
 
 .success {
-  background-color: #dcfce7;
-  color: #15803d;
+  color: var(--success-fg);
+  border-color: var(--success-bd);
 }
 
 .warning {
-  background-color: #fef3c7;
-  color: #b45309;
+  color: var(--warning-fg);
+  border-color: var(--warning-bd);
 }
 
 .danger {
-  background-color: #fee2e2;
-  color: #b91c1c;
+  color: var(--danger-fg);
+  border-color: var(--danger-bd);
 }
 
 .info {
-  background-color: #dbeafe;
-  color: #1d4ed8;
+  color: var(--blue);
+  border-color: var(--violet);
 }

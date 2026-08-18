@@ -15,7 +15,10 @@ export function AppShell() {
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
           <span className={styles.brandMark}>K</span>
-          <span className={styles.brandName}>KBiz360 OWM</span>
+          <div>
+            <div className={styles.brandName}>KBiz360 OWM</div>
+            <div className={styles.brandSub}>Owner Wealth &amp; Oversight</div>
+          </div>
         </div>
 
         <nav className={styles.nav}>
