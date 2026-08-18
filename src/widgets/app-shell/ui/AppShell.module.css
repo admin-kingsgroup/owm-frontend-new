@@ -102,30 +102,6 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
-.userBox {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-}
-
-.userInfo {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.0625rem;
-}
-
-.userName {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.userEmail {
-  font-size: 0.6875rem;
-  color: var(--ink-faint);
-}
-
 .content {
   flex: 1;
   padding: 2.375rem 2.75rem;

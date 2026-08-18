@@ -1,13 +1,12 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom';
 import { Building2, LayoutGrid, Receipt } from 'lucide-react';
 
-import { useAuthStore, LogoutButton } from '@/features/auth';
 import { cn } from '@/shared/lib';
 
+import { UserMenu } from './UserMenu';
 import styles from './AppShell.module.css';
 
 export function AppShell() {
-  const user = useAuthStore((state) => state.user);
   const { companyId } = useParams<{ companyId?: string }>();
 
   return (
@@ -56,15 +55,7 @@ export function AppShell() {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div />
-          <div className={styles.userBox}>
-            {user && (
-              <div className={styles.userInfo}>
-                <span className={styles.userName}>{user.name}</span>
-                <span className={styles.userEmail}>{user.email}</span>
-              </div>
-            )}
-            <LogoutButton />
-          </div>
+          <UserMenu />
         </header>
 
         <main className={styles.content}>
