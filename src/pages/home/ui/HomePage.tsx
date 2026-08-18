@@ -1,12 +1,17 @@
-import { LoginForm, LogoutButton, useAuthStore } from '@/features/auth';
+import { Navigate } from 'react-router-dom';
+
+import { LoginForm, useAuthStore } from '@/features/auth';
 
 import { PinwheelLogo } from './PinwheelLogo';
 import styles from './HomePage.module.css';
 
 export function HomePage() {
-  const user = useAuthStore((state) => state.user);
   const status = useAuthStore((state) => state.status);
   const hydrated = useAuthStore((state) => state.hydrated);
+
+  if (hydrated && status === 'authenticated') {
+    return <Navigate to="/companies" replace />;
+  }
 
   return (
     <div className={styles.wrapper}>
@@ -16,15 +21,7 @@ export function HomePage() {
         <p className={styles.subtitle}>Owner Wealth &amp; Group Oversight</p>
         <p className={styles.selectProfile}>Select Profile</p>
 
-        {!hydrated ? null : status === 'authenticated' && user ? (
-          <div className={styles.profile}>
-            <p className={styles.profileName}>{user.name}</p>
-            <p className={styles.profileEmail}>{user.email}</p>
-            <LogoutButton />
-          </div>
-        ) : (
-          <LoginForm />
-        )}
+        {hydrated && <LoginForm />}
       </div>
 
       <footer className={styles.footer}>
