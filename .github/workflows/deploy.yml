@@ -64,7 +64,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Rsync dist/ to EC2 (atomic-ish: assets first, index.html last)
+      - name: "Rsync dist/ to EC2 (assets first, index.html last)"
         if: steps.cfg.outputs.ready == 'true'
         env:
           HOST: ${{ secrets.EC2_HOST }}
