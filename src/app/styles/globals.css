@@ -8,8 +8,8 @@
   --paper: #f4f2ed;
   --paper-card: #ffffff;
   --ink: #14161b;
-  --ink-soft: #666c78;
-  --ink-faint: #8a8f99;
+  --ink-soft: #4a4f59;
+  --ink-faint: #666c78;
   --border: #e4e1d8;
   --border-soft: #ece9e0;
 
@@ -18,16 +18,17 @@
   --sidebar-text: #f1f2f4;
   --sidebar-dim: #9ba1ac;
 
-  /* --violet is the lighter/hover amber, --blue is the primary amber — names kept
-     for compatibility with every component that already consumes them. */
-  --violet: #f59e0b;
-  --blue: #d97706;
+  /* --violet is the lighter/hover amber, --blue is the primary amber — names kept for
+     compatibility with every component that already consumes them. Both are dark enough to
+     carry white text (>= 4.5:1) and to be read as text on --paper. */
+  --violet: #a8500b;
+  --blue: #92400e;
   --brand-gradient: linear-gradient(135deg, var(--violet), var(--blue));
-  --focus-ring: rgba(217, 119, 6, 0.18);
-  /* Interactive-row/item backgrounds only — kept light enough that --ink-soft and
-     --ink-faint text sitting on it still clears 4.5:1. --border-soft is for 1px
-     dividers only; it's too dark to double as a hover fill without failing contrast. */
-  --hover-tint: rgba(217, 119, 6, 0.06);
+  --focus-ring: rgba(146, 64, 14, 0.22);
+  /* Interactive-row/item backgrounds only. --border-soft is for 1px dividers only; it's too
+     dark to double as a hover fill without failing contrast. Every foreground token above is
+     >= 4.5:1 (WCAG AA) on --paper and --paper-card; re-measure before changing any of them. */
+  --hover-tint: rgba(146, 64, 14, 0.06);
 
   --chip-bg: #ece9e1;
   --chip-fg: #52565f;
@@ -35,15 +36,16 @@
   --success-fg: #166534;
   --success-bd: #9fcbac;
   --success-bg-soft: #eaf6ee;
-  --warning-fg: #92720e;
+  --warning-fg: #87690c;
   --warning-bd: #d9c077;
   --warning-bg-soft: #faf3de;
   --danger-fg: #b91c1c;
   --danger-bd: #e3a5a5;
   --danger-bg-soft: #fdecec;
-  /* Doubles as the "inactive/draft" status color (Badge variant="neutral"). */
-  --neutral-fg: #92400e;
-  --neutral-bd: #dfb58a;
+  /* The "inactive/draft" status color (Badge variant="neutral") — deliberately neutral grey so
+     it cannot be mistaken for the amber accent, which now sits at the same darkness. */
+  --neutral-fg: #52565f;
+  --neutral-bd: #c3c6cc;
 }
 
 *,

@@ -14,7 +14,7 @@ import { CreateAccountGroupForm } from '@/features/account-group';
 import { CreateLedgerForm, EditLedgerForm } from '@/features/ledger';
 import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-type';
 import { Button, Modal, Loading, Badge, EmptyState } from '@/shared/ui';
-import { getErrorMessage, cn, formatRecordId } from '@/shared/lib';
+import { getErrorMessage, cn, formatRecordId, calendarYear } from '@/shared/lib';
 
 import { AccountGroupTree } from './AccountGroupTree';
 import styles from './CompanyDashboardPage.module.css';
@@ -131,8 +131,8 @@ export function CompanyDashboardPage() {
           </div>
           <p className={styles.subtitle}>
             {company.code} · {company.baseCurrency} · {company.country} · FY{' '}
-            {new Date(company.financialYearStart).getFullYear()}–
-            {new Date(company.financialYearEnd).getFullYear()}
+            {calendarYear(company.financialYearStart)}–
+            {calendarYear(company.financialYearEnd)}
           </p>
         </div>
         <Link to={`/companies/${companyId}/vouchers`} className={styles.vouchersLink}>

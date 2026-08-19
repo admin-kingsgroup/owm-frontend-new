@@ -127,3 +127,21 @@
   font-size: 0.875rem;
   color: var(--ink-soft);
 }
+
+.setupLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 0.5rem;
+  background: var(--brand-gradient);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.setupLink:hover {
+  filter: brightness(0.94);
+}

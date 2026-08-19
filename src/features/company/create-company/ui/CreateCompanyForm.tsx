@@ -5,6 +5,7 @@ import { createCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { Button, Input } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
+import { COMPANY_DEFAULTS } from '@/shared/constants';
 
 import styles from './CreateCompanyForm.module.css';
 
@@ -13,19 +14,40 @@ export interface CreateCompanyFormProps {
   onCancel: () => void;
 }
 
-const today = new Date();
-const defaultFyStart = `${today.getFullYear()}-04-01`;
-const defaultFyEnd = `${today.getFullYear() + 1}-03-31`;
+const { financialYearStartMonth } = COMPANY_DEFAULTS;
+
+const asDay = (date: Date) => date.toISOString().slice(0, 10);
+
+/**
+ * The financial year that is *currently open*, resolved per mount rather than at module load —
+ * a tab left open overnight would otherwise keep offering a stale year. Before the opening month
+ * the live year is still the one that began last calendar year (in January the running Indian FY
+ * is Apr previous-year to Mar this-year), which a plain `getFullYear()` gets wrong for a quarter
+ * of the calendar. Built in UTC so the rendered day cannot slip a timezone.
+ */
+function currentFinancialYear(): { start: string; end: string } {
+  const now = new Date();
+  const startYear =
+    now.getMonth() + 1 < financialYearStartMonth ? now.getFullYear() - 1 : now.getFullYear();
+
+  // Day 0 of the opening month rolls back to the last day of the preceding month, which is the
+  // financial year's closing day whichever month it opens on.
+  return {
+    start: asDay(new Date(Date.UTC(startYear, financialYearStartMonth - 1, 1))),
+    end: asDay(new Date(Date.UTC(startYear + 1, financialYearStartMonth - 1, 0))),
+  };
+}
 
 export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProps) {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [legalName, setLegalName] = useState('');
-  const [financialYearStart, setFinancialYearStart] = useState(defaultFyStart);
-  const [financialYearEnd, setFinancialYearEnd] = useState(defaultFyEnd);
-  const [baseCurrency, setBaseCurrency] = useState('INR');
-  const [country, setCountry] = useState('IN');
-  const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [financialYear] = useState(currentFinancialYear);
+  const [financialYearStart, setFinancialYearStart] = useState(financialYear.start);
+  const [financialYearEnd, setFinancialYearEnd] = useState(financialYear.end);
+  const [baseCurrency, setBaseCurrency] = useState<string>(COMPANY_DEFAULTS.baseCurrency);
+  const [country, setCountry] = useState<string>(COMPANY_DEFAULTS.country);
+  const [timezone, setTimezone] = useState<string>(COMPANY_DEFAULTS.timezone);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

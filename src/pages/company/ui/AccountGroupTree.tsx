@@ -87,15 +87,22 @@ export function AccountGroupTree({ groups, selectedGroupId, onSelect }: AccountG
       >
         <span className={styles.itemName}>All groups</span>
       </button>
-      {tree.map((node) => (
-        <TreeItem
-          key={node.group.id}
-          node={node}
-          depth={0}
-          selectedGroupId={selectedGroupId}
-          onSelect={onSelect}
-        />
-      ))}
+      {groups.length === 0 ? (
+        <p className={styles.hint}>
+          No account groups yet. Use <strong>New</strong> above to add the first one — ledgers hang
+          off these.
+        </p>
+      ) : (
+        tree.map((node) => (
+          <TreeItem
+            key={node.group.id}
+            node={node}
+            depth={0}
+            selectedGroupId={selectedGroupId}
+            onSelect={onSelect}
+          />
+        ))
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
 import type { Voucher, VoucherSummary, VoucherStatus } from '@/entities/voucher';
@@ -11,7 +11,7 @@ import type { Ledger } from '@/entities/ledger';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/lib';
+import { getErrorMessage, formatCalendarDay } from '@/shared/lib';
 
 import styles from './VouchersPage.module.css';
 
@@ -30,6 +30,7 @@ export function VouchersPage() {
   const [statusFilter, setStatusFilter] = useState<VoucherStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState('');
 
+  const [setupLoaded, setSetupLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,8 @@ export function VouchersPage() {
         setVoucherTypes(types);
         setLedgers(ledgersResult);
       })
-      .catch((err) => setError(getErrorMessage(err, 'Could not load company setup')));
+      .catch((err) => setError(getErrorMessage(err, 'Could not load company setup')))
+      .finally(() => setSetupLoaded(true));
   }, [companyId]);
 
   useEffect(() => {
@@ -103,6 +105,11 @@ export function VouchersPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // Companies start with an empty chart of accounts, so a voucher cannot be raised until the
+  // masters it references exist. Gate the action rather than opening a form that cannot submit.
+  const canCreateVoucher = voucherTypes.some((type) => type.isActive) && ledgers.length > 0;
+  const setupPending = setupLoaded && !canCreateVoucher;
+
   if (!companyId) return null;
 
   return (
@@ -112,7 +119,17 @@ export function VouchersPage() {
           <h1 className={styles.title}>Vouchers</h1>
           <p className={styles.subtitle}>Double-entry transactions for this company.</p>
         </div>
-        <Button type="button" variant="primary" onClick={() => setCreateModalOpen(true)}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => setCreateModalOpen(true)}
+          disabled={!canCreateVoucher}
+          title={
+            canCreateVoucher
+              ? undefined
+              : 'Add a ledger and an active voucher type to this company first'
+          }
+        >
           <Plus size={16} /> New voucher
         </Button>
       </div>
@@ -152,6 +169,16 @@ export function VouchersPage() {
 
       {loading ? (
         <Loading label="Loading vouchers…" />
+      ) : vouchers.length === 0 && setupPending ? (
+        <EmptyState
+          title="This company is not set up yet"
+          description="Vouchers reference ledgers and voucher types, and this company has none yet. Set up its chart of accounts first."
+          action={
+            <Link to={`/companies/${companyId}`} className={styles.setupLink}>
+              Go to chart of accounts <ArrowRight size={14} />
+            </Link>
+          }
+        />
       ) : vouchers.length === 0 ? (
         <EmptyState title="No vouchers found" description="Create a voucher to get started." />
       ) : (
@@ -172,7 +199,7 @@ export function VouchersPage() {
                   <td className={styles.mono} title={voucher.id}>
                     {voucher.voucherNumber}
                   </td>
-                  <td>{new Date(voucher.voucherDate).toLocaleDateString()}</td>
+                  <td>{formatCalendarDay(voucher.voucherDate)}</td>
                   <td>{typeName(voucher.voucherTypeId)}</td>
                   <td className={styles.narration}>{voucher.narration ?? '—'}</td>
                   <td>
@@ -235,7 +262,7 @@ export function VouchersPage() {
               <Badge variant={voucherStatusVariant(selectedVoucher.status)}>
                 {selectedVoucher.status}
               </Badge>
-              <span>{new Date(selectedVoucher.voucherDate).toLocaleDateString()}</span>
+              <span>{formatCalendarDay(selectedVoucher.voucherDate)}</span>
               {selectedVoucher.referenceNumber && (
                 <span>Ref: {selectedVoucher.referenceNumber}</span>
               )}

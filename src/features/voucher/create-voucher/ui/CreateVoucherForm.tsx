@@ -6,8 +6,8 @@ import { createVoucher } from '@/entities/voucher';
 import type { Voucher, VoucherEntryInput } from '@/entities/voucher';
 import type { VoucherType } from '@/entities/voucher-type';
 import type { Ledger } from '@/entities/ledger';
-import { Button, Input, Select, Textarea } from '@/shared/ui';
-import { getErrorMessage, cn } from '@/shared/lib';
+import { Button, Input, Select, Textarea, EmptyState } from '@/shared/ui';
+import { getErrorMessage, cn, todayAsDateInput } from '@/shared/lib';
 
 import styles from './CreateVoucherForm.module.css';
 
@@ -32,8 +32,6 @@ function newRow(defaultLedgerCode: string): EntryRow {
   return { key: `row-${rowCounter}`, ledgerCode: defaultLedgerCode, debit: '', credit: '' };
 }
 
-const today = new Date().toISOString().slice(0, 10);
-
 export function CreateVoucherForm({
   companyId,
   voucherTypes,
@@ -45,7 +43,7 @@ export function CreateVoucherForm({
   const defaultLedgerCode = ledgers[0]?.code ?? '';
 
   const [voucherTypeCode, setVoucherTypeCode] = useState(activeVoucherTypes[0]?.code ?? '');
-  const [voucherDate, setVoucherDate] = useState(today);
+  const [voucherDate, setVoucherDate] = useState(todayAsDateInput);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [narration, setNarration] = useState('');
   const [entries, setEntries] = useState<EntryRow[]>([
@@ -97,6 +95,27 @@ export function CreateVoucherForm({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // A company now starts with no masters at all, so both <select>s can legitimately be empty.
+  // Say what is missing instead of rendering a form that can never be submitted.
+  const missing = [
+    activeVoucherTypes.length === 0 ? 'an active voucher type' : null,
+    ledgers.length === 0 ? 'at least one ledger' : null,
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    return (
+      <EmptyState
+        title="Finish setting up this company"
+        description={`A voucher needs ${missing.join(' and ')}. Add ${missing.length > 1 ? 'them' : 'it'} from the company's Chart of accounts, then create the voucher.`}
+        action={
+          <Button type="button" variant="primary" onClick={onCancel}>
+            Got it
+          </Button>
+        }
+      />
+    );
   }
 
   return (

@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { createLedger } from '@/entities/ledger';
 import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
-import { Button, Input, Select } from '@/shared/ui';
+import { Button, Input, Select, EmptyState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './CreateLedgerForm.module.css';
@@ -55,6 +55,22 @@ export function CreateLedgerForm({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // A ledger must hang off an account group, and a new company starts with none. Without this
+  // the group <select> would render with no options at all — an unexplained dead end.
+  if (accountGroups.length === 0) {
+    return (
+      <EmptyState
+        title="Create an account group first"
+        description="Every ledger belongs to an account group, and this company does not have any yet. Add one from the Account groups panel, then come back."
+        action={
+          <Button type="button" variant="primary" onClick={onCancel}>
+            Got it
+          </Button>
+        }
+      />
+    );
   }
 
   return (
