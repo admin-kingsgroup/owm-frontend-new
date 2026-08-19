@@ -1,0 +1,86 @@
+name: CI / Deploy frontend to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  REMOTE_DIR: /var/www/owm-frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (tsc -b && vite build)
+        env:
+          # relative by default → same-origin through nginx; override with a repo variable if the API moves.
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || '/api/v1' }}
+        run: |
+          npm run build
+          test -f dist/index.html
+
+      # ---------- everything below only runs once EC2 secrets exist ----------
+      - name: Check deploy secrets
+        id: cfg
+        env:
+          H: ${{ secrets.EC2_HOST }}
+          U: ${{ secrets.EC2_USER }}
+          K: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          if [ -n "$H" ] && [ -n "$U" ] && [ -n "$K" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EC2_HOST / EC2_USER / EC2_SSH_KEY not set — build succeeded, deploy skipped."
+          fi
+
+      - name: Set up SSH
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Rsync dist/ to EC2 (atomic-ish: assets first, index.html last)
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          # 1) new hashed assets land next to old ones (old index.html still valid)
+          rsync -az -e "$SSH" --exclude 'index.html' dist/ "$USER@$HOST:$REMOTE_DIR/"
+          # 2) swap the entrypoint, then prune stale assets
+          rsync -az --delete -e "$SSH" dist/ "$USER@$HOST:$REMOTE_DIR/"
+
+      - name: Smoke test (through nginx)
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          curl -fsS --max-time 15 "http://$HOST/" | grep -qi '<div id="root"' && echo "frontend OK"
+          # deep link must fall back to index.html (BrowserRouter)
+          curl -fsS --max-time 15 -o /dev/null -w 'deep-link %{http_code}\n' "http://$HOST/some/deep/route"
