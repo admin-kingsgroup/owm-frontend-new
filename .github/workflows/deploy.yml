@@ -76,11 +76,13 @@ jobs:
           # 2) swap the entrypoint, then prune stale assets
           rsync -az --delete -e "$SSH" dist/ "$USER@$HOST:$REMOTE_DIR/"
 
-      - name: Smoke test (through nginx)
+      - name: Smoke test (through nginx, follows http→https redirect)
         if: steps.cfg.outputs.ready == 'true'
         env:
-          HOST: ${{ secrets.EC2_HOST }}
+          # SITE_URL repo variable (e.g. https://kbizowm.duckdns.org) wins; else http://<EC2_HOST>
+          SITE_URL: ${{ vars.SITE_URL || format('http://{0}', secrets.EC2_HOST) }}
         run: |
-          curl -fsS --max-time 15 "http://$HOST/" | grep -qi '<div id="root"' && echo "frontend OK"
+          curl -fsSL --max-time 20 "$SITE_URL/" | grep -qi '<div id="root"' && echo "frontend OK"
           # deep link must fall back to index.html (BrowserRouter)
-          curl -fsS --max-time 15 -o /dev/null -w 'deep-link %{http_code}\n' "http://$HOST/some/deep/route"
+          code=$(curl -sSL --max-time 20 -o /dev/null -w '%{http_code}' "$SITE_URL/some/deep/route")
+          echo "deep-link $code"; [ "$code" = "200" ]

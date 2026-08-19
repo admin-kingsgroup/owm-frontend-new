@@ -1,6 +1,6 @@
 # Deploy — owm-frontend-new
 
-Static Vite build served by nginx on the OWM EC2 box (same box as the backend). Full runbook
+Live at **https://kbizowm.duckdns.org** (EC2 13.204.50.151). Static Vite build served by nginx on the OWM EC2 box (same box as the backend). Full runbook
 (EC2 launch, provisioning, secrets, nginx, HTTPS) lives in **owm-backend-new/DEPLOY.md** — the
 backend repo owns the server config (`deploy/provision.sh`, `deploy/nginx-owm.conf`).
 
