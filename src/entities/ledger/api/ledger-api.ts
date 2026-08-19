@@ -29,3 +29,7 @@ export async function updateLedger(
   );
   return data.data;
 }
+
+export async function deleteLedger(companyId: string, id: string): Promise<void> {
+  await apiClient.delete(endpoints.ledgers.byId(companyId, id));
+}

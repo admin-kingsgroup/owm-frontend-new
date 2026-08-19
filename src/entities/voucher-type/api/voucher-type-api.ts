@@ -32,3 +32,7 @@ export async function updateVoucherType(
   );
   return data.data;
 }
+
+export async function deleteVoucherType(companyId: string, id: string): Promise<void> {
+  await apiClient.delete(endpoints.voucherTypes.byId(companyId, id));
+}

@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Plus, Receipt, ArrowRight, Lock } from 'lucide-react';
+import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2 } from 'lucide-react';
 
 import { getCompany, companyStatusVariant } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listAccountGroups } from '@/entities/account-group';
 import type { AccountGroup } from '@/entities/account-group';
-import { listLedgers } from '@/entities/ledger';
+import { listLedgers, deleteLedger } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
-import { listVoucherTypes } from '@/entities/voucher-type';
+import { listVoucherTypes, deleteVoucherType } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { CreateAccountGroupForm } from '@/features/account-group';
-import { CreateLedgerForm } from '@/features/ledger';
-import { CreateVoucherTypeForm } from '@/features/voucher-type';
+import { CreateLedgerForm, EditLedgerForm } from '@/features/ledger';
+import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-type';
 import { Button, Modal, Loading, Badge, EmptyState } from '@/shared/ui';
 import { getErrorMessage, cn, formatRecordId } from '@/shared/lib';
 
@@ -36,6 +36,10 @@ export function CompanyDashboardPage() {
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
   const [voucherTypeModalOpen, setVoucherTypeModalOpen] = useState(false);
+  const [editingVoucherType, setEditingVoucherType] = useState<VoucherType | null>(null);
+  const [deletingVoucherTypeId, setDeletingVoucherTypeId] = useState<string | null>(null);
+  const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
+  const [deletingLedgerId, setDeletingLedgerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -83,6 +87,38 @@ export function CompanyDashboardPage() {
   const visibleLedgers = selectedGroupId
     ? ledgers.filter((ledger) => ledger.accountGroupId === selectedGroupId)
     : ledgers;
+
+  async function handleDeleteVoucherType(voucherType: VoucherType) {
+    const confirmed = window.confirm(`Delete voucher type "${voucherType.name}"? This can't be undone.`);
+    if (!confirmed) return;
+
+    setDeletingVoucherTypeId(voucherType.id);
+    setError(null);
+    try {
+      await deleteVoucherType(companyId, voucherType.id);
+      setVoucherTypes((current) => current.filter((vt) => vt.id !== voucherType.id));
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not delete voucher type'));
+    } finally {
+      setDeletingVoucherTypeId(null);
+    }
+  }
+
+  async function handleDeleteLedger(ledger: Ledger) {
+    const confirmed = window.confirm(`Delete ledger "${ledger.name}"? This can't be undone.`);
+    if (!confirmed) return;
+
+    setDeletingLedgerId(ledger.id);
+    setError(null);
+    try {
+      await deleteLedger(companyId, ledger.id);
+      setLedgers((current) => current.filter((l) => l.id !== ledger.id));
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not delete ledger'));
+    } finally {
+      setDeletingLedgerId(null);
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -156,6 +192,7 @@ export function CompanyDashboardPage() {
                     <th>Type</th>
                     <th>Opening balance</th>
                     <th />
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,9 +207,33 @@ export function CompanyDashboardPage() {
                       <td className={styles.mono}>
                         {Number(ledger.openingBalance).toFixed(2)} {ledger.openingBalanceType}
                       </td>
-                      <td className={styles.rowFlags}>
-                        {ledger.isSystem && <Lock size={13} aria-label="System ledger" />}
-                        {!ledger.isActive && <Badge variant="neutral">Inactive</Badge>}
+                      <td>
+                        <div className={styles.rowFlags}>
+                          {ledger.isSystem && <Lock size={13} aria-label="System ledger" />}
+                          {!ledger.isActive && <Badge variant="neutral">Inactive</Badge>}
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.rowActions}>
+                          <button
+                            type="button"
+                            className={styles.iconButton}
+                            aria-label="Edit ledger"
+                            onClick={() => setEditingLedger(ledger)}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.iconButton}
+                            aria-label="Delete ledger"
+                            disabled={ledger.isSystem || deletingLedgerId === ledger.id}
+                            title={ledger.isSystem ? 'System ledgers cannot be deleted' : undefined}
+                            onClick={() => handleDeleteLedger(ledger)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -199,6 +260,7 @@ export function CompanyDashboardPage() {
                 <th>Category</th>
                 <th>Numbering</th>
                 <th />
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -211,9 +273,35 @@ export function CompanyDashboardPage() {
                   <td>{voucherType.name}</td>
                   <td>{voucherType.category.replace('_', ' ')}</td>
                   <td>{voucherType.numberingMethod}</td>
-                  <td className={styles.rowFlags}>
-                    {voucherType.isSystem && <Lock size={13} aria-label="System voucher type" />}
-                    {!voucherType.isActive && <Badge variant="neutral">Inactive</Badge>}
+                  <td>
+                    <div className={styles.rowFlags}>
+                      {voucherType.isSystem && <Lock size={13} aria-label="System voucher type" />}
+                      {!voucherType.isActive && <Badge variant="neutral">Inactive</Badge>}
+                    </div>
+                  </td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={styles.iconButton}
+                        aria-label="Edit voucher type"
+                        onClick={() => setEditingVoucherType(voucherType)}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconButton}
+                        aria-label="Delete voucher type"
+                        disabled={voucherType.isSystem || deletingVoucherTypeId === voucherType.id}
+                        title={
+                          voucherType.isSystem ? 'System voucher types cannot be deleted' : undefined
+                        }
+                        onClick={() => handleDeleteVoucherType(voucherType)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -250,6 +338,21 @@ export function CompanyDashboardPage() {
         />
       </Modal>
 
+      <Modal open={editingLedger !== null} onClose={() => setEditingLedger(null)} title="Edit ledger">
+        {editingLedger && (
+          <EditLedgerForm
+            companyId={companyId}
+            ledger={editingLedger}
+            accountGroups={groups}
+            onSaved={(ledger) => {
+              setLedgers((current) => current.map((l) => (l.id === ledger.id ? ledger : l)));
+              setEditingLedger(null);
+            }}
+            onCancel={() => setEditingLedger(null)}
+          />
+        )}
+      </Modal>
+
       <Modal
         open={voucherTypeModalOpen}
         onClose={() => setVoucherTypeModalOpen(false)}
@@ -263,6 +366,26 @@ export function CompanyDashboardPage() {
           }}
           onCancel={() => setVoucherTypeModalOpen(false)}
         />
+      </Modal>
+
+      <Modal
+        open={editingVoucherType !== null}
+        onClose={() => setEditingVoucherType(null)}
+        title="Edit voucher type"
+      >
+        {editingVoucherType && (
+          <EditVoucherTypeForm
+            companyId={companyId}
+            voucherType={editingVoucherType}
+            onSaved={(voucherType) => {
+              setVoucherTypes((current) =>
+                current.map((vt) => (vt.id === voucherType.id ? voucherType : vt)),
+              );
+              setEditingVoucherType(null);
+            }}
+            onCancel={() => setEditingVoucherType(null)}
+          />
+        )}
       </Modal>
     </div>
   );
