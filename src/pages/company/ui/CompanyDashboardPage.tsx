@@ -75,6 +75,7 @@ export function CompanyDashboardPage() {
   }, [companyId]);
 
   if (!companyId) return null;
+  const id = companyId;
 
   if (loading) {
     return <Loading label="Loading company…" />;
@@ -95,7 +96,7 @@ export function CompanyDashboardPage() {
     setDeletingVoucherTypeId(voucherType.id);
     setError(null);
     try {
-      await deleteVoucherType(companyId, voucherType.id);
+      await deleteVoucherType(id, voucherType.id);
       setVoucherTypes((current) => current.filter((vt) => vt.id !== voucherType.id));
     } catch (err) {
       setError(getErrorMessage(err, 'Could not delete voucher type'));
@@ -111,7 +112,7 @@ export function CompanyDashboardPage() {
     setDeletingLedgerId(ledger.id);
     setError(null);
     try {
-      await deleteLedger(companyId, ledger.id);
+      await deleteLedger(id, ledger.id);
       setLedgers((current) => current.filter((l) => l.id !== ledger.id));
     } catch (err) {
       setError(getErrorMessage(err, 'Could not delete ledger'));
