@@ -3,18 +3,26 @@ import type { FormEvent } from 'react';
 import { Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { createVoucher } from '@/entities/voucher';
-import type { Voucher, VoucherEntryInput } from '@/entities/voucher';
+import type { Voucher, VoucherEntryInput, BillAllocationInput } from '@/entities/voucher';
+import type { Currency } from '@/entities/currency';
 import type { VoucherType } from '@/entities/voucher-type';
 import type { Ledger } from '@/entities/ledger';
 import { Button, Input, Select, Textarea, EmptyState } from '@/shared/ui';
 import { getErrorMessage, cn, todayAsDateInput } from '@/shared/lib';
 
+import { EntryExtras } from './EntryExtras';
+import type { AllocationRow } from './EntryExtras';
 import styles from './CreateVoucherForm.module.css';
 
 export interface CreateVoucherFormProps {
   companyId: string;
   voucherTypes: VoucherType[];
   ledgers: Ledger[];
+  /** Company feature flags — the per-entry detail below appears only for what is switched on. */
+  billWiseEnabled: boolean;
+  multiCurrencyEnabled: boolean;
+  currencies: Currency[];
+  baseCurrency: string;
   onCreated: (voucher: Voucher) => void;
   onCancel: () => void;
 }
@@ -24,18 +32,45 @@ interface EntryRow {
   ledgerCode: string;
   debit: string;
   credit: string;
+  currencyCode: string;
+  exchangeRate: string;
+  allocations: AllocationRow[];
 }
 
 let rowCounter = 0;
 function newRow(defaultLedgerCode: string): EntryRow {
   rowCounter += 1;
-  return { key: `row-${rowCounter}`, ledgerCode: defaultLedgerCode, debit: '', credit: '' };
+  return {
+    key: `row-${rowCounter}`,
+    ledgerCode: defaultLedgerCode,
+    debit: '',
+    credit: '',
+    currencyCode: '',
+    exchangeRate: '',
+    allocations: [],
+  };
+}
+
+let allocationCounter = 0;
+function newAllocation(): AllocationRow {
+  allocationCounter += 1;
+  return {
+    key: `alloc-${allocationCounter}`,
+    allocationType: 'NEW_REF',
+    reference: '',
+    amount: '',
+    dueDate: '',
+  };
 }
 
 export function CreateVoucherForm({
   companyId,
   voucherTypes,
   ledgers,
+  billWiseEnabled,
+  multiCurrencyEnabled,
+  currencies,
+  baseCurrency,
   onCreated,
   onCancel,
 }: CreateVoucherFormProps) {
@@ -54,9 +89,23 @@ export function CreateVoucherForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalDebit = entries.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
-  const totalCredit = entries.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
-  const isBalanced = totalDebit > 0 && totalDebit === totalCredit;
+  const ledgerByCode = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
+
+  /**
+   * A voucher balances in the base currency, so a foreign line is converted before it is counted.
+   * Without a rate the line cannot be weighed at all — the bar then says so rather than claiming
+   * the voucher is out of balance, which would be a different and misleading complaint.
+   */
+  const rateFor = (row: EntryRow) => (row.currencyCode ? Number(row.exchangeRate) || 0 : 1);
+  const awaitingRate = entries.some((row) => row.currencyCode && !Number(row.exchangeRate));
+
+  const totalDebit = entries.reduce((sum, row) => sum + (Number(row.debit) || 0) * rateFor(row), 0);
+  const totalCredit = entries.reduce(
+    (sum, row) => sum + (Number(row.credit) || 0) * rateFor(row),
+    0,
+  );
+  const isBalanced =
+    !awaitingRate && totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.005;
 
   function updateRow(key: string, patch: Partial<EntryRow>) {
     setEntries((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -75,11 +124,28 @@ export function CreateVoucherForm({
     setSubmitting(true);
     setError(null);
 
-    const payloadEntries: VoucherEntryInput[] = entries.map((row) => ({
-      ledgerCode: row.ledgerCode,
-      debit: Number(row.debit) || 0,
-      credit: Number(row.credit) || 0,
-    }));
+    const payloadEntries: VoucherEntryInput[] = entries.map((row) => {
+      const allocations: BillAllocationInput[] = row.allocations
+        .filter((allocation) => Number(allocation.amount) > 0)
+        .map((allocation) => ({
+          allocationType: allocation.allocationType,
+          reference:
+            allocation.allocationType === 'ON_ACCOUNT' ? undefined : allocation.reference,
+          amount: Number(allocation.amount),
+          dueDate: allocation.allocationType === 'NEW_REF' && allocation.dueDate
+            ? allocation.dueDate
+            : undefined,
+        }));
+
+      return {
+        ledgerCode: row.ledgerCode,
+        debit: Number(row.debit) || 0,
+        credit: Number(row.credit) || 0,
+        billAllocations: allocations.length > 0 ? allocations : undefined,
+        currencyCode: row.currencyCode || undefined,
+        exchangeRate: row.currencyCode && row.exchangeRate ? Number(row.exchangeRate) : undefined,
+      };
+    });
 
     try {
       const voucher = await createVoucher(companyId, {
@@ -227,6 +293,23 @@ export function CreateVoucherForm({
             >
               <Trash2 size={15} />
             </button>
+
+            <EntryExtras
+              entryAmount={Number(row.debit) || Number(row.credit) || 0}
+              billwise={billWiseEnabled && Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)}
+              allocations={row.allocations}
+              onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
+              onAddAllocation={() =>
+                updateRow(row.key, { allocations: [...row.allocations, newAllocation()] })
+              }
+              multiCurrency={multiCurrencyEnabled}
+              currencies={currencies}
+              baseCurrency={baseCurrency}
+              currencyCode={row.currencyCode}
+              exchangeRate={row.exchangeRate}
+              onCurrencyChange={(currencyCode) => updateRow(row.key, { currencyCode })}
+              onExchangeRateChange={(exchangeRate) => updateRow(row.key, { exchangeRate })}
+            />
           </div>
         ))}
       </div>

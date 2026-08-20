@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { Download, Printer, X } from 'lucide-react';
 
+import { getCompany } from '@/entities/company';
+import type { Company } from '@/entities/company';
 import {
   getBalanceSheet,
   getDayBook,
@@ -17,20 +19,33 @@ import type {
   ReportNode,
   TrialBalanceReport,
 } from '@/entities/report';
-import { Loading, Modal } from '@/shared/ui';
+import { getPayables, getReceivables } from '@/entities/outstanding';
+import type { OutstandingsReport } from '@/entities/outstanding';
+import { getForexGainLoss } from '@/entities/currency';
+import type { ForexGainLossReport } from '@/entities/currency';
+import { Button, Input, Loading, Modal } from '@/shared/ui';
 import { cn, getErrorMessage } from '@/shared/lib';
 
 import { ReportTree } from './ReportTree';
+import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
 
-type Tab = 'balance-sheet' | 'profit-loss' | 'trial-balance' | 'day-book';
+type Tab =
+  | 'balance-sheet'
+  | 'profit-loss'
+  | 'trial-balance'
+  | 'day-book'
+  | 'receivables'
+  | 'payables'
+  | 'forex';
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'balance-sheet', label: 'Balance Sheet' },
-  { id: 'profit-loss', label: 'Profit & Loss' },
-  { id: 'trial-balance', label: 'Trial Balance' },
-  { id: 'day-book', label: 'Day Book' },
-];
+const BUCKET_LABELS: Record<string, string> = {
+  NOT_DUE: 'Not due',
+  '0_30': '1–30 days',
+  '31_60': '31–60 days',
+  '61_90': '61–90 days',
+  OVER_90: 'Over 90 days',
+};
 
 const asDay = (value: string) => value.slice(0, 10);
 
@@ -38,10 +53,19 @@ export function ReportsPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const [tab, setTab] = useState<Tab>('balance-sheet');
 
+  // Empty means "the whole financial year", which is what the server defaults to.
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [applied, setApplied] = useState({ from: '', to: '' });
+
+  const [company, setCompany] = useState<Company | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
   const [dayBook, setDayBook] = useState<DayBookReport | null>(null);
+  const [receivables, setReceivables] = useState<OutstandingsReport | null>(null);
+  const [payables, setPayables] = useState<OutstandingsReport | null>(null);
+  const [forex, setForex] = useState<ForexGainLossReport | null>(null);
 
   const [statement, setStatement] = useState<LedgerStatementReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,19 +82,31 @@ export function ReportsPage() {
       setLoading(true);
       setLoadError(null);
       try {
-        // All four are fetched together: they share a period, and switching tabs should not wait
-        // on a round trip for a figure the user is comparing against the one already on screen.
-        const [bs, pl, tb, db] = await Promise.all([
-          getBalanceSheet(id),
-          getProfitAndLoss(id),
-          getTrialBalance(id),
-          getDayBook(id),
+        const params = { from: applied.from || undefined, to: applied.to || undefined };
+        // `asOf` for the ageing reports is the end of the period being looked at.
+        const asOf = applied.to || undefined;
+
+        const [companyResult, bs, pl, tb, db, rec, pay] = await Promise.all([
+          getCompany(id),
+          getBalanceSheet(id, params),
+          getProfitAndLoss(id, params),
+          getTrialBalance(id, params),
+          getDayBook(id, params),
+          getReceivables(id, asOf),
+          getPayables(id, asOf),
         ]);
         if (cancelled) return;
+
+        setCompany(companyResult);
         setBalanceSheet(bs);
         setProfitLoss(pl);
         setTrialBalance(tb);
         setDayBook(db);
+        setReceivables(rec);
+        setPayables(pay);
+
+        // Only meaningful once the company transacts in more than one currency.
+        setForex(companyResult.features.multiCurrency ? await getForexGainLoss(id, asOf) : null);
       } catch (err) {
         if (!cancelled) setLoadError(getErrorMessage(err, 'Could not load reports'));
       } finally {
@@ -82,19 +118,119 @@ export function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [companyId, applied]);
 
   const openLedger = useCallback(
     async (node: ReportNode) => {
       if (!companyId) return;
       try {
-        setStatement(await getLedgerStatement(companyId, node.id));
+        setStatement(
+          await getLedgerStatement(companyId, node.id, {
+            from: applied.from || undefined,
+            to: applied.to || undefined,
+          }),
+        );
       } catch (err) {
         setError(getErrorMessage(err, 'Could not open ledger'));
       }
     },
-    [companyId],
+    [companyId, applied],
   );
+
+  function exportCurrentTab() {
+    const stamp = balanceSheet ? balanceSheet.period.financialYearLabel : 'report';
+    const name = (label: string) => `${label}-${stamp}.csv`;
+    const treeHeaders = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
+
+    if (tab === 'balance-sheet' && balanceSheet) {
+      downloadCsv(name('balance-sheet'), treeHeaders, [
+        ['ASSETS', '', '', '', '', balanceSheet.totals.assets, 'DEBIT'],
+        ...flattenNodes(balanceSheet.assets),
+        ['LIABILITIES', '', '', '', '', balanceSheet.totals.liabilities, 'CREDIT'],
+        ...flattenNodes(balanceSheet.liabilities),
+        ['Profit for the period', '', '', '', '', balanceSheet.totals.currentPeriodProfit, ''],
+      ]);
+    } else if (tab === 'profit-loss' && profitLoss) {
+      downloadCsv(name('profit-and-loss'), treeHeaders, [
+        ['INCOME', '', '', '', '', profitLoss.totals.income, 'CREDIT'],
+        ...flattenNodes(profitLoss.income),
+        ['EXPENSES', '', '', '', '', profitLoss.totals.expenses, 'DEBIT'],
+        ...flattenNodes(profitLoss.expenses),
+        ['Net profit', '', '', '', '', profitLoss.totals.netProfit, ''],
+      ]);
+    } else if (tab === 'trial-balance' && trialBalance) {
+      downloadCsv(
+        name('trial-balance'),
+        ['Code', 'Ledger', 'Opening Dr', 'Opening Cr', 'Debit', 'Credit', 'Closing Dr', 'Closing Cr'],
+        [
+          ...trialBalance.rows.map((row) => [
+            row.code,
+            row.name,
+            row.openingDebit,
+            row.openingCredit,
+            row.debit,
+            row.credit,
+            row.closingDebit,
+            row.closingCredit,
+          ]),
+          [
+            '',
+            'Total',
+            trialBalance.totals.openingDebit,
+            trialBalance.totals.openingCredit,
+            trialBalance.totals.debit,
+            trialBalance.totals.credit,
+            trialBalance.totals.closingDebit,
+            trialBalance.totals.closingCredit,
+          ],
+        ],
+      );
+    } else if (tab === 'day-book' && dayBook) {
+      downloadCsv(
+        name('day-book'),
+        ['Date', 'Number', 'Type', 'Narration', 'Amount'],
+        dayBook.rows.map((row) => [
+          asDay(row.voucherDate),
+          row.voucherNumber,
+          row.voucherTypeCode,
+          row.narration ?? '',
+          row.amount,
+        ]),
+      );
+    } else if ((tab === 'receivables' || tab === 'payables') && (receivables || payables)) {
+      const report = tab === 'receivables' ? receivables : payables;
+      if (!report) return;
+      downloadCsv(
+        name(tab),
+        ['Party', 'Reference', 'Bill date', 'Due date', 'Amount', 'Settled', 'Outstanding', 'Days overdue'],
+        report.bills.map((bill) => [
+          bill.ledgerName,
+          bill.reference,
+          asDay(bill.billDate),
+          bill.dueDate ? asDay(bill.dueDate) : '',
+          bill.amount,
+          bill.settled,
+          bill.outstanding,
+          String(bill.overdueDays),
+        ]),
+      );
+    } else if (tab === 'forex' && forex) {
+      downloadCsv(
+        name('forex-gain-loss'),
+        ['Party', 'Reference', 'Currency', 'FC outstanding', 'Booked', 'Revalued', 'Gain/Loss', 'Kind'],
+        forex.lines.map((line) => [
+          line.ledgerName,
+          line.reference,
+          line.currencyCode,
+          line.fcOutstanding,
+          line.bookedBase,
+          line.revaluedBase ?? '',
+          line.gainLoss,
+          line.kind,
+        ]),
+      );
+    }
+  }
 
   if (!companyId) return null;
   if (loading) return <Loading label="Loading reports…" />;
@@ -102,15 +238,75 @@ export function ReportsPage() {
 
   const period = balanceSheet?.period;
 
+  const TABS: Array<{ id: Tab; label: string; show: boolean }> = [
+    { id: 'balance-sheet', label: 'Balance Sheet', show: true },
+    { id: 'profit-loss', label: 'Profit & Loss', show: true },
+    { id: 'trial-balance', label: 'Trial Balance', show: true },
+    { id: 'day-book', label: 'Day Book', show: true },
+    { id: 'receivables', label: 'Receivables', show: Boolean(company?.features.billWiseDetails) },
+    { id: 'payables', label: 'Payables', show: Boolean(company?.features.billWiseDetails) },
+    { id: 'forex', label: 'Forex Gain/Loss', show: Boolean(company?.features.multiCurrency) },
+  ];
+
+  const outstandings = tab === 'receivables' ? receivables : payables;
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Reports</h1>
-        {period && (
-          <p className={styles.subtitle}>
-            FY {period.financialYearLabel} · {asDay(period.from)} to {asDay(period.to)}
-          </p>
-        )}
+        <div>
+          <h1 className={styles.title}>Reports</h1>
+          {period && (
+            <p className={styles.subtitle}>
+              FY {period.financialYearLabel} · {asDay(period.from)} to {asDay(period.to)}
+            </p>
+          )}
+        </div>
+
+        <div className={styles.toolbar}>
+          <div className={styles.periodField}>
+            <label className={styles.periodLabel} htmlFor="report-from">
+              From
+            </label>
+            <Input
+              id="report-from"
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </div>
+          <div className={styles.periodField}>
+            <label className={styles.periodLabel} htmlFor="report-to">
+              To
+            </label>
+            <Input
+              id="report-to"
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </div>
+          <Button variant="secondary" onClick={() => setApplied({ from, to })}>
+            Apply
+          </Button>
+          {(applied.from || applied.to) && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFrom('');
+                setTo('');
+                setApplied({ from: '', to: '' });
+              }}
+            >
+              Whole year
+            </Button>
+          )}
+          <Button variant="ghost" onClick={exportCurrentTab} title="Download this report as CSV">
+            <Download size={14} /> CSV
+          </Button>
+          <Button variant="ghost" onClick={() => window.print()} title="Print this report">
+            <Printer size={14} /> Print
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -120,7 +316,7 @@ export function ReportsPage() {
       )}
 
       <div className={styles.tabs}>
-        {TABS.map((entry) => (
+        {TABS.filter((entry) => entry.show).map((entry) => (
           <button
             key={entry.id}
             type="button"
@@ -283,6 +479,125 @@ export function ReportsPage() {
             </table>
           </div>
           {dayBook.rows.length === 0 && <p className={styles.empty}>No vouchers in this period.</p>}
+        </section>
+      )}
+
+      {(tab === 'receivables' || tab === 'payables') && outstandings && (
+        <section className={styles.panel}>
+          <div className={styles.buckets}>
+            {Object.entries(outstandings.totals.byBucket).map(([bucket, amount]) => (
+              <div key={bucket} className={styles.bucket}>
+                <span className={styles.bucketLabel}>{BUCKET_LABELS[bucket] ?? bucket}</span>
+                <span className={styles.bucketAmount}>{amount}</span>
+              </div>
+            ))}
+            <div className={cn(styles.bucket, styles.bucketTotal)}>
+              <span className={styles.bucketLabel}>Total</span>
+              <span className={styles.bucketAmount}>{outstandings.totals.outstanding}</span>
+            </div>
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Party</th>
+                  <th>Reference</th>
+                  <th>Due</th>
+                  <th className={styles.num}>Amount</th>
+                  <th className={styles.num}>Settled</th>
+                  <th className={styles.num}>Outstanding</th>
+                  <th className={styles.num}>Overdue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {outstandings.bills.map((bill) => (
+                  <tr key={bill.billId}>
+                    <td>{bill.ledgerName}</td>
+                    <td>{bill.reference}</td>
+                    <td>{bill.dueDate ? asDay(bill.dueDate) : asDay(bill.billDate)}</td>
+                    <td className={styles.num}>{bill.amount}</td>
+                    <td className={styles.num}>{bill.settled}</td>
+                    <td className={styles.num}>{bill.outstanding}</td>
+                    <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
+                      {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {outstandings.bills.length === 0 && (
+            <p className={styles.empty}>Nothing outstanding as at {asDay(outstandings.asOf)}.</p>
+          )}
+        </section>
+      )}
+
+      {tab === 'forex' && forex && (
+        <section className={styles.panel}>
+          <div className={styles.buckets}>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Realised</span>
+              <span className={styles.bucketAmount}>{forex.totals.realised}</span>
+            </div>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Unrealised</span>
+              <span className={styles.bucketAmount}>{forex.totals.unrealised}</span>
+            </div>
+            <div className={cn(styles.bucket, styles.bucketTotal)}>
+              <span className={styles.bucketLabel}>Unadjusted</span>
+              <span className={styles.bucketAmount}>{forex.totals.unadjusted}</span>
+            </div>
+          </div>
+
+          <p className={styles.hint}>
+            Nothing is posted automatically. Pass a journal moving this from{' '}
+            <strong>Unadjusted Forex Gain/Loss</strong> to <strong>Forex Gain</strong> or{' '}
+            <strong>Forex Loss</strong> once you accept the figures.
+          </p>
+
+          {forex.skippedForMissingRate.length > 0 && (
+            <p className={styles.warning}>
+              Left out for want of a rate on {asDay(forex.asOf)}:{' '}
+              {forex.skippedForMissingRate.join(', ')}
+            </p>
+          )}
+
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Party</th>
+                  <th>Reference</th>
+                  <th>Currency</th>
+                  <th className={styles.num}>FC open</th>
+                  <th className={styles.num}>Booked</th>
+                  <th className={styles.num}>Revalued</th>
+                  <th className={styles.num}>Gain / loss</th>
+                  <th>Kind</th>
+                </tr>
+              </thead>
+              <tbody>
+                {forex.lines.map((line) => (
+                  <tr key={line.billId}>
+                    <td>{line.ledgerName}</td>
+                    <td>{line.reference}</td>
+                    <td>{line.currencyCode}</td>
+                    <td className={styles.num}>{line.fcOutstanding}</td>
+                    <td className={styles.num}>{line.bookedBase}</td>
+                    <td className={styles.num}>{line.revaluedBase ?? '—'}</td>
+                    <td className={cn(styles.num, Number(line.gainLoss) < 0 && styles.overdue)}>
+                      {line.gainLoss}
+                    </td>
+                    <td>{line.kind === 'REALISED' ? 'Realised' : 'Unrealised'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {forex.lines.length === 0 && (
+            <p className={styles.empty}>No exchange differences as at {asDay(forex.asOf)}.</p>
+          )}
         </section>
       )}
 

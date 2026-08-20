@@ -4,6 +4,8 @@ export type {
   VoucherStatus,
   VoucherEntry,
   VoucherEntryInput,
+  BillAllocationInput,
+  AllocationType,
   CreateVoucherInput,
   VoucherListQuery,
   VoucherListResult,

@@ -4,8 +4,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(43, 38, 32, 0.45);
-  z-index: 50;
+  background-color: var(--overlay);
+  z-index: var(--z-modal);
 }
 
 .modal {
@@ -14,7 +14,7 @@
   margin: 1rem;
   background-color: var(--paper-card);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 44px rgba(43, 38, 32, 0.18);
+  box-shadow: var(--shadow-3);
 }
 
 .header {

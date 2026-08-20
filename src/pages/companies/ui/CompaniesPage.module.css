@@ -55,8 +55,8 @@
 }
 
 .card:hover {
-  border-color: var(--violet);
-  box-shadow: 0 10px 22px rgba(90, 70, 40, 0.1);
+  border-color: var(--accent-2);
+  box-shadow: var(--shadow-2);
 }
 
 .cardHeader {
@@ -108,12 +108,12 @@
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--blue);
+  color: var(--accent);
   cursor: pointer;
 }
 
 .cardLink:hover {
-  color: var(--violet);
+  color: var(--accent-2);
 }
 
 .cardActions {

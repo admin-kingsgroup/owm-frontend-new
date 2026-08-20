@@ -136,7 +136,7 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--brand-gradient);
-  color: #ffffff;
+  color: var(--on-accent);
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;

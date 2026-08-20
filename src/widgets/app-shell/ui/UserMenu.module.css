@@ -25,7 +25,7 @@
   flex-shrink: 0;
   border-radius: 999px;
   background: var(--brand-gradient);
-  color: #ffffff;
+  color: var(--on-accent);
   font-size: 0.75rem;
   font-weight: 700;
   display: flex;
@@ -57,8 +57,8 @@
   background-color: var(--paper-card);
   border: 1px solid var(--border);
   border-radius: 0.625rem;
-  box-shadow: 0 16px 32px rgba(43, 38, 32, 0.16);
-  z-index: 40;
+  box-shadow: var(--shadow-3);
+  z-index: var(--z-dropdown);
 }
 
 .menuHeader {

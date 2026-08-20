@@ -63,7 +63,7 @@
 
 .tabActive {
   color: var(--ink);
-  border-bottom-color: var(--blue);
+  border-bottom-color: var(--accent);
 }
 
 /* A balance sheet is read as two facing columns; it collapses to one on a narrow screen. */
@@ -141,7 +141,7 @@
 }
 
 .treeLedger:hover {
-  color: var(--blue);
+  color: var(--accent);
 }
 
 .treeChevron {
@@ -243,7 +243,7 @@
   border: none;
   background: none;
   font: inherit;
-  color: var(--blue);
+  color: var(--accent);
   cursor: pointer;
   text-align: left;
 }
@@ -288,4 +288,116 @@
 
 .closeLink:hover {
   color: var(--ink);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.periodField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.periodLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.buckets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1 1 7rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.375rem;
+}
+
+.bucketTotal {
+  border-color: var(--border);
+  background-color: var(--hover-tint);
+}
+
+.bucketLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.bucketAmount {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.overdue {
+  color: var(--danger-fg);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/*
+ * Printing a statement should produce the statement, not the application around it. The tabs and
+ * toolbar are controls, not content, and a table that scrolls on screen has to be allowed to run
+ * over as many pages as it needs on paper.
+ */
+@media print {
+  .tabs,
+  .toolbar,
+  .closeLink {
+    display: none !important;
+  }
+
+  .page {
+    gap: 0.75rem;
+  }
+
+  .panel {
+    border: none;
+    padding: 0;
+    background: none;
+    break-inside: auto;
+  }
+
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .table {
+    font-size: 0.6875rem;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+
+  .table tr {
+    break-inside: avoid;
+  }
+
+  .twoColumn {
+    grid-template-columns: 1fr 1fr;
+  }
 }

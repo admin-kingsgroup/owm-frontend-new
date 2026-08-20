@@ -34,6 +34,6 @@
 }
 
 .info {
-  color: var(--blue);
-  border-color: var(--violet);
+  color: var(--accent);
+  border-color: var(--accent-2);
 }

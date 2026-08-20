@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { createLedger } from '@/entities/ledger';
 import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
-import { Button, Input, Select, EmptyState } from '@/shared/ui';
+import { Button, Checkbox, Input, Select, EmptyState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './CreateLedgerForm.module.css';
@@ -32,6 +32,8 @@ export function CreateLedgerForm({
   const [openingBalance, setOpeningBalance] = useState('0');
   const [openingBalanceType, setOpeningBalanceType] = useState<BalanceSide>('DEBIT');
 
+  const [maintainBillwise, setMaintainBillwise] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export function CreateLedgerForm({
         ledgerType,
         openingBalance: Number(openingBalance) || 0,
         openingBalanceType,
+        maintainBillwise,
       });
       onCreated(ledger);
     } catch (err) {
@@ -166,6 +169,14 @@ export function CreateLedgerForm({
           </Select>
         </div>
       </div>
+
+      <Checkbox
+        id="create-ledger-billwise"
+        label="Maintain balances bill by bill"
+        hint="For customer and supplier ledgers. Their invoices are then tracked individually and appear in Receivables or Payables with ageing."
+        checked={maintainBillwise}
+        onChange={(event) => setMaintainBillwise(event.target.checked)}
+      />
 
       {error && <p className={styles.error}>{error}</p>}
 

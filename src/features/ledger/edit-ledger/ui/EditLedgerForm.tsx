@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { updateLedger } from '@/entities/ledger';
 import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
-import { Button, Input, Select } from '@/shared/ui';
+import { Button, Checkbox, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './EditLedgerForm.module.css';
@@ -38,6 +38,8 @@ export function EditLedgerForm({
   );
   const [isActive, setIsActive] = useState(ledger.isActive);
 
+  const [maintainBillwise, setMaintainBillwise] = useState(ledger.maintainBillwise);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ export function EditLedgerForm({
         ledgerType,
         openingBalance: Number(openingBalance) || 0,
         openingBalanceType,
+        maintainBillwise,
         isActive,
       });
       onSaved(updated);
@@ -150,6 +153,14 @@ export function EditLedgerForm({
           </Select>
         </div>
       </div>
+
+      <Checkbox
+        id="edit-ledger-billwise"
+        label="Maintain balances bill by bill"
+        hint="For customer and supplier ledgers. Their invoices are then tracked individually and appear in Receivables or Payables with ageing."
+        checked={maintainBillwise}
+        onChange={(event) => setMaintainBillwise(event.target.checked)}
+      />
 
       <label className={styles.checkboxField}>
         <input

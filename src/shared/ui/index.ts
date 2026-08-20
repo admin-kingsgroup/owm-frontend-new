@@ -6,3 +6,4 @@ export * from './empty-state';
 export * from './select';
 export * from './textarea';
 export * from './badge';
+export * from './checkbox';

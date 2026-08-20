@@ -30,6 +30,20 @@ export const endpoints = {
     create: (companyId: string) => `/companies/${companyId}/voucher-types`,
     byId: (companyId: string, id: string) => `/companies/${companyId}/voucher-types/${id}`,
   },
+  numberSeries: {
+    list: (companyId: string) => `/companies/${companyId}/number-series`,
+  },
+  currencies: {
+    list: (companyId: string) => `/companies/${companyId}/currencies`,
+    create: (companyId: string) => `/companies/${companyId}/currencies`,
+    byId: (companyId: string, id: string) => `/companies/${companyId}/currencies/${id}`,
+    rates: (companyId: string) => `/companies/${companyId}/currencies/rates`,
+    gainLoss: (companyId: string) => `/companies/${companyId}/currencies/gain-loss`,
+  },
+  outstandings: {
+    receivables: (companyId: string) => `/companies/${companyId}/outstandings/receivables`,
+    payables: (companyId: string) => `/companies/${companyId}/outstandings/payables`,
+  },
   reports: {
     dayBook: (companyId: string) => `/companies/${companyId}/reports/day-book`,
     trialBalance: (companyId: string) => `/companies/${companyId}/reports/trial-balance`,

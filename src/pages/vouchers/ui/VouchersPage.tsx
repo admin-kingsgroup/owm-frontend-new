@@ -8,6 +8,10 @@ import { listVoucherTypes } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { listLedgers } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
+import { getCompany } from '@/entities/company';
+import type { Company } from '@/entities/company';
+import { listCurrencies } from '@/entities/currency';
+import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
@@ -28,6 +32,8 @@ export function VouchersPage() {
     companyId: string;
     voucherTypes: VoucherType[];
     ledgers: Ledger[];
+    company: Company;
+    currencies: Currency[];
   } | null>(null);
   const [vouchers, setVouchers] = useState<VoucherSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -49,10 +55,19 @@ export function VouchersPage() {
     let cancelled = false;
     const id = companyId;
 
-    Promise.all([listVoucherTypes(id), listLedgers(id)])
-      .then(([types, ledgersResult]) => {
+    // The company comes along for its feature flags, which decide whether the voucher form shows
+    // bill-wise and currency detail at all.
+    Promise.all([listVoucherTypes(id), listLedgers(id), getCompany(id)])
+      .then(async ([types, ledgersResult, companyResult]) => {
+        const currencies = companyResult.features.multiCurrency ? await listCurrencies(id) : [];
         if (cancelled) return;
-        setSetup({ companyId: id, voucherTypes: types, ledgers: ledgersResult });
+        setSetup({
+          companyId: id,
+          voucherTypes: types,
+          ledgers: ledgersResult,
+          company: companyResult,
+          currencies,
+        });
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err, 'Could not load company setup'));
@@ -271,6 +286,10 @@ export function VouchersPage() {
           companyId={companyId}
           voucherTypes={voucherTypes}
           ledgers={ledgers}
+          billWiseEnabled={Boolean(loaded?.company.features.billWiseDetails)}
+          multiCurrencyEnabled={Boolean(loaded?.company.features.multiCurrency)}
+          currencies={loaded?.currencies ?? []}
+          baseCurrency={loaded?.company.baseCurrency ?? ''}
           onCreated={() => {
             setCreateModalOpen(false);
             setRefreshKey((key) => key + 1);

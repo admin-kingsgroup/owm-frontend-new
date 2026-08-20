@@ -9,7 +9,9 @@ import type { AccountGroup } from '@/entities/account-group';
 import { listLedgers, deleteLedger, getOpeningBalanceSummary } from '@/entities/ledger';
 import type { Ledger, OpeningBalanceSummary } from '@/entities/ledger';
 import { listVoucherTypes, deleteVoucherType } from '@/entities/voucher-type';
+import { listNumberSeries } from '@/entities/number-series';
 import type { VoucherType } from '@/entities/voucher-type';
+import type { NumberSeries } from '@/entities/number-series';
 import { CreateAccountGroupForm } from '@/features/account-group';
 import { CreateLedgerForm, EditLedgerForm } from '@/features/ledger';
 import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-type';
@@ -18,9 +20,11 @@ import { getErrorMessage, cn, formatRecordId, calendarYear } from '@/shared/lib'
 
 import { AccountGroupTree } from './AccountGroupTree';
 import { FinancialYearsPanel } from './FinancialYearsPanel';
+import { CompanySettingsPanel } from './CompanySettingsPanel';
+import { CurrenciesPanel } from './CurrenciesPanel';
 import styles from './CompanyDashboardPage.module.css';
 
-type Tab = 'accounts' | 'voucher-types' | 'financial-years';
+type Tab = 'accounts' | 'voucher-types' | 'financial-years' | 'currencies' | 'settings';
 
 export function CompanyDashboardPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -43,6 +47,7 @@ export function CompanyDashboardPage() {
   const [deletingLedgerId, setDeletingLedgerId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [openingBalance, setOpeningBalance] = useState<OpeningBalanceSummary | null>(null);
+  const [numberSeries, setNumberSeries] = useState<NumberSeries[]>([]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -52,13 +57,21 @@ export function CompanyDashboardPage() {
     async function load() {
       setLoading(true);
       try {
-        const [companyResult, groupsResult, ledgersResult, voucherTypesResult, openingResult] =
+        const [
+          companyResult,
+          groupsResult,
+          ledgersResult,
+          voucherTypesResult,
+          openingResult,
+          seriesResult,
+        ] =
           await Promise.all([
             getCompany(id),
             listAccountGroups(id),
             listLedgers(id),
             listVoucherTypes(id),
             getOpeningBalanceSummary(id),
+            listNumberSeries(id),
           ]);
         if (cancelled) return;
         setCompany(companyResult);
@@ -66,6 +79,7 @@ export function CompanyDashboardPage() {
         setLedgers(ledgersResult);
         setVoucherTypes(voucherTypesResult);
         setOpeningBalance(openingResult);
+        setNumberSeries(seriesResult);
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err, 'Could not load company'));
       } finally {
@@ -206,9 +220,31 @@ export function CompanyDashboardPage() {
         >
           Financial years
         </button>
+        {company.features.multiCurrency && (
+          <button
+            type="button"
+            className={cn(styles.tab, tab === 'currencies' && styles.tabActive)}
+            onClick={() => setTab('currencies')}
+          >
+            Currencies
+          </button>
+        )}
+        <button
+          type="button"
+          className={cn(styles.tab, tab === 'settings' && styles.tabActive)}
+          onClick={() => setTab('settings')}
+        >
+          Settings
+        </button>
       </div>
 
       {tab === 'financial-years' && <FinancialYearsPanel companyId={id} />}
+
+      {tab === 'currencies' && company.features.multiCurrency && (
+        <CurrenciesPanel companyId={id} baseCurrency={company.baseCurrency} />
+      )}
+
+      {tab === 'settings' && <CompanySettingsPanel company={company} onChanged={setCompany} />}
 
       {tab === 'accounts' && (
         <div className={styles.accountsLayout}>
@@ -435,6 +471,12 @@ export function CompanyDashboardPage() {
           <EditVoucherTypeForm
             companyId={companyId}
             voucherType={editingVoucherType}
+            companyCode={company.code}
+            financialYearLabel={numberSeries[0]?.financialYear ?? ''}
+            // A type whose counters have all issued nothing can still be reshaped.
+            numberingEditable={numberSeries
+              .filter((entry) => entry.voucherTypeId === editingVoucherType.id)
+              .every((entry) => entry.currentNumber === 0)}
             onSaved={(voucherType) => {
               setVoucherTypes((current) =>
                 current.map((vt) => (vt.id === voucherType.id ? voucherType : vt)),

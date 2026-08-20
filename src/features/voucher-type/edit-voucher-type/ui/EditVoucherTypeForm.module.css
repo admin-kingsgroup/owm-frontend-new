@@ -51,3 +51,47 @@
   gap: 0.5rem;
   margin-top: 0.25rem;
 }
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.875rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.5rem;
+}
+
+.fieldset:disabled {
+  opacity: 0.75;
+}
+
+.legend {
+  padding: 0 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.lockNote {
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background-color: var(--hover-tint);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.preview {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.preview strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}

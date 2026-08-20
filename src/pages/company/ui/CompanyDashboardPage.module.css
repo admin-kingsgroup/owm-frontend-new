@@ -49,11 +49,11 @@
   padding: 0 1rem;
   border-radius: 0.5rem;
   background: var(--brand-gradient);
-  color: #ffffff;
+  color: var(--on-accent);
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(146, 64, 14, 0.28);
+  box-shadow: var(--shadow-2);
 }
 
 .vouchersLink:hover {
@@ -89,7 +89,7 @@
 
 .tabActive {
   color: var(--ink);
-  border-bottom-color: var(--blue);
+  border-bottom-color: var(--accent);
 }
 
 .accountsLayout {

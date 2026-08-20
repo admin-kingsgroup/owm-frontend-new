@@ -1,37 +1,98 @@
+/* ============================================================================
+   Design tokens — "Owner Cockpit".
+
+   A warm-neutral light ground with a single amber accent reserved for actions,
+   a light sidebar, and a full dark counterpart. Reports and figures lean on
+   --font-serif; --data-1..4 is a separate, restrained palette for charts so
+   data colour never competes with the action colour.
+
+   Structure, in order:
+     1. Scales        — spacing, radius, type, z-index. Theme-independent.
+     2. Palette       — raw colour values. Light here, dark in the two blocks
+                        below, which MUST be kept in sync with each other.
+     3. Derived       — tokens composed from the raw values via var(); defined
+                        once, they resolve per theme automatically.
+
+   Theme resolution has three states: no attribute (follow the OS),
+   [data-theme="light"], and [data-theme="dark"]. The :not([data-theme="light"])
+   guard on the media query is what lets an explicit light choice win over a
+   dark OS setting.
+
+   Contrast: every foreground token is >= 4.5:1 (WCAG AA) against the surface
+   it is intended for, in both themes. Re-measure before changing any of them.
+   ============================================================================ */
+
 :root {
-  /* Slate & Amber Accent theme — high-contrast, dashboard-forward. A near-black slate
-     sidebar, warm-neutral content surfaces, and a single amber accent (no blue/violet
-     duality) carried through gradients, links, and hover/focus states. */
+  /* ---- 1. Scales ---------------------------------------------------- */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
-  --paper: #f4f2ed;
+  /* A 4px base. Prefer these over ad-hoc rem values in new rules. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 999px;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* Reserved bands, so a new overlay never has to guess a number. */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 1000;
+  --z-toast: 1100;
+
+  /* ---- 2. Palette: light -------------------------------------------- */
+  color-scheme: light;
+
+  --paper: #fbfaf8;
   --paper-card: #ffffff;
-  --ink: #14161b;
-  --ink-soft: #4a4f59;
-  --ink-faint: #666c78;
-  --border: #e4e1d8;
-  --border-soft: #ece9e0;
+  /* Recessed surfaces — table headers, wells, inset panels. */
+  --paper-sunken: #f4f2ee;
+  --ink: #1a1c1f;
+  --ink-soft: #5b6068;
+  --ink-faint: #6b727c;
+  --border: #e9e6e0;
+  /* 1px dividers only. Too light to read as a hover fill — use --hover-tint. */
+  --border-soft: #f1efea;
 
-  --sidebar: #1a1d23;
-  --sidebar-alt: #14161b;
-  --sidebar-text: #f1f2f4;
-  --sidebar-dim: #9ba1ac;
+  /* The sidebar is a light surface in this direction, so its hover and border
+     must be real tokens; the white-alpha values that worked on a near-black
+     sidebar are invisible here. */
+  --sidebar: #ffffff;
+  --sidebar-text: #1a1c1f;
+  --sidebar-dim: #6e757f;
+  --sidebar-border: #e9e6e0;
 
-  /* --violet is the lighter/hover amber, --blue is the primary amber — names kept for
-     compatibility with every component that already consumes them. Both are dark enough to
-     carry white text (>= 4.5:1) and to be read as text on --paper. */
-  --violet: #a8500b;
-  --blue: #92400e;
-  --brand-gradient: linear-gradient(135deg, var(--violet), var(--blue));
-  --focus-ring: rgba(146, 64, 14, 0.22);
-  /* Interactive-row/item backgrounds only. --border-soft is for 1px dividers only; it's too
-     dark to double as a hover fill without failing contrast. Every foreground token above is
-     >= 4.5:1 (WCAG AA) on --paper and --paper-card; re-measure before changing any of them. */
-  --hover-tint: rgba(146, 64, 14, 0.06);
+  /* Amber is reserved for actions and selection. Dark enough to read as text
+     on --paper (6.3:1), and to carry --on-accent as a fill (6.5:1). */
+  --accent-rgb: 143, 76, 20;
+  --accent: #8f4c14;
+  --accent-2: #a75d1c;
+  --on-accent: #ffffff;
 
-  --chip-bg: #ece9e1;
-  --chip-fg: #52565f;
+  --overlay: rgba(26, 28, 31, 0.42);
+  --shadow-1: 0 1px 2px rgba(43, 38, 32, 0.06);
+  --shadow-2: 0 4px 12px rgba(43, 38, 32, 0.1);
+  --shadow-3: 0 20px 44px rgba(43, 38, 32, 0.18);
+
+  --chip-bg: #f2efe9;
+  --chip-fg: #5b6068;
 
   --success-fg: #166534;
   --success-bd: #9fcbac;
@@ -42,11 +103,138 @@
   --danger-fg: #b91c1c;
   --danger-bd: #e3a5a5;
   --danger-bg-soft: #fdecec;
-  /* The "inactive/draft" status color (Badge variant="neutral") — deliberately neutral grey so
-     it cannot be mistaken for the amber accent, which now sits at the same darkness. */
+  /* The "inactive/draft" status colour (Badge variant="neutral") — a neutral
+     grey so it can never be mistaken for the amber accent. */
   --neutral-fg: #52565f;
   --neutral-bd: #c3c6cc;
+
+  /* Charts only. Kept away from the accent hue so a series colour is never
+     read as an action. */
+  --data-1: #2f7a72;
+  --data-2: #b0663a;
+  --data-3: #4b5a8f;
+  --data-4: #9a7b28;
+
+  /* ---- 3. Derived ---------------------------------------------------- */
+  /* These reference the raw tokens above, so each one resolves against
+     whichever palette is active. Define them once, here, only. */
+  --brand-gradient: linear-gradient(135deg, var(--accent-2), var(--accent));
+  --focus-ring: rgba(var(--accent-rgb), 0.22);
+  /* Interactive row/item backgrounds only, never a divider. */
+  --hover-tint: rgba(var(--accent-rgb), 0.055);
+  --sidebar-hover: rgba(var(--accent-rgb), 0.07);
 }
+
+/* ---- Palette: dark -------------------------------------------------------
+   The next two blocks are the same declarations twice: once for "OS is dark
+   and the user has not explicitly chosen light", once for an explicit dark
+   choice. Plain CSS cannot share them, so KEEP THEM IN SYNC — change one and
+   you must change the other. Only raw values belong here; the derived tokens
+   above pick these up on their own.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --paper: #14161a;
+    --paper-card: #1b1e23;
+    --paper-sunken: #101216;
+    --ink: #eceef1;
+    --ink-soft: #a8b0bb;
+    --ink-faint: #8b929c;
+    --border: #2b2f36;
+    --border-soft: #22262c;
+
+    --sidebar: #1b1e23;
+    --sidebar-text: #eceef1;
+    --sidebar-dim: #969ea9;
+    --sidebar-border: #2b2f36;
+
+    --accent-rgb: 229, 154, 78;
+    --accent: #e59a4e;
+    --accent-2: #f5b06a;
+    /* White on light amber fails; the fill needs dark ink instead (8.1:1). */
+    --on-accent: #191106;
+
+    --overlay: rgba(0, 0, 0, 0.6);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
+    --shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
+
+    --chip-bg: #252a31;
+    --chip-fg: #a9b1bc;
+
+    --success-fg: #5fbb8a;
+    --success-bd: #2d5a45;
+    --success-bg-soft: #152520;
+    --warning-fg: #dcb45e;
+    --warning-bd: #5a4b21;
+    --warning-bg-soft: #241f10;
+    --danger-fg: #ec7070;
+    --danger-bd: #653333;
+    --danger-bg-soft: #2a1616;
+    --neutral-fg: #98a0ab;
+    --neutral-bd: #3a414a;
+
+    --data-1: #4fb0a4;
+    --data-2: #d98f5d;
+    --data-3: #8092cf;
+    --data-4: #cfa94c;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #14161a;
+  --paper-card: #1b1e23;
+  --paper-sunken: #101216;
+  --ink: #eceef1;
+  --ink-soft: #a8b0bb;
+  --ink-faint: #8b929c;
+  --border: #2b2f36;
+  --border-soft: #22262c;
+
+  --sidebar: #1b1e23;
+  --sidebar-text: #eceef1;
+  --sidebar-dim: #969ea9;
+  --sidebar-border: #2b2f36;
+
+  --accent-rgb: 229, 154, 78;
+  --accent: #e59a4e;
+  --accent-2: #f5b06a;
+  --on-accent: #191106;
+
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
+
+  --chip-bg: #252a31;
+  --chip-fg: #a9b1bc;
+
+  --success-fg: #5fbb8a;
+  --success-bd: #2d5a45;
+  --success-bg-soft: #152520;
+  --warning-fg: #dcb45e;
+  --warning-bd: #5a4b21;
+  --warning-bg-soft: #241f10;
+  --danger-fg: #ec7070;
+  --danger-bd: #653333;
+  --danger-bg-soft: #2a1616;
+  --neutral-fg: #98a0ab;
+  --neutral-bd: #3a414a;
+
+  --data-1: #4fb0a4;
+  --data-2: #d98f5d;
+  --data-3: #8092cf;
+  --data-4: #cfa94c;
+}
+
+/* ============================================================================
+   Base
+   ============================================================================ */
 
 *,
 *::before,
@@ -75,4 +263,30 @@ a {
 
 button {
   font-family: inherit;
+}
+
+/* Buttons, links and nav items had no visible keyboard focus state at all —
+   only the form controls did. This gives every focusable element one; the
+   controls below opt out because they already draw a --focus-ring box-shadow
+   and would otherwise show two rings at once. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
