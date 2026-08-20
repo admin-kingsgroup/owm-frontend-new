@@ -3,6 +3,7 @@ import type { ApiSuccessResponse } from '@/shared/types';
 
 import type {
   BalanceSheetReport,
+  GroupOverview,
   DayBookReport,
   LedgerStatementReport,
   ProfitAndLossReport,
@@ -37,3 +38,7 @@ export const getLedgerStatement = (
   ledgerId: string,
   params: ReportParams = {},
 ) => fetchReport<LedgerStatementReport>(endpoints.reports.ledger(companyId, ledgerId), params);
+
+/** Every company the signed-in user may reach, with its cash, profit and draft backlog. */
+export const getGroupOverview = () =>
+  fetchReport<GroupOverview>(endpoints.reports.groupOverview(), {});

@@ -10,6 +10,7 @@ import type { Ledger } from '@/entities/ledger';
 import { Button, Input, Select, Textarea, EmptyState } from '@/shared/ui';
 import { getErrorMessage, cn, todayAsDateInput } from '@/shared/lib';
 
+import { computeBalance } from '../lib/balance';
 import { EntryExtras } from './EntryExtras';
 import type { AllocationRow } from './EntryExtras';
 import styles from './CreateVoucherForm.module.css';
@@ -91,21 +92,7 @@ export function CreateVoucherForm({
 
   const ledgerByCode = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
 
-  /**
-   * A voucher balances in the base currency, so a foreign line is converted before it is counted.
-   * Without a rate the line cannot be weighed at all — the bar then says so rather than claiming
-   * the voucher is out of balance, which would be a different and misleading complaint.
-   */
-  const rateFor = (row: EntryRow) => (row.currencyCode ? Number(row.exchangeRate) || 0 : 1);
-  const awaitingRate = entries.some((row) => row.currencyCode && !Number(row.exchangeRate));
-
-  const totalDebit = entries.reduce((sum, row) => sum + (Number(row.debit) || 0) * rateFor(row), 0);
-  const totalCredit = entries.reduce(
-    (sum, row) => sum + (Number(row.credit) || 0) * rateFor(row),
-    0,
-  );
-  const isBalanced =
-    !awaitingRate && totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.005;
+  const { totalDebit, totalCredit, isBalanced, awaitingRate } = computeBalance(entries);
 
   function updateRow(key: string, patch: Partial<EntryRow>) {
     setEntries((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -317,8 +304,16 @@ export function CreateVoucherForm({
       <div className={cn(styles.balanceBar, isBalanced ? styles.balanceOk : styles.balanceOff)}>
         {isBalanced ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
         <span>
-          Debit {totalDebit.toFixed(2)} · Credit {totalCredit.toFixed(2)}
-          {!isBalanced && ` · Difference ${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
+          {awaitingRate ? (
+            // Naming the real problem: a line with no rate cannot be weighed, so reporting a
+            // difference here would send the user looking at their amounts instead of the rate.
+            <>Enter an exchange rate for every foreign line to check the balance</>
+          ) : (
+            <>
+              Debit {totalDebit.toFixed(2)} · Credit {totalCredit.toFixed(2)}
+              {!isBalanced && ` · Difference ${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
+            </>
+          )}
         </span>
       </div>
 

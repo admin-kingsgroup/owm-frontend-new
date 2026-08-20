@@ -36,7 +36,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
   gap: 1rem;
 }
 
@@ -143,4 +143,134 @@
 .iconButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* ---- group summary strip ---- */
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5) var(--space-7);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-card);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.statLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.statValue {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* A degraded state, not a failure — the companies still render, only their figures are missing. */
+.notice {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warning-bd);
+  border-radius: var(--radius-md);
+  background-color: var(--warning-bg-soft);
+  color: var(--warning-fg);
+  font-size: var(--text-base);
+}
+
+/* ---- per-card figures ---- */
+
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.figureLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.figureValue {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colour is a second cue only; the accounting parentheses already carry the sign. */
+.figureNegative {
+  color: var(--danger-fg);
+}
+
+.cardNotice {
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--warning-fg);
+}
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+.tag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  background-color: var(--chip-bg);
+  padding: 0.1875rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.tagMuted {
+  color: var(--neutral-fg);
+  background-color: transparent;
+  border: 1px solid var(--neutral-bd);
+}
+
+.tagAction {
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--warning-fg);
+  background-color: var(--warning-bg-soft);
+  border: 1px solid var(--warning-bd);
+  padding: 0.1875rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tagAction:hover {
+  background-color: var(--warning-bd);
 }

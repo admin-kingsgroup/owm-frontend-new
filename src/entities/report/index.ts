@@ -10,5 +10,8 @@ export type {
   LedgerStatementReport,
   DayBookRow,
   DayBookReport,
+  CompanyOverview,
+  GroupOverviewTotalsByCurrency,
+  GroupOverview,
 } from './model/types';
 export * from './api/report-api';

@@ -1,15 +1,21 @@
 import type { ReportNode } from '@/entities/report';
 
 /**
- * Downloads a table as CSV.
+ * Serialises a table to CSV text. Separated from the download so the escaping — the part that can
+ * silently corrupt a file — is testable without a DOM.
  *
  * Amounts are written exactly as the server sent them — they are decimal strings, and letting a
  * spreadsheet reparse a rounded number is how a trial balance stops totalling zero. Every field is
  * quoted and inner quotes doubled, so a ledger named `Smith "Bob" & Co, Ltd` survives the trip.
  */
-export function downloadCsv(filename: string, headers: string[], rows: string[][]): void {
+export function toCsv(headers: string[], rows: string[][]): string {
   const escape = (value: string) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-  const csv = [headers, ...rows].map((row) => row.map(escape).join(',')).join('\r\n');
+  return [headers, ...rows].map((row) => row.map(escape).join(',')).join('\r\n');
+}
+
+/** Hands the serialised table to the browser as a download. */
+export function downloadCsv(filename: string, headers: string[], rows: string[][]): void {
+  const csv = toCsv(headers, rows);
 
   // The BOM is what makes Excel read it as UTF-8 rather than the local codepage, which otherwise
   // mangles a currency symbol or an accented ledger name.

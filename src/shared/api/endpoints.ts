@@ -45,6 +45,8 @@ export const endpoints = {
     payables: (companyId: string) => `/companies/${companyId}/outstandings/payables`,
   },
   reports: {
+    /** Spans companies, so it is not nested under /companies/:companyId. */
+    groupOverview: () => '/reports/group-overview',
     dayBook: (companyId: string) => `/companies/${companyId}/reports/day-book`,
     trialBalance: (companyId: string) => `/companies/${companyId}/reports/trial-balance`,
     balanceSheet: (companyId: string) => `/companies/${companyId}/reports/balance-sheet`,
