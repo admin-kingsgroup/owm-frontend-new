@@ -21,8 +21,14 @@ const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
 
-  const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
-  const [ledgers, setLedgers] = useState<Ledger[]>([]);
+  // Held as one value tagged with the company it was fetched for. Tagging lets the render derive
+  // "is this the company on screen?" instead of clearing state from inside an effect, which would
+  // cascade an extra render on every load.
+  const [setup, setSetup] = useState<{
+    companyId: string;
+    voucherTypes: VoucherType[];
+    ledgers: Ledger[];
+  } | null>(null);
   const [vouchers, setVouchers] = useState<VoucherSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -30,7 +36,6 @@ export function VouchersPage() {
   const [statusFilter, setStatusFilter] = useState<VoucherStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  const [setupLoaded, setSetupLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,13 +46,21 @@ export function VouchersPage() {
 
   useEffect(() => {
     if (!companyId) return;
-    Promise.all([listVoucherTypes(companyId), listLedgers(companyId)])
+    let cancelled = false;
+    const id = companyId;
+
+    Promise.all([listVoucherTypes(id), listLedgers(id)])
       .then(([types, ledgersResult]) => {
-        setVoucherTypes(types);
-        setLedgers(ledgersResult);
+        if (cancelled) return;
+        setSetup({ companyId: id, voucherTypes: types, ledgers: ledgersResult });
       })
-      .catch((err) => setError(getErrorMessage(err, 'Could not load company setup')))
-      .finally(() => setSetupLoaded(true));
+      .catch((err) => {
+        if (!cancelled) setError(getErrorMessage(err, 'Could not load company setup'));
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
   useEffect(() => {
@@ -106,9 +119,24 @@ export function VouchersPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // Companies start with an empty chart of accounts, so a voucher cannot be raised until the
-  // masters it references exist. Gate the action rather than opening a form that cannot submit.
-  const canCreateVoucher = voucherTypes.some((type) => type.isActive) && ledgers.length > 0;
-  const setupPending = setupLoaded && !canCreateVoucher;
+  // masters it references exist. Empty arrays only mean that once they came back from a
+  // succeeded lookup for THIS company — a failed request, or one still in flight after a company
+  // switch, also leaves them empty, and reporting that as "not configured" would tell the user
+  // their setup is missing when it is merely unreachable or not here yet.
+  const loaded = setup?.companyId === companyId ? setup : null;
+  const voucherTypes = loaded?.voucherTypes ?? [];
+  const ledgers = loaded?.ledgers ?? [];
+  const setupLoadedOk = loaded !== null;
+
+  // Name only what is actually absent — a company can have ledgers but every voucher type
+  // deactivated, and telling that user to "add a ledger" would send them to the wrong screen.
+  const setupMissing = setupLoadedOk
+    ? [
+        ledgers.length === 0 ? 'a ledger' : null,
+        voucherTypes.some((type) => type.isActive) ? null : 'an active voucher type',
+      ].filter((item): item is string => item !== null)
+    : [];
+  const setupIncomplete = setupMissing.length > 0;
 
   if (!companyId) return null;
 
@@ -117,18 +145,20 @@ export function VouchersPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Vouchers</h1>
-          <p className={styles.subtitle}>Double-entry transactions for this company.</p>
+          {/* The reason the action is unavailable has to be readable, not just a tooltip: a
+              disabled button takes no focus, so screen readers never reach its title. */}
+          <p className={styles.subtitle} id="vouchers-subtitle">
+            {setupIncomplete
+              ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
+              : 'Double-entry transactions for this company.'}
+          </p>
         </div>
         <Button
           type="button"
           variant="primary"
           onClick={() => setCreateModalOpen(true)}
-          disabled={!canCreateVoucher}
-          title={
-            canCreateVoucher
-              ? undefined
-              : 'Add a ledger and an active voucher type to this company first'
-          }
+          disabled={setupIncomplete}
+          aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
         >
           <Plus size={16} /> New voucher
         </Button>
@@ -169,10 +199,10 @@ export function VouchersPage() {
 
       {loading ? (
         <Loading label="Loading vouchers…" />
-      ) : vouchers.length === 0 && setupPending ? (
+      ) : vouchers.length === 0 && setupIncomplete ? (
         <EmptyState
           title="This company is not set up yet"
-          description="Vouchers reference ledgers and voucher types, and this company has none yet. Set up its chart of accounts first."
+          description={`Vouchers reference ledgers and voucher types. This company still needs ${setupMissing.join(' and ')}.`}
           action={
             <Link to={`/companies/${companyId}`} className={styles.setupLink}>
               Go to chart of accounts <ArrowRight size={14} />
