@@ -47,6 +47,7 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
   const [financialYearEnd, setFinancialYearEnd] = useState(financialYear.end);
   const [baseCurrency, setBaseCurrency] = useState<string>(COMPANY_DEFAULTS.baseCurrency);
   const [country, setCountry] = useState<string>(COMPANY_DEFAULTS.country);
+  const [state, setState] = useState('');
   const [timezone, setTimezone] = useState<string>(COMPANY_DEFAULTS.timezone);
 
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +67,7 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
         financialYearEnd,
         baseCurrency,
         country,
+        state: state || undefined,
         timezone,
       });
       onCreated(company);
@@ -169,6 +171,17 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
             value={country}
             onChange={(event) => setCountry(event.target.value.toUpperCase())}
             required
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="company-state">
+            State
+          </label>
+          <Input
+            id="company-state"
+            placeholder="Maharashtra"
+            value={state}
+            onChange={(event) => setState(event.target.value)}
           />
         </div>
         <div className={styles.field}>

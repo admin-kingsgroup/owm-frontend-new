@@ -477,6 +477,11 @@ export function CompanyDashboardPage() {
             numberingEditable={numberSeries
               .filter((entry) => entry.voucherTypeId === editingVoucherType.id)
               .every((entry) => entry.currentNumber === 0)}
+            gstReason={
+              numberSeries.find(
+                (entry) => entry.voucherTypeId === editingVoucherType.id && !entry.gstCompliant,
+              )?.gstReason
+            }
             onSaved={(voucherType) => {
               setVoucherTypes((current) =>
                 current.map((vt) => (vt.id === voucherType.id ? voucherType : vt)),

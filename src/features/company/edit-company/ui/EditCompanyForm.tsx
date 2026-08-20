@@ -18,6 +18,7 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
   const [name, setName] = useState(company.name);
   const [legalName, setLegalName] = useState(company.legalName ?? '');
   const [country, setCountry] = useState(company.country);
+  const [state, setState] = useState(company.state ?? '');
   const [timezone, setTimezone] = useState(company.timezone);
 
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +34,7 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
         name,
         legalName: legalName || undefined,
         country,
+        state: state || undefined,
         timezone,
       });
       onSaved(updated);
@@ -101,6 +103,17 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
             value={country}
             onChange={(event) => setCountry(event.target.value.toUpperCase())}
             required
+          />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="edit-company-state">
+            State
+          </label>
+          <Input
+            id="edit-company-state"
+            placeholder="Maharashtra"
+            value={state}
+            onChange={(event) => setState(event.target.value)}
           />
         </div>
         <div className={styles.field}>

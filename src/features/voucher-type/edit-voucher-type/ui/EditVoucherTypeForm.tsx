@@ -21,6 +21,12 @@ export interface EditVoucherTypeFormProps {
   financialYearLabel: string;
   /** False once this type has issued a number — its format can no longer change. */
   numberingEditable: boolean;
+  /**
+   * Why this series could not appear on a GST invoice, if it could not. Shown to every company,
+   * not only Indian ones, so the format can be corrected before GST is switched on rather than
+   * after a year of invoices carrying a number that cannot be filed.
+   */
+  gstReason?: string;
   onSaved: (voucherType: VoucherType) => void;
   onCancel: () => void;
 }
@@ -41,6 +47,7 @@ export function EditVoucherTypeForm({
   companyCode,
   financialYearLabel,
   numberingEditable,
+  gstReason,
   onSaved,
   onCancel,
 }: EditVoucherTypeFormProps) {
@@ -245,6 +252,7 @@ export function EditVoucherTypeForm({
             {previewVoucherNumber(numbering, companyCode, voucherType.code, financialYearLabel)}
           </strong>
         </p>
+        {gstReason && <p className={styles.lockNote}>{gstReason}</p>}
         {numbering.resetFrequency !== 'NEVER' && (
           <p className={styles.hint}>
             The period is stamped in automatically. Without it the serial would repeat every time

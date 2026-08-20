@@ -18,6 +18,8 @@ export interface Company {
   financialYearEnd: string;
   baseCurrency: string;
   country: string;
+  /** State or province — what decides CGST+SGST versus IGST on an Indian invoice. */
+  state?: string;
   timezone: string;
   status: CompanyStatus;
   /**
@@ -38,6 +40,7 @@ export interface CreateCompanyInput {
   financialYearEnd: string;
   baseCurrency: string;
   country: string;
+  state?: string;
   timezone: string;
 }
 
@@ -50,6 +53,7 @@ export interface UpdateCompanyInput {
   legalName?: string;
   features?: Partial<CompanyFeatures>;
   country?: string;
+  state?: string;
   timezone?: string;
   status?: CompanyStatus;
 }
