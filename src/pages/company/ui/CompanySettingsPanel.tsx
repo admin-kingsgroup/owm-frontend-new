@@ -18,32 +18,45 @@ export interface CompanySettingsPanelProps {
  */
 type FeatureKey = keyof CompanyFeatures;
 
+/**
+ * `available` may depend on the company, not just on whether we built the feature — GST is Indian
+ * law, so it is offered to Indian companies and to nobody else. The server enforces the same rule;
+ * this is here so the switch explains itself rather than failing on save.
+ */
 const FEATURES: Array<{
   key: FeatureKey;
   label: string;
   hint: string;
-  available: boolean;
+  available: (company: Company) => boolean;
+  unavailableHint?: (company: Company) => string;
 }> = [
   {
     key: 'billWiseDetails',
     label: 'Maintain balances bill by bill',
     hint: 'Track what each customer and supplier owes per invoice, with ageing. Also required before exchange gain or loss can be worked out on settlement.',
-    available: true,
+    available: () => true,
   },
   {
     key: 'multiCurrency',
     label: 'Multi-currency',
     hint: 'Record vouchers in other currencies at a dated exchange rate. Reports still total in the base currency.',
-    available: true,
+    available: () => true,
   },
   {
     key: 'costCentres',
     label: 'Cost centres',
     hint: 'Not built yet.',
-    available: false,
+    available: () => false,
   },
-  { key: 'inventory', label: 'Inventory', hint: 'Not built yet.', available: false },
-  { key: 'gst', label: 'GST', hint: 'Not built yet.', available: false },
+  { key: 'inventory', label: 'Inventory', hint: 'Not built yet.', available: () => false },
+  {
+    key: 'gst',
+    label: 'GST',
+    hint: 'Indian goods and services tax on vouchers, and the returns that follow from it.',
+    available: (company) => company.country.toUpperCase() === 'IN',
+    unavailableHint: (company) =>
+      `GST is an Indian statute. This company is registered in ${company.country.toUpperCase()}, so it transacts without it — its own country's compliance is a separate feature.`,
+  },
 ];
 
 export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPanelProps) {
@@ -79,17 +92,25 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
       )}
 
       <div className={styles.list}>
-        {FEATURES.map((feature) => (
-          <Checkbox
-            key={feature.key}
-            id={`feature-${feature.key}`}
-            label={feature.label}
-            hint={feature.hint}
-            checked={company.features[feature.key]}
-            disabled={!feature.available || saving !== null}
-            onChange={(event) => toggle(feature.key, event.target.checked)}
-          />
-        ))}
+        {FEATURES.map((feature) => {
+          const available = feature.available(company);
+
+          return (
+            <Checkbox
+              key={feature.key}
+              id={`feature-${feature.key}`}
+              label={feature.label}
+              hint={
+                available
+                  ? feature.hint
+                  : (feature.unavailableHint?.(company) ?? feature.hint)
+              }
+              checked={company.features[feature.key]}
+              disabled={!available || saving !== null}
+              onChange={(event) => toggle(feature.key, event.target.checked)}
+            />
+          );
+        })}
       </div>
 
       <dl className={styles.meta}>

@@ -8,6 +8,8 @@ import type {
   LedgerStatementReport,
   ProfitAndLossReport,
   TrialBalanceReport,
+  ReceiptsAndPaymentsReport,
+  CashFlowReport,
 } from '../model/types';
 
 export interface ReportParams {
@@ -42,3 +44,12 @@ export const getLedgerStatement = (
 /** Every company the signed-in user may reach, with its cash, profit and draft backlog. */
 export const getGroupOverview = () =>
   fetchReport<GroupOverview>(endpoints.reports.groupOverview(), {});
+
+export const getReceiptsAndPayments = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<ReceiptsAndPaymentsReport>(
+    endpoints.reports.receiptsAndPayments(companyId),
+    params,
+  );
+
+export const getCashFlow = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<CashFlowReport>(endpoints.reports.cashFlow(companyId), params);

@@ -10,6 +10,8 @@ import {
   getLedgerStatement,
   getProfitAndLoss,
   getTrialBalance,
+  getReceiptsAndPayments,
+  getCashFlow,
 } from '@/entities/report';
 import type {
   BalanceSheetReport,
@@ -18,6 +20,8 @@ import type {
   ProfitAndLossReport,
   ReportNode,
   TrialBalanceReport,
+  ReceiptsAndPaymentsReport,
+  CashFlowReport,
 } from '@/entities/report';
 import { getPayables, getReceivables } from '@/entities/outstanding';
 import type { OutstandingsReport } from '@/entities/outstanding';
@@ -35,6 +39,8 @@ type Tab =
   | 'profit-loss'
   | 'trial-balance'
   | 'day-book'
+  | 'receipts-payments'
+  | 'cash-flow'
   | 'receivables'
   | 'payables'
   | 'forex';
@@ -63,6 +69,10 @@ export function ReportsPage() {
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
   const [dayBook, setDayBook] = useState<DayBookReport | null>(null);
+  const [receiptsPayments, setReceiptsPayments] = useState<ReceiptsAndPaymentsReport | null>(
+    null,
+  );
+  const [cashFlow, setCashFlow] = useState<CashFlowReport | null>(null);
   const [receivables, setReceivables] = useState<OutstandingsReport | null>(null);
   const [payables, setPayables] = useState<OutstandingsReport | null>(null);
   const [forex, setForex] = useState<ForexGainLossReport | null>(null);
@@ -86,12 +96,14 @@ export function ReportsPage() {
         // `asOf` for the ageing reports is the end of the period being looked at.
         const asOf = applied.to || undefined;
 
-        const [companyResult, bs, pl, tb, db, rec, pay] = await Promise.all([
+        const [companyResult, bs, pl, tb, db, rp, cf, rec, pay] = await Promise.all([
           getCompany(id),
           getBalanceSheet(id, params),
           getProfitAndLoss(id, params),
           getTrialBalance(id, params),
           getDayBook(id, params),
+          getReceiptsAndPayments(id, params),
+          getCashFlow(id, params),
           getReceivables(id, asOf),
           getPayables(id, asOf),
         ]);
@@ -102,6 +114,8 @@ export function ReportsPage() {
         setProfitLoss(pl);
         setTrialBalance(tb);
         setDayBook(db);
+        setReceiptsPayments(rp);
+        setCashFlow(cf);
         setReceivables(rec);
         setPayables(pay);
 
@@ -197,6 +211,25 @@ export function ReportsPage() {
           row.amount,
         ]),
       );
+    } else if (tab === 'receipts-payments' && receiptsPayments) {
+      downloadCsv(
+        name('receipts-and-payments'),
+        ['Section', 'Code', 'Ledger', 'Amount'],
+        [
+          ['Opening', '', '', receiptsPayments.openingBalance],
+          ...receiptsPayments.receipts.map((row) => ['Receipt', row.code, row.name, row.amount]),
+          ...receiptsPayments.payments.map((row) => ['Payment', row.code, row.name, row.amount]),
+          ['Closing', '', '', receiptsPayments.closingBalance],
+        ],
+      );
+    } else if (tab === 'cash-flow' && cashFlow) {
+      downloadCsv(name('cash-flow'), treeHeaders, [
+        ['INFLOW', '', '', '', '', cashFlow.totals.inflow, 'DEBIT'],
+        ...flattenNodes(cashFlow.inflow),
+        ['OUTFLOW', '', '', '', '', cashFlow.totals.outflow, 'CREDIT'],
+        ...flattenNodes(cashFlow.outflow),
+        ['Net change', '', '', '', '', cashFlow.totals.netChange, ''],
+      ]);
     } else if ((tab === 'receivables' || tab === 'payables') && (receivables || payables)) {
       const report = tab === 'receivables' ? receivables : payables;
       if (!report) return;
@@ -243,6 +276,8 @@ export function ReportsPage() {
     { id: 'profit-loss', label: 'Profit & Loss', show: true },
     { id: 'trial-balance', label: 'Trial Balance', show: true },
     { id: 'day-book', label: 'Day Book', show: true },
+    { id: 'receipts-payments', label: 'Receipts & Payments', show: true },
+    { id: 'cash-flow', label: 'Cash Flow', show: true },
     { id: 'receivables', label: 'Receivables', show: Boolean(company?.features.billWiseDetails) },
     { id: 'payables', label: 'Payables', show: Boolean(company?.features.billWiseDetails) },
     { id: 'forex', label: 'Forex Gain/Loss', show: Boolean(company?.features.multiCurrency) },
@@ -480,6 +515,116 @@ export function ReportsPage() {
           </div>
           {dayBook.rows.length === 0 && <p className={styles.empty}>No vouchers in this period.</p>}
         </section>
+      )}
+
+      {tab === 'receipts-payments' && receiptsPayments && (
+        <section className={styles.panel}>
+          <div className={styles.buckets}>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Opening</span>
+              <span className={styles.bucketAmount}>{receiptsPayments.openingBalance}</span>
+            </div>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Receipts</span>
+              <span className={styles.bucketAmount}>{receiptsPayments.totals.receipts}</span>
+            </div>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Payments</span>
+              <span className={styles.bucketAmount}>{receiptsPayments.totals.payments}</span>
+            </div>
+            <div className={cn(styles.bucket, styles.bucketTotal)}>
+              <span className={styles.bucketLabel}>Closing</span>
+              <span className={styles.bucketAmount}>{receiptsPayments.closingBalance}</span>
+            </div>
+          </div>
+
+          <p className={styles.hint}>
+            Only money that actually moved. An invoice raised but unpaid is income, so it appears
+            on the Profit &amp; Loss and not here.
+          </p>
+
+          <div className={styles.twoColumn}>
+            <div>
+              <h2 className={styles.panelTitle}>
+                Receipts{' '}
+                <span className={styles.panelTotal}>{receiptsPayments.totals.receipts}</span>
+              </h2>
+              <table className={styles.table}>
+                <tbody>
+                  {receiptsPayments.receipts.map((row) => (
+                    <tr key={`r-${row.ledgerId}`}>
+                      <td>{row.name}</td>
+                      <td className={styles.num}>{row.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {receiptsPayments.receipts.length === 0 && (
+                <p className={styles.empty}>Nothing received in this period.</p>
+              )}
+            </div>
+            <div>
+              <h2 className={styles.panelTitle}>
+                Payments{' '}
+                <span className={styles.panelTotal}>{receiptsPayments.totals.payments}</span>
+              </h2>
+              <table className={styles.table}>
+                <tbody>
+                  {receiptsPayments.payments.map((row) => (
+                    <tr key={`p-${row.ledgerId}`}>
+                      <td>{row.name}</td>
+                      <td className={styles.num}>{row.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {receiptsPayments.payments.length === 0 && (
+                <p className={styles.empty}>Nothing paid in this period.</p>
+              )}
+            </div>
+          </div>
+
+          {receiptsPayments.totals.difference !== '0.00' && (
+            <p className={styles.warning}>
+              Opening plus receipts less payments does not reach the closing balance: difference{' '}
+              {receiptsPayments.totals.difference}.
+            </p>
+          )}
+        </section>
+      )}
+
+      {tab === 'cash-flow' && cashFlow && (
+        <>
+          <div className={styles.buckets}>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Opening</span>
+              <span className={styles.bucketAmount}>{cashFlow.openingBalance}</span>
+            </div>
+            <div className={styles.bucket}>
+              <span className={styles.bucketLabel}>Net change</span>
+              <span className={styles.bucketAmount}>{cashFlow.totals.netChange}</span>
+            </div>
+            <div className={cn(styles.bucket, styles.bucketTotal)}>
+              <span className={styles.bucketLabel}>Closing</span>
+              <span className={styles.bucketAmount}>{cashFlow.closingBalance}</span>
+            </div>
+          </div>
+
+          <div className={styles.twoColumn}>
+            <section className={styles.panel}>
+              <h2 className={styles.panelTitle}>
+                Cash in <span className={styles.panelTotal}>{cashFlow.totals.inflow}</span>
+              </h2>
+              <ReportTree nodes={cashFlow.inflow} onSelectLedger={openLedger} />
+            </section>
+            <section className={styles.panel}>
+              <h2 className={styles.panelTitle}>
+                Cash out <span className={styles.panelTotal}>{cashFlow.totals.outflow}</span>
+              </h2>
+              <ReportTree nodes={cashFlow.outflow} onSelectLedger={openLedger} />
+            </section>
+          </div>
+        </>
       )}
 
       {(tab === 'receivables' || tab === 'payables') && outstandings && (

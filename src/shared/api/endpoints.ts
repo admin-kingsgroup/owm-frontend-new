@@ -52,6 +52,9 @@ export const endpoints = {
     balanceSheet: (companyId: string) => `/companies/${companyId}/reports/balance-sheet`,
     profitAndLoss: (companyId: string) => `/companies/${companyId}/reports/profit-and-loss`,
     groupSummary: (companyId: string) => `/companies/${companyId}/reports/group-summary`,
+    receiptsAndPayments: (companyId: string) =>
+      `/companies/${companyId}/reports/receipts-and-payments`,
+    cashFlow: (companyId: string) => `/companies/${companyId}/reports/cash-flow`,
     ledger: (companyId: string, ledgerId: string) =>
       `/companies/${companyId}/reports/ledgers/${ledgerId}`,
   },

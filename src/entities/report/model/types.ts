@@ -142,3 +142,38 @@ export interface GroupOverview {
     openYearCount: number;
   };
 }
+
+export interface CashMovementRow {
+  ledgerId: string;
+  accountGroupId: string;
+  code: string;
+  name: string;
+  amount: string;
+}
+
+/**
+ * Cash basis: only money that actually moved. An unpaid invoice appears nowhere here, which is why
+ * this disagrees with the Profit & Loss for any business that sells on credit — both are right,
+ * they answer different questions.
+ */
+export interface ReceiptsAndPaymentsReport {
+  period: ReportPeriod;
+  openingBalance: string;
+  openingSide: BalanceSide;
+  receipts: CashMovementRow[];
+  payments: CashMovementRow[];
+  closingBalance: string;
+  closingSide: BalanceSide;
+  totals: { receipts: string; payments: string; difference: string };
+}
+
+export interface CashFlowReport {
+  period: ReportPeriod;
+  openingBalance: string;
+  openingSide: BalanceSide;
+  inflow: ReportNode[];
+  outflow: ReportNode[];
+  closingBalance: string;
+  closingSide: BalanceSide;
+  totals: { inflow: string; outflow: string; netChange: string };
+}
