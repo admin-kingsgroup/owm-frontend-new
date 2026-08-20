@@ -11,6 +11,21 @@
       rel="stylesheet"
     />
     <title>OWM Frontend</title>
+    <script>
+      // Applies a saved theme before the first paint. Without this the page renders in the OS
+      // theme for a frame before React can stamp an explicit choice, which reads as a flash.
+      // The key must stay in step with THEME_STORAGE_KEY in shared/hooks/use-theme.ts.
+      (function () {
+        try {
+          var saved = localStorage.getItem('owm.theme');
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+          }
+        } catch (error) {
+          /* Storage can throw in private mode; the OS preference is a fine fallback. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

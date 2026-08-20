@@ -1,14 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 
 import { useAuthStore } from '@/features/auth';
 import { cn } from '@/shared/lib';
+import { setTheme, useTheme } from '@/shared/hooks';
+import type { ThemePreference } from '@/shared/hooks';
 
 import styles from './UserMenu.module.css';
+
+const THEME_OPTIONS: Array<{
+  value: ThemePreference;
+  label: string;
+  Icon: typeof Monitor;
+}> = [
+  { value: 'system', label: 'System', Icon: Monitor },
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+];
 
 export function UserMenu() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+
+  const theme = useTheme();
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -70,6 +84,27 @@ export function UserMenu() {
             <span className={styles.menuName}>{user.name}</span>
             <span className={styles.menuEmail}>{user.email}</span>
           </div>
+          <div className={styles.menuSection}>
+            <span className={styles.menuSectionLabel} id="appearance-label">
+              Appearance
+            </span>
+            {/* Left open on purpose — the menu stays put so the choice can be seen taking effect. */}
+            <div className={styles.themeToggle} role="group" aria-labelledby="appearance-label">
+              {THEME_OPTIONS.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={cn(styles.themeOption, theme === value && styles.themeOptionActive)}
+                  aria-pressed={theme === value}
+                  onClick={() => setTheme(value)}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button type="button" role="menuitem" className={styles.menuItem} onClick={handleLogout}>
             <LogOut size={15} />
             Log out

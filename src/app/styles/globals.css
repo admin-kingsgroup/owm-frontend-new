@@ -290,3 +290,93 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================================
+   Print
+
+   A balance sheet or trial balance is still, often, something that gets printed and filed. What
+   goes on paper is the figures — not the sidebar, not the topbar, not the buttons that cannot be
+   pressed on paper.
+
+   The theme is forced to light regardless of what is on screen: printing a dark theme wastes
+   toner and reads badly. `print-color-adjust` is deliberately NOT set, so the browser drops
+   decorative backgrounds while keeping text black.
+   ============================================================================ */
+
+@media print {
+  :root,
+  :root[data-theme='dark'],
+  :root[data-theme='light'] {
+    color-scheme: light;
+
+    --paper: #ffffff;
+    --paper-card: #ffffff;
+    --paper-sunken: #ffffff;
+    --ink: #000000;
+    --ink-soft: #1f1f1f;
+    --ink-faint: #3a3a3a;
+    --border: #9a9a9a;
+    --border-soft: #c8c8c8;
+    --accent: #000000;
+    --accent-2: #000000;
+    --on-accent: #ffffff;
+    --hover-tint: transparent;
+    --chip-bg: transparent;
+    --chip-fg: #1f1f1f;
+    --shadow-1: none;
+    --shadow-2: none;
+    --shadow-3: none;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* Application chrome: navigation, controls and anything that only exists to be clicked. */
+  aside,
+  header,
+  nav,
+  button,
+  [role='dialog'],
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  /* The shell lays out with flex and a scrolling content pane; on paper it is one column. */
+  main,
+  #root > div,
+  #root > div > div {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* A row split across a page break is unreadable in a statement. */
+  tr,
+  img,
+  svg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

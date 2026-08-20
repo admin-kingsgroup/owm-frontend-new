@@ -3,6 +3,7 @@ import { Building2, LayoutGrid, Receipt, BarChart3 } from 'lucide-react';
 
 import { cn } from '@/shared/lib';
 
+import { CompanySwitcher } from './CompanySwitcher';
 import { UserMenu } from './UserMenu';
 import styles from './AppShell.module.css';
 
@@ -61,7 +62,12 @@ export function AppShell() {
 
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <div />
+          {/* Always present, even when the switcher renders nothing: the topbar is
+              space-between, so dropping this element would slide the user menu to the left
+              while the company list is still loading. */}
+          <div className={styles.topbarLead}>
+            {companyId && <CompanySwitcher companyId={companyId} />}
+          </div>
           <UserMenu />
         </header>
 

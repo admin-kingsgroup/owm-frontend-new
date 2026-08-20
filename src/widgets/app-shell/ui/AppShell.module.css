@@ -102,6 +102,13 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
+.topbarLead {
+  display: flex;
+  align-items: center;
+  /* Lets a long company name ellipsis instead of forcing the topbar wider. */
+  min-width: 0;
+}
+
 .content {
   flex: 1;
   padding: 2.375rem 2.75rem;
