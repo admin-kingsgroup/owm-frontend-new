@@ -36,3 +36,7 @@ export async function updateAccountGroup(
   );
   return data.data;
 }
+
+export async function deleteAccountGroup(companyId: string, id: string): Promise<void> {
+  await apiClient.delete(endpoints.accountGroups.byId(companyId, id));
+}

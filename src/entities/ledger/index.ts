@@ -4,5 +4,6 @@ export type {
   BalanceSide,
   CreateLedgerInput,
   UpdateLedgerInput,
+  OpeningBalanceSummary,
 } from './model/types';
 export * from './api/ledger-api';

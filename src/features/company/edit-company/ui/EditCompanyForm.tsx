@@ -17,10 +17,6 @@ export interface EditCompanyFormProps {
 export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormProps) {
   const [name, setName] = useState(company.name);
   const [legalName, setLegalName] = useState(company.legalName ?? '');
-  const [financialYearStart, setFinancialYearStart] = useState(
-    company.financialYearStart.slice(0, 10),
-  );
-  const [financialYearEnd, setFinancialYearEnd] = useState(company.financialYearEnd.slice(0, 10));
   const [country, setCountry] = useState(company.country);
   const [timezone, setTimezone] = useState(company.timezone);
 
@@ -36,8 +32,6 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
       const updated = await updateCompany(company.id, {
         name,
         legalName: legalName || undefined,
-        financialYearStart,
-        financialYearEnd,
         country,
         timezone,
       });
@@ -90,32 +84,11 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
         />
       </div>
 
-      <div className={styles.row}>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="edit-company-fy-start">
-            Financial year start
-          </label>
-          <Input
-            id="edit-company-fy-start"
-            type="date"
-            value={financialYearStart}
-            onChange={(event) => setFinancialYearStart(event.target.value)}
-            required
-          />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="edit-company-fy-end">
-            Financial year end
-          </label>
-          <Input
-            id="edit-company-fy-end"
-            type="date"
-            value={financialYearEnd}
-            onChange={(event) => setFinancialYearEnd(event.target.value)}
-            required
-          />
-        </div>
-      </div>
+      <p className={styles.note}>
+        Financial years are managed separately, so a year can be closed or a new one opened
+        without touching the company. This company&rsquo;s first year runs{' '}
+        {company.financialYearStart.slice(0, 10)} to {company.financialYearEnd.slice(0, 10)}.
+      </p>
 
       <div className={styles.row}>
         <div className={styles.field}>

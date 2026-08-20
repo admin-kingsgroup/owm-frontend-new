@@ -192,3 +192,24 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/*
+ * Tally shows this figure and lets you carry on. Entering opening balances one ledger at a time
+ * is unbalanced by definition for most of the session, so this informs rather than blocks — it
+ * disappears on its own once the two sides meet.
+ */
+.openingDiff {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--danger-fg);
+  border-radius: 0.5rem;
+  background-color: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.openingDiffHint {
+  display: block;
+  margin-top: 0.125rem;
+  color: var(--ink-soft);
+}

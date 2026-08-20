@@ -4,11 +4,85 @@
   gap: 0.125rem;
 }
 
+.row {
+  display: flex;
+  align-items: center;
+  border-radius: 0.375rem;
+}
+
+.row:hover {
+  background-color: var(--hover-tint);
+}
+
+.rowSelected {
+  background-color: var(--chip-bg);
+}
+
+.rowAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.375rem 0.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .rowAction {
+  opacity: 1;
+}
+
+/* Keep it reachable by keyboard even though hover is what reveals it for pointer users. */
+.rowAction:focus-visible {
+  opacity: 1;
+}
+
+/* On a touch screen there is no hover, so a hover-only action is simply unreachable. */
+@media (hover: none) {
+  .rowAction {
+    opacity: 1;
+  }
+
+  .rowAction:disabled {
+    opacity: 0.35;
+  }
+}
+
+.rowAction:hover:not(:disabled) {
+  color: var(--danger-fg);
+}
+
+.rowAction:disabled {
+  opacity: 0;
+  cursor: not-allowed;
+}
+
+.row:hover .rowAction:disabled {
+  opacity: 0.35;
+}
+
+.lock {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+}
+
+.itemInactive .itemName {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
 .item {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  width: 100%;
+  /* flex + min-width:0 rather than width:100%, or the button refuses to shrink below its content
+     and the ellipsis on .itemName never engages for a long group name. */
+  flex: 1;
+  min-width: 0;
   padding: 0.375rem 0.5rem;
   border: none;
   border-radius: 0.375rem;
@@ -20,12 +94,7 @@
   cursor: pointer;
 }
 
-.item:hover {
-  background-color: var(--hover-tint);
-}
-
-.itemSelected {
-  background-color: var(--chip-bg);
+.rowSelected .item {
   color: var(--chip-fg);
   font-weight: 600;
 }
@@ -48,7 +117,7 @@
   flex-shrink: 0;
 }
 
-.itemSelected .itemCode {
+.rowSelected .itemCode {
   color: var(--chip-fg);
 }
 

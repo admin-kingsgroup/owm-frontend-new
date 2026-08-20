@@ -4,10 +4,10 @@ import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2 } from 'lucide-react';
 
 import { getCompany, companyStatusVariant } from '@/entities/company';
 import type { Company } from '@/entities/company';
-import { listAccountGroups } from '@/entities/account-group';
+import { listAccountGroups, deleteAccountGroup } from '@/entities/account-group';
 import type { AccountGroup } from '@/entities/account-group';
-import { listLedgers, deleteLedger } from '@/entities/ledger';
-import type { Ledger } from '@/entities/ledger';
+import { listLedgers, deleteLedger, getOpeningBalanceSummary } from '@/entities/ledger';
+import type { Ledger, OpeningBalanceSummary } from '@/entities/ledger';
 import { listVoucherTypes, deleteVoucherType } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { CreateAccountGroupForm } from '@/features/account-group';
@@ -17,9 +17,10 @@ import { Button, Modal, Loading, Badge, EmptyState } from '@/shared/ui';
 import { getErrorMessage, cn, formatRecordId, calendarYear } from '@/shared/lib';
 
 import { AccountGroupTree } from './AccountGroupTree';
+import { FinancialYearsPanel } from './FinancialYearsPanel';
 import styles from './CompanyDashboardPage.module.css';
 
-type Tab = 'accounts' | 'voucher-types';
+type Tab = 'accounts' | 'voucher-types' | 'financial-years';
 
 export function CompanyDashboardPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -40,6 +41,8 @@ export function CompanyDashboardPage() {
   const [deletingVoucherTypeId, setDeletingVoucherTypeId] = useState<string | null>(null);
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
   const [deletingLedgerId, setDeletingLedgerId] = useState<string | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [openingBalance, setOpeningBalance] = useState<OpeningBalanceSummary | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -49,17 +52,20 @@ export function CompanyDashboardPage() {
     async function load() {
       setLoading(true);
       try {
-        const [companyResult, groupsResult, ledgersResult, voucherTypesResult] = await Promise.all([
-          getCompany(id),
-          listAccountGroups(id),
-          listLedgers(id),
-          listVoucherTypes(id),
-        ]);
+        const [companyResult, groupsResult, ledgersResult, voucherTypesResult, openingResult] =
+          await Promise.all([
+            getCompany(id),
+            listAccountGroups(id),
+            listLedgers(id),
+            listVoucherTypes(id),
+            getOpeningBalanceSummary(id),
+          ]);
         if (cancelled) return;
         setCompany(companyResult);
         setGroups(groupsResult);
         setLedgers(ledgersResult);
         setVoucherTypes(voucherTypesResult);
+        setOpeningBalance(openingResult);
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err, 'Could not load company'));
       } finally {
@@ -105,6 +111,32 @@ export function CompanyDashboardPage() {
     }
   }
 
+  async function refreshOpeningBalance() {
+    try {
+      setOpeningBalance(await getOpeningBalanceSummary(id));
+    } catch {
+      // A stale difference figure is not worth surfacing an error over — the ledger edit that
+      // triggered this already succeeded, and the next load will correct it.
+    }
+  }
+
+  async function handleDeleteGroup(group: AccountGroup) {
+    const confirmed = window.confirm(`Delete account group "${group.name}"? This can't be undone.`);
+    if (!confirmed) return;
+
+    setDeletingGroupId(group.id);
+    setError(null);
+    try {
+      await deleteAccountGroup(id, group.id);
+      setGroups((current) => current.filter((g) => g.id !== group.id));
+      if (selectedGroupId === group.id) setSelectedGroupId(null);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not delete account group'));
+    } finally {
+      setDeletingGroupId(null);
+    }
+  }
+
   async function handleDeleteLedger(ledger: Ledger) {
     const confirmed = window.confirm(`Delete ledger "${ledger.name}"? This can't be undone.`);
     if (!confirmed) return;
@@ -114,6 +146,7 @@ export function CompanyDashboardPage() {
     try {
       await deleteLedger(id, ledger.id);
       setLedgers((current) => current.filter((l) => l.id !== ledger.id));
+      void refreshOpeningBalance();
     } catch (err) {
       setError(getErrorMessage(err, 'Could not delete ledger'));
     } finally {
@@ -140,6 +173,17 @@ export function CompanyDashboardPage() {
         </Link>
       </div>
 
+      {openingBalance && openingBalance.difference !== '0.00' && (
+        <div className={styles.openingDiff}>
+          <strong>Difference in opening balances:</strong> {company.baseCurrency}{' '}
+          {openingBalance.difference}
+          <span className={styles.openingDiffHint}>
+            Debits {openingBalance.totalDebit} · credits {openingBalance.totalCredit}. Opening
+            balances should net to zero once every ledger has been entered.
+          </span>
+        </div>
+      )}
+
       <div className={styles.tabs}>
         <button
           type="button"
@@ -155,9 +199,18 @@ export function CompanyDashboardPage() {
         >
           Voucher types
         </button>
+        <button
+          type="button"
+          className={cn(styles.tab, tab === 'financial-years' && styles.tabActive)}
+          onClick={() => setTab('financial-years')}
+        >
+          Financial years
+        </button>
       </div>
 
-      {tab === 'accounts' ? (
+      {tab === 'financial-years' && <FinancialYearsPanel companyId={id} />}
+
+      {tab === 'accounts' && (
         <div className={styles.accountsLayout}>
           <div className={styles.panel}>
             <div className={styles.panelHeader}>
@@ -170,6 +223,8 @@ export function CompanyDashboardPage() {
               groups={groups}
               selectedGroupId={selectedGroupId}
               onSelect={setSelectedGroupId}
+              onDelete={handleDeleteGroup}
+              deletingGroupId={deletingGroupId}
             />
           </div>
 
@@ -243,7 +298,9 @@ export function CompanyDashboardPage() {
             )}
           </div>
         </div>
-      ) : (
+      )}
+
+      {tab === 'voucher-types' && (
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>Voucher types</span>

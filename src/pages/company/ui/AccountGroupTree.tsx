@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Lock, Trash2 } from 'lucide-react';
 
 import type { AccountGroup } from '@/entities/account-group';
 import { cn } from '@/shared/lib';
@@ -9,6 +9,8 @@ export interface AccountGroupTreeProps {
   groups: AccountGroup[];
   selectedGroupId: string | null;
   onSelect: (groupId: string | null) => void;
+  onDelete: (group: AccountGroup) => void;
+  deletingGroupId: string | null;
 }
 
 interface TreeNode {
@@ -40,28 +42,52 @@ function TreeItem({
   depth,
   selectedGroupId,
   onSelect,
+  onDelete,
+  deletingGroupId,
 }: {
   node: TreeNode;
   depth: number;
   selectedGroupId: string | null;
   onSelect: (groupId: string | null) => void;
+  onDelete: (group: AccountGroup) => void;
+  deletingGroupId: string | null;
 }) {
   const isSelected = selectedGroupId === node.group.id;
+  const { group } = node;
 
   return (
     <div>
-      <button
-        type="button"
-        className={cn(styles.item, isSelected && styles.itemSelected)}
-        style={{ paddingLeft: `${0.5 + depth * 1}rem` }}
-        onClick={() => onSelect(isSelected ? null : node.group.id)}
-      >
-        {node.children.length > 0 && <ChevronRight size={13} className={styles.chevron} />}
-        <span className={styles.itemName} title={node.group.name}>
-          {node.group.name}
-        </span>
-        <span className={styles.itemCode}>{node.group.code}</span>
-      </button>
+      <div className={cn(styles.row, isSelected && styles.rowSelected)}>
+        <button
+          type="button"
+          className={cn(styles.item, !group.isActive && styles.itemInactive)}
+          style={{ paddingLeft: `${0.5 + depth * 1}rem` }}
+          onClick={() => onSelect(isSelected ? null : group.id)}
+        >
+          {node.children.length > 0 && <ChevronRight size={13} className={styles.chevron} />}
+          <span className={styles.itemName} title={group.name}>
+            {group.name}
+          </span>
+          {group.isSystem && (
+            <Lock size={12} className={styles.lock} aria-label="Standard group" />
+          )}
+          <span className={styles.itemCode}>{group.code}</span>
+        </button>
+        <button
+          type="button"
+          className={styles.rowAction}
+          disabled={group.isSystem || deletingGroupId === group.id}
+          title={
+            group.isSystem
+              ? 'Standard groups cannot be deleted — deactivate it instead'
+              : 'Delete group'
+          }
+          aria-label={`Delete ${group.name}`}
+          onClick={() => onDelete(group)}
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
       {node.children.map((child) => (
         <TreeItem
           key={child.group.id}
@@ -69,13 +95,21 @@ function TreeItem({
           depth={depth + 1}
           selectedGroupId={selectedGroupId}
           onSelect={onSelect}
+          onDelete={onDelete}
+          deletingGroupId={deletingGroupId}
         />
       ))}
     </div>
   );
 }
 
-export function AccountGroupTree({ groups, selectedGroupId, onSelect }: AccountGroupTreeProps) {
+export function AccountGroupTree({
+  groups,
+  selectedGroupId,
+  onSelect,
+  onDelete,
+  deletingGroupId,
+}: AccountGroupTreeProps) {
   const tree = buildTree(groups);
 
   return (
@@ -100,6 +134,8 @@ export function AccountGroupTree({ groups, selectedGroupId, onSelect }: AccountG
             depth={0}
             selectedGroupId={selectedGroupId}
             onSelect={onSelect}
+            onDelete={onDelete}
+            deletingGroupId={deletingGroupId}
           />
         ))
       )}

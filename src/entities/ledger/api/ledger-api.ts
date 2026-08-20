@@ -1,7 +1,12 @@
 import { apiClient, endpoints } from '@/shared/api';
 import type { ApiSuccessResponse } from '@/shared/types';
 
-import type { Ledger, CreateLedgerInput, UpdateLedgerInput } from '../model/types';
+import type {
+  Ledger,
+  CreateLedgerInput,
+  UpdateLedgerInput,
+  OpeningBalanceSummary,
+} from '../model/types';
 
 export async function listLedgers(companyId: string): Promise<Ledger[]> {
   const { data } = await apiClient.get<ApiSuccessResponse<Ledger[]>>(
@@ -32,4 +37,13 @@ export async function updateLedger(
 
 export async function deleteLedger(companyId: string, id: string): Promise<void> {
   await apiClient.delete(endpoints.ledgers.byId(companyId, id));
+}
+
+export async function getOpeningBalanceSummary(
+  companyId: string,
+): Promise<OpeningBalanceSummary> {
+  const { data } = await apiClient.get<ApiSuccessResponse<OpeningBalanceSummary>>(
+    endpoints.ledgers.openingBalanceSummary(companyId),
+  );
+  return data.data;
 }

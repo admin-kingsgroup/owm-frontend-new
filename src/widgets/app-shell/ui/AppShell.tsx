@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom';
-import { Building2, LayoutGrid, Receipt } from 'lucide-react';
+import { Building2, LayoutGrid, Receipt, BarChart3 } from 'lucide-react';
 
 import { cn } from '@/shared/lib';
 
@@ -46,6 +46,13 @@ export function AppShell() {
               >
                 <Receipt size={16} />
                 Vouchers
+              </NavLink>
+              <NavLink
+                to={`/companies/${companyId}/reports`}
+                className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
+              >
+                <BarChart3 size={16} />
+                Reports
               </NavLink>
             </>
           )}
