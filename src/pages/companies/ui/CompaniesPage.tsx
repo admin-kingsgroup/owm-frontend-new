@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Building2, ArrowRight, Pencil, Power } from 'lucide-react';
+import { Plus, Building2, ArrowRight, Pencil } from 'lucide-react';
 
-import { updateCompany, companyStatusVariant, useCompanyStore } from '@/entities/company';
+import { companyStatusVariant, useCompanyStore } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { getGroupOverview } from '@/entities/report';
 import type { CompanyOverview, GroupOverview } from '@/entities/report';
@@ -31,12 +31,10 @@ export function CompaniesPage() {
   const upsertCompany = useCompanyStore((state) => state.upsert);
 
   const [overview, setOverview] = useState<GroupOverview | null>(null);
-  const [error, setError] = useState<string | null>(null);
   /** The figures failing is a degraded page, not a broken one — kept apart from `error`. */
   const [figuresError, setFiguresError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,28 +146,6 @@ export function CompaniesPage() {
     upsertCompany(company);
   }
 
-  async function handleToggleStatus(company: Company) {
-    if (company.status === 'ACTIVE') {
-      const confirmed = window.confirm(
-        `Deactivate ${company.name}? It will be hidden from day-to-day use, but nothing is deleted — you can reactivate it any time.`,
-      );
-      if (!confirmed) return;
-    }
-
-    setTogglingId(company.id);
-    setError(null);
-    try {
-      const updated = await updateCompany(company.id, {
-        status: company.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-      });
-      upsertCompany(updated);
-    } catch (err) {
-      setError(getErrorMessage(err, 'Could not update company status'));
-    } finally {
-      setTogglingId(null);
-    }
-  }
-
   function renderFigures(
     figures: CompanyOverview | undefined,
     companyId: string,
@@ -260,12 +236,6 @@ export function CompaniesPage() {
         </Button>
       </div>
 
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-
       {/*
         `loaded` rather than `companies !== null`: a failed request has no data either, and
         treating the two the same left the error message sitting above a spinner that never
@@ -352,22 +322,6 @@ export function CompaniesPage() {
                       onClick={() => setEditingCompany(company)}
                     >
                       <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.iconButton}
-                      aria-label={
-                        company.status === 'ACTIVE' ? 'Deactivate company' : 'Activate company'
-                      }
-                      /* An unlabelled power glyph told a sighted user nothing — the screen reader
-                         had a name for it and the eye did not, so the action read as missing. */
-                      title={
-                        company.status === 'ACTIVE' ? 'Deactivate company' : 'Reactivate company'
-                      }
-                      disabled={togglingId === company.id}
-                      onClick={() => handleToggleStatus(company)}
-                    >
-                      <Power size={14} />
                     </button>
                   </div>
                 </div>

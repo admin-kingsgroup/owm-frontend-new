@@ -78,26 +78,19 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
   }
 
   /**
-   * Deactivating is reversible and destroys nothing, so it lives here beside the other settings
-   * rather than behind a danger zone. It still asks first, because from this screen the company
-   * being changed is the one you are standing in.
+   * Reactivation only.
+   *
+   * Deactivating a company is not offered — it is not something this product wants people doing by
+   * hand. Companies already carrying the flag keep a way back, though: without this they would sit
+   * out of every total for good, with nothing anywhere to undo it.
    */
-  async function toggleStatus() {
-    const deactivating = company.status === 'ACTIVE';
-
-    if (deactivating) {
-      const confirmed = window.confirm(
-        `Deactivate ${company.name}? It will be hidden from day-to-day use and left out of the group totals, but nothing is deleted — you can reactivate it any time.`,
-      );
-      if (!confirmed) return;
-    }
-
+  async function reactivate() {
     setTogglingStatus(true);
     setError(null);
     try {
-      onChanged(await updateCompany(company.id, { status: deactivating ? 'INACTIVE' : 'ACTIVE' }));
+      onChanged(await updateCompany(company.id, { status: 'ACTIVE' }));
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not change the company status'));
+      setError(getErrorMessage(err, 'Could not reactivate this company'));
     } finally {
       setTogglingStatus(false);
     }
@@ -152,10 +145,6 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
         vouchers already posted are denominated in it.
       </p>
 
-      {/*
-        The only way to do this used to be an unlabelled power icon on a card two screens away,
-        which is the same as there being no way to do it.
-      */}
       <div className={styles.status}>
         <div className={styles.statusText}>
           <div className={styles.statusHeading}>
@@ -168,14 +157,12 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
               : 'This company is hidden from day-to-day use and left out of the group totals. Its books are untouched and still readable.'}
           </p>
         </div>
-        <Button
-          type="button"
-          variant={company.status === 'ACTIVE' ? 'ghost' : 'primary'}
-          onClick={toggleStatus}
-          disabled={togglingStatus}
-        >
-          {company.status === 'ACTIVE' ? 'Deactivate company' : 'Reactivate company'}
-        </Button>
+        {/* Shown only when there is something to undo — there is no way to deactivate from here. */}
+        {company.status !== 'ACTIVE' && (
+          <Button type="button" variant="primary" onClick={reactivate} disabled={togglingStatus}>
+            Reactivate company
+          </Button>
+        )}
       </div>
     </div>
   );
