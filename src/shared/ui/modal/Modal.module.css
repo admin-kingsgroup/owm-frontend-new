@@ -55,3 +55,34 @@
 .content {
   padding: 1rem;
 }
+
+/*
+  A sheet rather than a floating card on a phone. A centred 28rem box with a 1rem margin leaves a
+  form squeezed into the middle of the screen with dead space around it and the keyboard covering
+  what is left; anchored to the bottom edge it gets the full width, opens next to the thumb, and
+  scrolls itself rather than the page.
+*/
+@media (max-width: 40rem) {
+  .overlay {
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-width: none;
+    margin: 0;
+    border-radius: 0.875rem 0.875rem 0 0;
+    /* Never taller than the visible viewport — dvh, so an open keyboard is accounted for. */
+    max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .header {
+    flex-shrink: 0;
+  }
+
+  .content {
+    overflow-y: auto;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}

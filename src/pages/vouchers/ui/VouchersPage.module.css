@@ -158,3 +158,20 @@
     white-space: nowrap;
   }
 }
+
+/*
+  Below this the action beside the title has to wrap to two lines to fit next to it, which crowds
+  both. Stacked, the title reads on one line and the action spans the width — where a thumb is
+  going anyway.
+*/
+@media (max-width: 40rem) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters {
+    flex-direction: column;
+    max-width: none;
+  }
+}

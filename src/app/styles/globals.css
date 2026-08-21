@@ -436,3 +436,99 @@ textarea:focus-visible {
     margin: 14mm;
   }
 }
+
+/*
+  Tables that become a list of cards on a phone.
+
+  A financial statement is genuinely two columns of figures and stays a table — reading a balance
+  sheet as cards is worse, not better, so those scroll sideways instead. These are record lists,
+  where each row is one thing with a handful of named fields, and that is exactly what reads well
+  stacked. Opt in per table with `data-stack`, and give every cell a `data-label`: it becomes the
+  field name once the header row is gone.
+
+  The attribute outweighs the per-module `.table` rules, which turn the same tables into a
+  sideways scroll between here and 60rem, so the two are undone explicitly rather than by luck.
+*/
+@media (max-width: 48rem) {
+  table[data-stack],
+  table[data-stack] tbody,
+  table[data-stack] tr,
+  table[data-stack] td {
+    display: block;
+    overflow-x: visible;
+    white-space: normal;
+  }
+
+  /* The header row is carried by each cell's own label from here on. */
+  table[data-stack] thead {
+    display: none;
+  }
+
+  table[data-stack] tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--paper-card);
+    padding: 0.75rem 0.875rem;
+  }
+
+  table[data-stack] tr + tr {
+    margin-top: 0.625rem;
+  }
+
+  table[data-stack] td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.3125rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  table[data-stack] td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* A cell with no label is a full-width row of its own — the actions are the usual case. */
+  table[data-stack] td:not([data-label]) {
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+
+  table[data-stack] td:not([data-label])::before {
+    content: none;
+  }
+}
+
+/*
+  Touch targets.
+
+  A 28px icon button is comfortable with a mouse and a coin toss with a thumb — the row actions on
+  a ledger, the close on a dialog, the chips. Keyed on the pointer rather than the width, because
+  what decides this is what you are pointing with, not how wide the window is: a small touchscreen
+  and a large one both need the bigger target, and a narrow desktop window does not.
+
+  44px is the figure both platform guidelines land on, and WCAG 2.5.8's floor is 24.
+*/
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+
+  /* Width too, so an icon-only control is a square rather than a sliver. */
+  button,
+  [role='button'] {
+    min-width: 2.75rem;
+  }
+}

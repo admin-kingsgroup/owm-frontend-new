@@ -182,7 +182,7 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
         </form>
       )}
 
-      <table className={styles.table}>
+      <table className={styles.table} data-stack>
         <thead>
           <tr>
             <th>Year</th>
@@ -195,10 +195,10 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
         <tbody>
           {years.map((year) => (
             <tr key={year.id}>
-              <td>{year.label}</td>
-              <td>{asDay(year.startDate)}</td>
-              <td>{asDay(year.endDate)}</td>
-              <td>
+              <td data-label="Year">{year.label}</td>
+              <td data-label="Starts">{asDay(year.startDate)}</td>
+              <td data-label="Ends">{asDay(year.endDate)}</td>
+              <td data-label="Status">
                 <Badge variant={year.status === 'OPEN' ? 'success' : 'neutral'}>
                   {year.status}
                 </Badge>

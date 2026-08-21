@@ -280,7 +280,7 @@ export function VouchersPage() {
         <EmptyState title="No vouchers found" description="Create a voucher to get started." />
       ) : (
         <>
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>ID</th>
@@ -293,13 +293,17 @@ export function VouchersPage() {
             <tbody>
               {vouchers.map((voucher) => (
                 <tr key={voucher.id} className={styles.row} onClick={() => openVoucher(voucher.id)}>
-                  <td className={styles.mono} title={voucher.id}>
+                  <td className={styles.mono} data-label="ID" title={voucher.id}>
                     {voucher.voucherNumber}
                   </td>
-                  <td>{formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}</td>
-                  <td>{typeName(voucher.voucherTypeId)}</td>
-                  <td className={styles.narration}>{voucher.narration ?? '—'}</td>
-                  <td>
+                  <td data-label="Date">
+                    {formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}
+                  </td>
+                  <td data-label="Type">{typeName(voucher.voucherTypeId)}</td>
+                  <td className={styles.narration} data-label="Narration">
+                    {voucher.narration ?? '—'}
+                  </td>
+                  <td data-label="Status">
                     <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
                   </td>
                 </tr>
@@ -374,7 +378,7 @@ export function VouchersPage() {
               <p className={styles.detailNarration}>{selectedVoucher.narration}</p>
             )}
 
-            <table className={styles.table}>
+            <table className={styles.table} data-stack>
               <thead>
                 <tr>
                   <th>ID</th>
@@ -386,11 +390,11 @@ export function VouchersPage() {
               <tbody>
                 {selectedVoucher.entries.map((entry, index) => (
                   <tr key={entry.id}>
-                    <td className={styles.mono} title={entry.id}>
+                    <td className={styles.mono} data-label="ID" title={entry.id}>
                       {selectedVoucher.voucherNumber}/{index + 1}
                     </td>
-                    <td>{entry.ledgerCode}</td>
-                    <td className={styles.mono}>
+                    <td data-label="Ledger">{entry.ledgerCode}</td>
+                    <td className={styles.mono} data-label="Debit">
                       {Number(entry.debit) > 0
                         ? formatMoney(entry.debit, {
                             currency: loaded?.company?.baseCurrency,
@@ -398,7 +402,7 @@ export function VouchersPage() {
                           })
                         : ''}
                     </td>
-                    <td className={styles.mono}>
+                    <td className={styles.mono} data-label="Credit">
                       {Number(entry.credit) > 0
                         ? formatMoney(entry.credit, {
                             currency: loaded?.company?.baseCurrency,

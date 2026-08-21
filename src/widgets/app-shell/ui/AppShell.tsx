@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
-import { Building2, LayoutGrid, Receipt, BarChart3, PieChart } from 'lucide-react';
+import { Building2, LayoutGrid, Receipt, BarChart3, PieChart, Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
 import { cn } from '@/shared/lib';
+import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary } from '@/shared/ui';
 
 import { CompanySwitcher } from './CompanySwitcher';
@@ -14,6 +15,17 @@ export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
   const location = useLocation();
   const navRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  /**
+   * Only ever true below 60rem, where the rail is an overlay rather than part of the page. Above
+   * it the sidebar is always there and this is inert.
+   */
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Focus stays in the drawer while it is open, page scroll is locked behind it, and focus returns
+  // to the button that opened it. Shared with the modal — see useFocusTrap.
+  useFocusTrap(menuOpen, sidebarRef);
   const inCompany = Boolean(companyId);
 
   /**
@@ -82,18 +94,54 @@ export function AppShell() {
     };
   }, [location.pathname, section]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenuOpen(false);
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
+
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+      {/* Only ever visible below 60rem, where the sidebar covers the page rather than sitting beside it. */}
+      {menuOpen && (
+        <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      )}
+
+      <aside
+        id="app-navigation"
+        ref={sidebarRef}
+        className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}
+        // Announced as a dialog only when it is one; above 60rem it is simply part of the page.
+        {...(menuOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } : {})}
+      >
         <div className={styles.brand}>
           <span className={styles.brandMark}>K</span>
           <div>
             <div className={styles.brandName}>KBiz360 OWM</div>
             <div className={styles.brandSub}>Owner Wealth &amp; Oversight</div>
           </div>
+          <button
+            type="button"
+            className={styles.drawerClose}
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <nav className={styles.nav} ref={navRef}>
+        {/*
+          Following a link is the whole point of the drawer, so it closes itself rather than
+          sitting over the screen it was just used to reach. Delegated to the container: one
+          handler covers every destination, including the ones added later, and it is the click
+          that closes the drawer rather than an effect watching the URL for a change it caused.
+        */}
+        <nav className={styles.nav} ref={navRef} onClick={() => setMenuOpen(false)}>
           <NavLink
             to="/companies"
             end
@@ -161,6 +209,17 @@ export function AppShell() {
           {/* Always present, even when the switcher renders nothing: the topbar is
               space-between, so dropping this element would slide the user menu to the left
               while the company list is still loading. */}
+          <button
+            type="button"
+            className={styles.menuButton}
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open navigation"
+            aria-expanded={menuOpen}
+            aria-controls="app-navigation"
+          >
+            <Menu size={20} />
+          </button>
+
           <div className={styles.topbarLead}>
             {companyId && <CompanySwitcher companyId={companyId} companies={companies} />}
           </div>

@@ -331,7 +331,7 @@ export function CompanyDashboardPage() {
             {visibleLedgers.length === 0 ? (
               <EmptyState title="No ledgers here" description="Create a ledger under this group." />
             ) : (
-              <table className={styles.table}>
+              <table className={styles.table} data-stack>
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -347,13 +347,15 @@ export function CompanyDashboardPage() {
                 <tbody>
                   {visibleLedgers.map((ledger) => (
                     <tr key={ledger.id}>
-                      <td className={styles.mono} title={ledger.id}>
+                      <td className={styles.mono} data-label="ID" title={ledger.id}>
                         {formatRecordId(company.code, 'LED', ledger.code)}
                       </td>
-                      <td className={styles.mono}>{ledger.code}</td>
-                      <td>{ledger.name}</td>
-                      <td>{ledger.ledgerType}</td>
-                      <td className={styles.mono}>
+                      <td className={styles.mono} data-label="Code">
+                        {ledger.code}
+                      </td>
+                      <td data-label="Name">{ledger.name}</td>
+                      <td data-label="Type">{ledger.ledgerType}</td>
+                      <td className={styles.mono} data-label="Opening balance">
                         {formatMoney(ledger.openingBalance, {
                           currency: company.baseCurrency,
                           country: company.country,
@@ -365,7 +367,7 @@ export function CompanyDashboardPage() {
                         belongs in the list and not only inside the edit form. Base currency is shown
                         muted rather than left blank, so an empty cell never reads as missing data.
                       */}
-                      <td className={styles.mono}>
+                      <td className={styles.mono} data-label="Currency">
                         {ledger.currencyId ? (
                           <Badge variant="neutral">
                             {currencies.find((currency) => currency.id === ledger.currencyId)
@@ -421,7 +423,7 @@ export function CompanyDashboardPage() {
             </Button>
           </div>
 
-          <table className={styles.table}>
+          <table className={styles.table} data-stack>
             <thead>
               <tr>
                 <th>ID</th>
@@ -436,13 +438,15 @@ export function CompanyDashboardPage() {
             <tbody>
               {voucherTypes.map((voucherType) => (
                 <tr key={voucherType.id}>
-                  <td className={styles.mono} title={voucherType.id}>
+                  <td className={styles.mono} data-label="ID" title={voucherType.id}>
                     {formatRecordId(company.code, 'VTY', voucherType.code)}
                   </td>
-                  <td className={styles.mono}>{voucherType.code}</td>
-                  <td>{voucherType.name}</td>
-                  <td>{voucherType.category.replace('_', ' ')}</td>
-                  <td>{voucherType.numberingMethod}</td>
+                  <td className={styles.mono} data-label="Code">
+                    {voucherType.code}
+                  </td>
+                  <td data-label="Name">{voucherType.name}</td>
+                  <td data-label="Category">{voucherType.category.replace('_', ' ')}</td>
+                  <td data-label="Numbering">{voucherType.numberingMethod}</td>
                   <td>
                     <div className={styles.rowFlags}>
                       {voucherType.isSystem && <Lock size={13} aria-label="System voucher type" />}

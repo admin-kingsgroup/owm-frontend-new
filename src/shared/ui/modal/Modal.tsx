@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+
+import { useFocusTrap } from '@/shared/hooks';
 
 import styles from './Modal.module.css';
 
@@ -12,6 +14,16 @@ export interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  /*
+    Tab used to walk straight out of the dialog and into the page behind it, which is still there
+    and still being read out while the dialog covers it. This also locks page scroll — on a phone
+    the sheet was scrolling the list underneath instead of itself. Shared with the navigation
+    drawer, which is the same problem.
+  */
+  useFocusTrap(open, dialogRef);
+
   useEffect(() => {
     if (!open) return;
 
@@ -28,6 +40,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div
+        ref={dialogRef}
         className={styles.modal}
         role="dialog"
         aria-modal="true"
