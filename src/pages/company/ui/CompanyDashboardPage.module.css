@@ -218,3 +218,50 @@
 .muted {
   color: var(--ink-faint);
 }
+
+/*
+  A ledger row is wider than a phone. Scrolling the table inside its own panel keeps the columns
+  legible and stops the page itself from scrolling sideways.
+*/
+@media (max-width: 60rem) {
+  .table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* A 17rem rail beside the ledgers leaves neither readable; one under the other reads fine. */
+  .accountsLayout {
+    grid-template-columns: 1fr;
+  }
+
+  /*
+    A grid item defaults to min-width: auto, so the ledgers panel was sized by its widest table row
+    and pushed its own header off the screen. Zero lets the panel take the column and the table
+    scroll inside it, which is what the rule above intends.
+  */
+  .panel {
+    min-width: 0;
+  }
+
+  /* The name and its badges share a row that a phone cannot fit; let them stack. */
+  .headerTop {
+    flex-wrap: wrap;
+  }
+
+  /* Four tab labels do not fit across a phone, and wrapping them breaks the underline. */
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .tab {
+    white-space: nowrap;
+    padding-inline: 0.5rem;
+  }
+
+  .title {
+    font-size: 1.375rem;
+  }
+}

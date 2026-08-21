@@ -401,3 +401,18 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/*
+  Matches the shell's breakpoint. The statement columns already collapse on their own — .twoColumn
+  is auto-fit — so what is left is the tab strip, which has more labels than a phone is wide.
+*/
+@media (max-width: 60rem) {
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .tab {
+    white-space: nowrap;
+  }
+}

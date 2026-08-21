@@ -257,3 +257,15 @@
   letter-spacing: 0.03em;
   color: var(--ink-faint);
 }
+
+/* Matches the shell's breakpoint: Portfolio, Businesses and Partners scroll rather than wrap. */
+@media (max-width: 60rem) {
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .tab {
+    white-space: nowrap;
+  }
+}
