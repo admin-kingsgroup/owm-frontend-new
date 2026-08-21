@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Building2, Check, ChevronDown } from 'lucide-react';
 
-import { listCompanies } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { cn } from '@/shared/lib';
 
@@ -10,6 +9,12 @@ import styles from './CompanySwitcher.module.css';
 
 interface CompanySwitcherProps {
   companyId: string;
+  /**
+   * Read by the shell, which needs the same list to decide the sidebar's section link. Passed in
+   * rather than fetched here so entering a company costs one request, not two. `null` means the
+   * list has not arrived yet; an empty array means it could not be read.
+   */
+  companies: Company[] | null;
 }
 
 /**
@@ -18,31 +23,12 @@ interface CompanySwitcherProps {
  * you on the same screen: switch while reading Reports and you land on the other company's
  * Reports, not its overview.
  */
-export function CompanySwitcher({ companyId }: CompanySwitcherProps) {
+export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [companies, setCompanies] = useState<Company[] | null>(null);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    listCompanies()
-      .then((result) => {
-        if (!cancelled) setCompanies(result);
-      })
-      .catch(() => {
-        // The switcher is a convenience. If the list cannot be loaded the shell still works, so
-        // this falls back to showing nothing rather than pushing an error into the chrome.
-        if (!cancelled) setCompanies([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!open) return;

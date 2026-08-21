@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Building2, ArrowRight, Pencil, Power } from 'lucide-react';
 
 import { listCompanies, updateCompany, companyStatusVariant } from '@/entities/company';
@@ -267,13 +267,18 @@ export function CompaniesPage() {
                 {renderFigures(figuresById.get(company.id), company.id)}
 
                 <div className={styles.cardFooter}>
-                  <button
-                    type="button"
+                  {/*
+                    A real link, and — through .cardLink::after — one whose hit area is the whole
+                    card. The 52x16px of text on its own was the only way into a company, so a
+                    click anywhere else on the card selected text and read as an unresponsive card.
+                  */}
+                  <Link
+                    to={`/companies/${company.id}`}
                     className={styles.cardLink}
-                    onClick={() => navigate(`/companies/${company.id}`)}
+                    aria-label={`Open ${company.name}`}
                   >
                     Open <ArrowRight size={14} />
-                  </button>
+                  </Link>
                   <div className={styles.cardActions}>
                     <button
                       type="button"

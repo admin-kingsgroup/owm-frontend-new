@@ -41,6 +41,8 @@
 }
 
 .card {
+  /* Positioning context for .cardLink::after, which stretches the Open link over the whole card. */
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -109,6 +111,7 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--accent);
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -116,7 +119,32 @@
   color: var(--accent-2);
 }
 
+/*
+  Stretches the link across the card so the card is the target, not just the words "Open". The
+  overlay is transparent and sits below .cardActions and .tagAction, which lift themselves above
+  it — nesting them inside the link instead would put a button inside an anchor.
+*/
+.cardLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 0.625rem;
+}
+
+/* The global :focus-visible ring would frame the words alone; this frames what activating it opens. */
+.cardLink:focus-visible {
+  outline: none;
+}
+
+.cardLink:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .cardActions {
+  /* Above .cardLink::after, so editing or deactivating still beats opening the company. */
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -259,6 +287,9 @@
 }
 
 .tagAction {
+  /* Above .cardLink::after — this one jumps to the drafts, not to the company overview. */
+  position: relative;
+  z-index: 1;
   font-family: inherit;
   font-size: 0.6875rem;
   font-weight: 600;

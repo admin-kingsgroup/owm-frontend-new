@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Trash2, Download } from 'lucide-react';
+import { Trash2, Download, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { createBusiness, deleteBusiness, fetchTemplate, listBusinesses } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
 import { Button, Input, Select, Badge, EmptyState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
+import { BusinessWorkspace } from './BusinessWorkspace';
 import styles from './KgPage.module.css';
 
 export interface BusinessesPanelProps {
@@ -40,6 +41,8 @@ export function BusinessesPanel({
   const [shares, setShares] = useState<ShareRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Which business's month-end workspace is open. One at a time — they are long. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const total = shares.reduce((sum, row) => sum + (Number(row.percent) || 0), 0);
   const sharesValid = shares.length === 0 || Math.abs(total - 100) < 0.005;
@@ -239,6 +242,7 @@ export function BusinessesPanel({
         <table className={styles.table}>
           <thead>
             <tr>
+              <th />
               <th>Code</th>
               <th>Name</th>
               <th>Reports in</th>
@@ -249,7 +253,24 @@ export function BusinessesPanel({
           </thead>
           <tbody>
             {businesses.map((business) => (
-              <tr key={business.id}>
+              <Fragment key={business.id}>
+              <tr>
+                <td>
+                  <button
+                    type="button"
+                    className={styles.iconAction}
+                    onClick={() => setOpenId(openId === business.id ? null : business.id)}
+                    aria-expanded={openId === business.id}
+                    aria-label={`Open ${business.name}`}
+                    title="Import a month, place ledgers, lock"
+                  >
+                    {openId === business.id ? (
+                      <ChevronDown size={14} />
+                    ) : (
+                      <ChevronRight size={14} />
+                    )}
+                  </button>
+                </td>
                 <td className={styles.mono}>{business.code}</td>
                 <td>{business.name}</td>
                 <td className={styles.mono}>{business.reportingCurrency}</td>
@@ -286,6 +307,18 @@ export function BusinessesPanel({
                   </div>
                 </td>
               </tr>
+              {openId === business.id && (
+                <tr>
+                  <td colSpan={7}>
+                    <BusinessWorkspace
+                      companyId={companyId}
+                      business={business}
+                      partners={partners}
+                    />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>

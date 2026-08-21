@@ -200,3 +200,60 @@
   font-size: 0.9375rem;
   font-weight: 600;
 }
+
+/* The month-end workspace, opened under the business it belongs to. */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  margin: 0.25rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface-soft, transparent);
+  white-space: normal;
+}
+
+.placements {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.placementRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.placementName {
+  min-width: 12rem;
+  font-size: 0.8125rem;
+  font-weight: 550;
+}
+
+.notice {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.forecastTitle {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+}
