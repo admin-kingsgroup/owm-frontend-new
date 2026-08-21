@@ -41,6 +41,32 @@ export const endpoints = {
     rates: (companyId: string) => `/companies/${companyId}/currencies/rates`,
     gainLoss: (companyId: string) => `/companies/${companyId}/currencies/gain-loss`,
   },
+  /** KG Business. Company-scoped like everything else, nested under /kg. */
+  kg: {
+    partners: (companyId: string) => `/companies/${companyId}/kg/partners`,
+    partner: (companyId: string, id: string) => `/companies/${companyId}/kg/partners/${id}`,
+    businesses: (companyId: string) => `/companies/${companyId}/kg/businesses`,
+    business: (companyId: string, id: string) => `/companies/${companyId}/kg/businesses/${id}`,
+    mappings: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/mappings`,
+    imports: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/imports`,
+    importPreview: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/imports/preview`,
+    importTemplate: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/imports/template`,
+    snapshots: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/snapshots`,
+    lockSnapshot: (companyId: string, businessId: string, id: string) =>
+      `/companies/${companyId}/kg/businesses/${businessId}/snapshots/${id}/lock`,
+    ranking: (companyId: string, year: number, month: number) =>
+      `/companies/${companyId}/kg/portfolio/ranking?periodYear=${year}&periodMonth=${month}`,
+    partnerStatement: (companyId: string, partnerId: string, year: number, month: number) =>
+      `/companies/${companyId}/kg/portfolio/partners/${partnerId}` +
+      `?periodYear=${year}&periodMonth=${month}`,
+    forecast: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/portfolio/businesses/${businessId}/forecast`,
+  },
   outstandings: {
     receivables: (companyId: string) => `/companies/${companyId}/outstandings/receivables`,
     payables: (companyId: string) => `/companies/${companyId}/outstandings/payables`,

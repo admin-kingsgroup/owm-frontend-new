@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2, BarChart3 } from 'lucide-react';
 
 import { getCompany, companyStatusVariant } from '@/entities/company';
 import type { Company } from '@/entities/company';
@@ -25,6 +25,13 @@ import { FinancialYearsPanel } from './FinancialYearsPanel';
 import { CompanySettingsPanel } from './CompanySettingsPanel';
 import { CurrenciesPanel } from './CurrenciesPanel';
 import styles from './CompanyDashboardPage.module.css';
+
+/** Plain words for the stored company type — the enum value is not what a person should read. */
+const COMPANY_TYPE_LABELS: Record<string, string> = {
+  TRADING: 'Trading business',
+  PERSONAL: 'Personal wealth ledger',
+  ANALYTICS: 'Portfolio analytics',
+};
 
 type Tab = 'accounts' | 'voucher-types' | 'financial-years' | 'currencies' | 'settings';
 
@@ -184,6 +191,12 @@ export function CompanyDashboardPage() {
           <div className={styles.headerTop}>
             <h1 className={styles.title}>{company.name}</h1>
             <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
+            {/*
+              The type decides the whole chart of accounts and cannot be changed afterwards, so it
+              has to stay visible. Without it a personal ledger and a trading company are
+              indistinguishable once created.
+            */}
+            <Badge variant="neutral">{COMPANY_TYPE_LABELS[company.type] ?? company.type}</Badge>
           </div>
           <p className={styles.subtitle}>
             {company.code} · {company.baseCurrency} · {company.country} · FY{' '}
@@ -191,9 +204,19 @@ export function CompanyDashboardPage() {
             {calendarYear(company.financialYearEnd)}
           </p>
         </div>
-        <Link to={`/companies/${companyId}/vouchers`} className={styles.vouchersLink}>
-          <Receipt size={16} /> Open vouchers <ArrowRight size={14} />
-        </Link>
+        {/*
+          An analytics workspace posts nothing, so it has no vouchers to open. It gets the portfolio
+          instead — the two are mutually exclusive by design.
+        */}
+        {company.type === 'ANALYTICS' ? (
+          <Link to={`/companies/${companyId}/kg`} className={styles.vouchersLink}>
+            <BarChart3 size={16} /> Open portfolio <ArrowRight size={14} />
+          </Link>
+        ) : (
+          <Link to={`/companies/${companyId}/vouchers`} className={styles.vouchersLink}>
+            <Receipt size={16} /> Open vouchers <ArrowRight size={14} />
+          </Link>
+        )}
       </div>
 
       {openingBalance && openingBalance.difference !== '0.00' && (
@@ -292,6 +315,7 @@ export function CompanyDashboardPage() {
                     <th>Name</th>
                     <th>Type</th>
                     <th>Opening balance</th>
+                    <th>Currency</th>
                     <th />
                     <th>Actions</th>
                   </tr>
@@ -307,6 +331,21 @@ export function CompanyDashboardPage() {
                       <td>{ledger.ledgerType}</td>
                       <td className={styles.mono}>
                         {Number(ledger.openingBalance).toFixed(2)} {ledger.openingBalanceType}
+                      </td>
+                      {/*
+                        Which accounts are foreign is the question the field exists to answer, so it
+                        belongs in the list and not only inside the edit form. Base currency is shown
+                        muted rather than left blank, so an empty cell never reads as missing data.
+                      */}
+                      <td className={styles.mono}>
+                        {ledger.currencyId ? (
+                          <Badge variant="neutral">
+                            {currencies.find((currency) => currency.id === ledger.currencyId)?.code ??
+                              'Unknown'}
+                          </Badge>
+                        ) : (
+                          <span className={styles.muted}>{company.baseCurrency}</span>
+                        )}
                       </td>
                       <td>
                         <div className={styles.rowFlags}>

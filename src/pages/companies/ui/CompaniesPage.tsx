@@ -12,6 +12,13 @@ import { cn, formatMoney, getErrorMessage } from '@/shared/lib';
 
 import styles from './CompaniesPage.module.css';
 
+/** Plain words for the stored company type — the enum value is not what a person should read. */
+const COMPANY_TYPE_LABELS: Record<string, string> = {
+  TRADING: 'Trading business',
+  PERSONAL: 'Personal wealth ledger',
+  ANALYTICS: 'Portfolio analytics',
+};
+
 export function CompaniesPage() {
   const navigate = useNavigate();
 
@@ -249,7 +256,12 @@ export function CompaniesPage() {
                 </div>
                 <p className={styles.cardName}>{company.name}</p>
                 <p className={styles.cardMeta}>
-                  {company.baseCurrency} · {company.country}
+                  {/*
+                    Three companies of two different kinds sit in this list. Without the type they
+                    are told apart only by a code someone has to remember the meaning of.
+                  */}
+                  {COMPANY_TYPE_LABELS[company.type] ?? company.type} · {company.baseCurrency} ·{' '}
+                  {company.country}
                 </p>
 
                 {renderFigures(figuresById.get(company.id), company.id)}

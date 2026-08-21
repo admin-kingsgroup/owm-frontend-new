@@ -213,3 +213,8 @@
   margin-top: 0.125rem;
   color: var(--ink-soft);
 }
+
+/* Base currency on a ledger row: present but recessive, so an empty cell never reads as missing. */
+.muted {
+  color: var(--ink-faint);
+}
