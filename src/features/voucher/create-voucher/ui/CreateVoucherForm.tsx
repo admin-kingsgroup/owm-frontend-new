@@ -91,6 +91,20 @@ export function CreateVoucherForm({
   const [error, setError] = useState<string | null>(null);
 
   const ledgerByCode = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
+  const currencyCodeById = new Map(currencies.map((currency) => [currency.id, currency.code]));
+
+  /**
+   * The currency an account is denominated in, or '' for the base currency.
+   *
+   * A line follows its account: choosing a party who keeps their books in USD puts the line in
+   * USD without the accountant deciding it again. It stays overridable — the currency select is
+   * still there — but the common case needs no thought, which matters when a month is keyed in
+   * one sitting.
+   */
+  function currencyCodeForLedger(ledgerCode: string): string {
+    const ledger = ledgerByCode.get(ledgerCode);
+    return ledger?.currencyId ? (currencyCodeById.get(ledger.currencyId) ?? '') : '';
+  }
 
   const { totalDebit, totalCredit, isBalanced, awaitingRate } = computeBalance(entries);
 
@@ -246,7 +260,16 @@ export function CreateVoucherForm({
           <div key={row.key} className={styles.entriesRow}>
             <Select
               value={row.ledgerCode}
-              onChange={(event) => updateRow(row.key, { ledgerCode: event.target.value })}
+              onChange={(event) => {
+                const ledgerCode = event.target.value;
+                // The rate belongs to the old account's currency, so it is cleared with it —
+                // carrying it over would silently price the new line at the wrong rate.
+                updateRow(row.key, {
+                  ledgerCode,
+                  currencyCode: currencyCodeForLedger(ledgerCode),
+                  exchangeRate: '',
+                });
+              }}
               required
             >
               {ledgers.map((ledger) => (

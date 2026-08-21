@@ -1,5 +1,19 @@
 export type CompanyStatus = 'ACTIVE' | 'INACTIVE';
 
+/**
+ * What a company is for, which decides what it is seeded with. Fixed at creation — seeding runs
+ * once, so a company cannot change its mind later without holding another kind's masters.
+ */
+export type CompanyType = 'TRADING' | 'PERSONAL' | 'ANALYTICS';
+
+/** Exactly what a company of a given type will be seeded with, read from the server's templates. */
+export interface SeedPreview {
+  type: CompanyType;
+  accountGroups: Array<{ code: string; name: string; parentCode: string | null }>;
+  ledgers: Array<{ code: string; name: string; groupCode: string }>;
+  voucherTypes: Array<{ code: string; name: string; prefix: string }>;
+}
+
 /** Tally's F11 company features, all off until switched on. */
 export interface CompanyFeatures {
   billWiseDetails: boolean;
@@ -13,6 +27,7 @@ export interface Company {
   id: string;
   name: string;
   code: string;
+  type: CompanyType;
   legalName?: string;
   financialYearStart: string;
   financialYearEnd: string;
@@ -35,6 +50,8 @@ export interface Company {
 export interface CreateCompanyInput {
   name: string;
   code: string;
+  /** Omitted defaults to TRADING on the server. */
+  type?: CompanyType;
   legalName?: string;
   financialYearStart: string;
   financialYearEnd: string;

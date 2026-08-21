@@ -3,6 +3,7 @@ export const endpoints = {
     list: () => '/companies',
     create: () => '/companies',
     byId: (companyId: string) => `/companies/${companyId}`,
+    seedPreview: (type: string) => `/companies/seed-preview?type=${encodeURIComponent(type)}`,
   },
   financialYears: {
     list: (companyId: string) => `/companies/${companyId}/financial-years`,

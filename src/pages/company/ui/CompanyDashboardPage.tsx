@@ -10,6 +10,8 @@ import { listLedgers, deleteLedger, getOpeningBalanceSummary } from '@/entities/
 import type { Ledger, OpeningBalanceSummary } from '@/entities/ledger';
 import { listVoucherTypes, deleteVoucherType } from '@/entities/voucher-type';
 import { listNumberSeries } from '@/entities/number-series';
+import { listCurrencies } from '@/entities/currency';
+import type { Currency } from '@/entities/currency';
 import type { VoucherType } from '@/entities/voucher-type';
 import type { NumberSeries } from '@/entities/number-series';
 import { CreateAccountGroupForm } from '@/features/account-group';
@@ -33,6 +35,7 @@ export function CompanyDashboardPage() {
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,6 +67,7 @@ export function CompanyDashboardPage() {
           voucherTypesResult,
           openingResult,
           seriesResult,
+          currenciesResult,
         ] =
           await Promise.all([
             getCompany(id),
@@ -72,6 +76,10 @@ export function CompanyDashboardPage() {
             listVoucherTypes(id),
             getOpeningBalanceSummary(id),
             listNumberSeries(id),
+            // Optional context for the ledger form, not something the page depends on. A company
+            // with multi-currency off has none, and failing the whole dashboard over that would
+            // be the wrong trade.
+            listCurrencies(id).catch(() => [] as Currency[]),
           ]);
         if (cancelled) return;
         setCompany(companyResult);
@@ -80,6 +88,7 @@ export function CompanyDashboardPage() {
         setVoucherTypes(voucherTypesResult);
         setOpeningBalance(openingResult);
         setNumberSeries(seriesResult);
+        setCurrencies(currenciesResult);
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err, 'Could not load company'));
       } finally {
@@ -424,6 +433,8 @@ export function CompanyDashboardPage() {
         <CreateLedgerForm
           companyId={companyId}
           accountGroups={groups}
+          currencies={currencies}
+          baseCurrency={company.baseCurrency}
           onCreated={(ledger) => {
             setLedgers((current) => [...current, ledger]);
             setLedgerModalOpen(false);
@@ -438,6 +449,8 @@ export function CompanyDashboardPage() {
             companyId={companyId}
             ledger={editingLedger}
             accountGroups={groups}
+            currencies={currencies}
+            baseCurrency={company.baseCurrency}
             onSaved={(ledger) => {
               setLedgers((current) => current.map((l) => (l.id === ledger.id ? ledger : l)));
               setEditingLedger(null);

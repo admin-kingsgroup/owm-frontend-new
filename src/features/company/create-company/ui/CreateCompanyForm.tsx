@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { createCompany } from '@/entities/company';
-import type { Company } from '@/entities/company';
-import { Button, Input } from '@/shared/ui';
+import { createCompany, getSeedPreview } from '@/entities/company';
+import type { Company, CompanyType, SeedPreview } from '@/entities/company';
+import { Button, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 import { COMPANY_DEFAULTS } from '@/shared/constants';
 
@@ -15,6 +15,32 @@ export interface CreateCompanyFormProps {
 }
 
 const { financialYearStartMonth } = COMPANY_DEFAULTS;
+
+/**
+ * The choice is irreversible: seeding runs once, inside creation, so a company cannot be
+ * re-typed afterwards without holding another kind's chart of accounts. The descriptions are
+ * therefore written to be read before deciding, not as labels.
+ */
+const COMPANY_TYPE_OPTIONS: Array<{ value: CompanyType; label: string; description: string }> = [
+  {
+    value: 'TRADING',
+    label: 'Trading business',
+    description:
+      'Buys and sells. Full chart of accounts with sales, purchases, stock and trade parties, and all eight voucher types.',
+  },
+  {
+    value: 'PERSONAL',
+    label: 'Personal wealth ledger',
+    description:
+      'Tracks what a household owns, owes and spends. No sales, purchases or stock — receipts, payments, contra and journal only.',
+  },
+  {
+    value: 'ANALYTICS',
+    label: 'Portfolio analytics',
+    description:
+      'Compares other businesses from uploaded figures. Nothing is posted here, so it gets the group tree to map uploads onto and no ledgers or voucher types.',
+  },
+];
 
 const asDay = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -42,6 +68,9 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [legalName, setLegalName] = useState('');
+  const [type, setType] = useState<CompanyType>('TRADING');
+  const [preview, setPreview] = useState<SeedPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [financialYear] = useState(currentFinancialYear);
   const [financialYearStart, setFinancialYearStart] = useState(financialYear.start);
   const [financialYearEnd, setFinancialYearEnd] = useState(financialYear.end);
@@ -53,6 +82,27 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Re-read on every change of type, so what is shown is always what this choice would create.
+  useEffect(() => {
+    let cancelled = false;
+
+    getSeedPreview(type)
+      .then((result) => {
+        if (cancelled) return;
+        setPreview(result);
+        setPreviewError(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPreview(null);
+        setPreviewError(getErrorMessage(err, 'Could not load what this would create'));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [type]);
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
@@ -62,6 +112,7 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
       const company = await createCompany({
         name,
         code,
+        type,
         legalName: legalName || undefined,
         financialYearStart,
         financialYearEnd,
@@ -197,6 +248,78 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
           />
         </div>
       </div>
+
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="company-type">
+          Company type
+        </label>
+        <Select
+          id="company-type"
+          value={type}
+          onChange={(event) => setType(event.target.value as CompanyType)}
+        >
+          {COMPANY_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <p className={styles.hint}>
+          {COMPANY_TYPE_OPTIONS.find((option) => option.value === type)?.description}{' '}
+          <strong>This cannot be changed later.</strong>
+        </p>
+      </div>
+
+      {previewError && <p className={styles.error}>{previewError}</p>}
+
+      {preview && (
+        <details className={styles.preview}>
+          <summary className={styles.previewSummary}>
+            Creating this company adds {preview.accountGroups.length} account groups,{' '}
+            {preview.ledgers.length} ledgers and {preview.voucherTypes.length} voucher types — see
+            the full list
+          </summary>
+
+          <div className={styles.previewBody}>
+            <h4 className={styles.previewHeading}>Account groups</h4>
+            <ul className={styles.previewList}>
+              {preview.accountGroups.map((group) => (
+                <li key={group.code}>
+                  {group.parentCode ? `${group.parentCode} › ` : ''}
+                  {group.name}
+                </li>
+              ))}
+            </ul>
+
+            {preview.ledgers.length > 0 && (
+              <>
+                <h4 className={styles.previewHeading}>Ledgers</h4>
+                <ul className={styles.previewList}>
+                  {preview.ledgers.map((ledger) => (
+                    <li key={ledger.code}>
+                      {ledger.name} <span className={styles.previewMuted}>({ledger.groupCode})</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {preview.voucherTypes.length > 0 && (
+              <>
+                <h4 className={styles.previewHeading}>Voucher types</h4>
+                <ul className={styles.previewList}>
+                  {preview.voucherTypes.map((voucherType) => (
+                    <li key={voucherType.code}>
+                      {voucherType.name}{' '}
+                      <span className={styles.previewMuted}>({voucherType.prefix})</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </details>
+      )}
 
       {error && <p className={styles.error}>{error}</p>}
 

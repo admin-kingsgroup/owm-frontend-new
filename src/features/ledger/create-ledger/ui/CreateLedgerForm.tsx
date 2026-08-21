@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { createLedger } from '@/entities/ledger';
 import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
+import type { Currency } from '@/entities/currency';
 import { Button, Checkbox, Input, Select, EmptyState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
@@ -12,6 +13,9 @@ import styles from './CreateLedgerForm.module.css';
 export interface CreateLedgerFormProps {
   companyId: string;
   accountGroups: AccountGroup[];
+  /** Empty when the company does not use multi-currency; the field is then not shown at all. */
+  currencies: Currency[];
+  baseCurrency: string;
   onCreated: (ledger: Ledger) => void;
   onCancel: () => void;
 }
@@ -22,6 +26,8 @@ const BALANCE_SIDES: BalanceSide[] = ['DEBIT', 'CREDIT'];
 export function CreateLedgerForm({
   companyId,
   accountGroups,
+  currencies,
+  baseCurrency,
   onCreated,
   onCancel,
 }: CreateLedgerFormProps) {
@@ -33,6 +39,7 @@ export function CreateLedgerForm({
   const [openingBalanceType, setOpeningBalanceType] = useState<BalanceSide>('DEBIT');
 
   const [maintainBillwise, setMaintainBillwise] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +58,9 @@ export function CreateLedgerForm({
         openingBalance: Number(openingBalance) || 0,
         openingBalanceType,
         maintainBillwise,
+        // Omitted rather than sent empty: an empty string is not a currency code, and the account
+        // simply stays on the company's base currency.
+        ...(currencyCode ? { currencyCode } : {}),
       });
       onCreated(ledger);
     } catch (err) {
@@ -169,6 +179,31 @@ export function CreateLedgerForm({
           </Select>
         </div>
       </div>
+
+
+      {currencies.length > 0 && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="ledger-currency">
+            Currency
+          </label>
+          <Select
+            id="ledger-currency"
+            value={currencyCode}
+            onChange={(event) => setCurrencyCode(event.target.value)}
+          >
+            <option value="">{baseCurrency} (base)</option>
+            {currencies.map((currency) => (
+              <option key={currency.id} value={currency.code}>
+                {currency.code} — {currency.name}
+              </option>
+            ))}
+          </Select>
+          <p className={styles.hint}>
+            Set this only when the other party keeps their own books in another currency. Every
+            voucher line against this account is then entered in that currency, with a rate.
+          </p>
+        </div>
+      )}
 
       <Checkbox
         id="create-ledger-billwise"

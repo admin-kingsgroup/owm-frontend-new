@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { updateLedger } from '@/entities/ledger';
 import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
+import type { Currency } from '@/entities/currency';
 import { Button, Checkbox, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
@@ -13,6 +14,9 @@ export interface EditLedgerFormProps {
   companyId: string;
   ledger: Ledger;
   accountGroups: AccountGroup[];
+  /** Empty when the company does not use multi-currency; the field is then not shown at all. */
+  currencies: Currency[];
+  baseCurrency: string;
   onSaved: (ledger: Ledger) => void;
   onCancel: () => void;
 }
@@ -24,6 +28,8 @@ export function EditLedgerForm({
   companyId,
   ledger,
   accountGroups,
+  currencies,
+  baseCurrency,
   onSaved,
   onCancel,
 }: EditLedgerFormProps) {
@@ -39,6 +45,9 @@ export function EditLedgerForm({
   const [isActive, setIsActive] = useState(ledger.isActive);
 
   const [maintainBillwise, setMaintainBillwise] = useState(ledger.maintainBillwise);
+  const [currencyCode, setCurrencyCode] = useState(
+    currencies.find((currency) => currency.id === ledger.currencyId)?.code ?? '',
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +66,9 @@ export function EditLedgerForm({
         openingBalanceType,
         maintainBillwise,
         isActive,
+        // `null` clears it back to base; a code sets it. A system ledger never sends the field at
+        // all, because the server refuses it and the picker is hidden for one.
+        ...(ledger.isSystem ? {} : { currencyCode: currencyCode || null }),
       });
       onSaved(updated);
     } catch (err) {
@@ -153,6 +165,31 @@ export function EditLedgerForm({
           </Select>
         </div>
       </div>
+
+
+      {currencies.length > 0 && !ledger.isSystem && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="edit-ledger-currency">
+            Currency
+          </label>
+          <Select
+            id="edit-ledger-currency"
+            value={currencyCode}
+            onChange={(event) => setCurrencyCode(event.target.value)}
+          >
+            <option value="">{baseCurrency} (base)</option>
+            {currencies.map((currency) => (
+              <option key={currency.id} value={currency.code}>
+                {currency.code} — {currency.name}
+              </option>
+            ))}
+          </Select>
+          <p className={styles.hint}>
+            Set this only when the other party keeps their own books in another currency. Every
+            voucher line against this account is then entered in that currency, with a rate.
+          </p>
+        </div>
+      )}
 
       <Checkbox
         id="edit-ledger-billwise"

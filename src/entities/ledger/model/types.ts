@@ -12,6 +12,12 @@ export interface Ledger {
   openingBalanceType: BalanceSide;
   /** Track this ledger's balance invoice by invoice — required for outstandings and realised FX. */
   maintainBillwise: boolean;
+  /**
+   * The currency this account is denominated in. Absent means the company's base currency, which
+   * is most accounts. Set on the accounts of a counterparty who keeps their own books in another
+   * currency, and inherited by every voucher line posted against it.
+   */
+  currencyId?: string;
   isSystem: boolean;
   isActive: boolean;
 }
@@ -24,6 +30,7 @@ export interface CreateLedgerInput {
   openingBalance?: number;
   openingBalanceType?: BalanceSide;
   maintainBillwise?: boolean;
+  currencyCode?: string;
 }
 
 export interface UpdateLedgerInput {
@@ -33,6 +40,8 @@ export interface UpdateLedgerInput {
   openingBalance?: number;
   openingBalanceType?: BalanceSide;
   maintainBillwise?: boolean;
+  /** `null` clears it, returning the account to the base currency. Omit to leave it unchanged. */
+  currencyCode?: string | null;
   isActive?: boolean;
 }
 

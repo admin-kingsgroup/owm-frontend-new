@@ -37,3 +37,57 @@
   gap: 0.5rem;
   margin-top: 0.25rem;
 }
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/*
+ * Collapsed by default and opened on demand: the full list runs to forty-odd lines, and a wall of
+ * group names above the Create button would be scrolled past rather than read. The summary carries
+ * the counts, which is what most people actually want to check.
+ */
+.preview {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.previewSummary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.previewBody {
+  margin-top: 0.75rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.previewHeading {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.previewHeading:first-child {
+  margin-top: 0;
+}
+
+.previewList {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.previewMuted {
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
