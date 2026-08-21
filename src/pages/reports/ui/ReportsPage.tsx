@@ -27,7 +27,7 @@ import { getPayables, getReceivables } from '@/entities/outstanding';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
-import { Button, Input, Loading, Modal } from '@/shared/ui';
+import { Button, Input, Loading, Modal, Checkbox } from '@/shared/ui';
 import { cn, getErrorMessage, formatMoney } from '@/shared/lib';
 
 import { ReportTree } from './ReportTree';
@@ -62,7 +62,8 @@ export function ReportsPage() {
   // Empty means "the whole financial year", which is what the server defaults to.
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [applied, setApplied] = useState({ from: '', to: '' });
+  const [compare, setCompare] = useState(false);
+  const [applied, setApplied] = useState({ from: '', to: '', compare: false });
 
   const [company, setCompany] = useState<Company | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
@@ -90,7 +91,11 @@ export function ReportsPage() {
       setLoading(true);
       setLoadError(null);
       try {
-        const params = { from: applied.from || undefined, to: applied.to || undefined };
+        const params = {
+          from: applied.from || undefined,
+          to: applied.to || undefined,
+          compare: applied.compare || undefined,
+        };
         // `asOf` for the ageing reports is the end of the period being looked at.
         const asOf = applied.to || undefined;
 
@@ -362,7 +367,19 @@ export function ReportsPage() {
               onChange={(event) => setTo(event.target.value)}
             />
           </div>
-          <Button variant="secondary" onClick={() => setApplied({ from, to })}>
+          {/*
+            Applied with the period rather than on its own, because asking for it re-fetches both
+            statements — and because a comparison only means anything against a stated span.
+          */}
+          <div className={styles.compareField}>
+            <Checkbox
+              id="report-compare"
+              label="Compare with last year"
+              checked={compare}
+              onChange={(event) => setCompare(event.target.checked)}
+            />
+          </div>
+          <Button variant="secondary" onClick={() => setApplied({ from, to, compare })}>
             Apply
           </Button>
           {(applied.from || applied.to) && (
@@ -371,7 +388,7 @@ export function ReportsPage() {
               onClick={() => {
                 setFrom('');
                 setTo('');
-                setApplied({ from: '', to: '' });
+                setApplied({ from: '', to: '', compare });
               }}
             >
               Whole year
@@ -392,6 +409,14 @@ export function ReportsPage() {
         </p>
       )}
 
+      {applied.compare && (tab === 'balance-sheet' || tab === 'profit-loss') && (
+        <p className={styles.hint} role="status">
+          {(tab === 'balance-sheet' ? balanceSheet?.comparison : profitLoss?.comparison)
+            ? `Compared with FY ${(tab === 'balance-sheet' ? balanceSheet : profitLoss)?.comparison?.financialYearLabel}.`
+            : 'No comparison available — this is the first financial year, or the period is not a whole one.'}
+        </p>
+      )}
+
       <div className={styles.tabs}>
         {TABS.filter((entry) => entry.show).map((entry) => (
           <button
@@ -409,27 +434,45 @@ export function ReportsPage() {
         <div className={styles.twoColumn}>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
-              Assets <span className={styles.panelTotal}>{money(balanceSheet.totals.assets)}</span>
+              Assets
+              {balanceSheet.totals.priorAssets !== undefined && (
+                <span className={styles.panelPrior}>{money(balanceSheet.totals.priorAssets)}</span>
+              )}
+              <span className={styles.panelTotal}>{money(balanceSheet.totals.assets)}</span>
             </h2>
             <ReportTree
               formatAmount={money}
               nodes={balanceSheet.assets}
               onSelectLedger={openLedger}
+              showPrior={Boolean(balanceSheet.comparison)}
             />
           </section>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
               Liabilities{' '}
+              {balanceSheet.totals.priorLiabilities !== undefined && (
+                <span className={styles.panelPrior}>
+                  {money(balanceSheet.totals.priorLiabilities)}
+                </span>
+              )}
               <span className={styles.panelTotal}>{money(balanceSheet.totals.liabilities)}</span>
             </h2>
             <ReportTree
               formatAmount={money}
               nodes={balanceSheet.liabilities}
               onSelectLedger={openLedger}
+              showPrior={Boolean(balanceSheet.comparison)}
             />
             <div className={styles.derivedRow}>
               <span>Profit for the period</span>
-              <span>{money(balanceSheet.totals.currentPeriodProfit)}</span>
+              <span>
+                {balanceSheet.totals.priorCurrentPeriodProfit !== undefined && (
+                  <span className={styles.panelPrior}>
+                    {money(balanceSheet.totals.priorCurrentPeriodProfit)}
+                  </span>
+                )}
+                {money(balanceSheet.totals.currentPeriodProfit)}
+              </span>
             </div>
             {balanceSheet.totals.difference !== '0.00' && (
               <p className={styles.warning}>
@@ -444,27 +487,43 @@ export function ReportsPage() {
         <div className={styles.twoColumn}>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
-              Income <span className={styles.panelTotal}>{money(profitLoss.totals.income)}</span>
+              Income
+              {profitLoss.totals.priorIncome !== undefined && (
+                <span className={styles.panelPrior}>{money(profitLoss.totals.priorIncome)}</span>
+              )}
+              <span className={styles.panelTotal}>{money(profitLoss.totals.income)}</span>
             </h2>
             <ReportTree
               formatAmount={money}
               nodes={profitLoss.income}
               onSelectLedger={openLedger}
+              showPrior={Boolean(profitLoss.comparison)}
             />
           </section>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
               Expenses{' '}
+              {profitLoss.totals.priorExpenses !== undefined && (
+                <span className={styles.panelPrior}>{money(profitLoss.totals.priorExpenses)}</span>
+              )}
               <span className={styles.panelTotal}>{money(profitLoss.totals.expenses)}</span>
             </h2>
             <ReportTree
               formatAmount={money}
               nodes={profitLoss.expenses}
               onSelectLedger={openLedger}
+              showPrior={Boolean(profitLoss.comparison)}
             />
             <div className={styles.derivedRow}>
               <span>{Number(profitLoss.totals.netProfit) < 0 ? 'Net loss' : 'Net profit'}</span>
-              <span>{money(profitLoss.totals.netProfit)}</span>
+              <span>
+                {profitLoss.totals.priorNetProfit !== undefined && (
+                  <span className={styles.panelPrior}>
+                    {money(profitLoss.totals.priorNetProfit)}
+                  </span>
+                )}
+                {money(profitLoss.totals.netProfit)}
+              </span>
             </div>
           </section>
         </div>

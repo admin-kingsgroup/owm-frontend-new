@@ -14,6 +14,11 @@ export interface ReportTreeProps {
    * the page decides the currency and which region's digit grouping to use.
    */
   formatAmount: (value: string) => string;
+  /**
+   * Set when a comparison is in play. Each row then carries last year's figure ahead of this
+   * year's, quieter, so the eye still lands on the current column first.
+   */
+  showPrior?: boolean;
 }
 
 /**
@@ -26,11 +31,13 @@ function TreeRow({
   depth,
   onSelectLedger,
   formatAmount,
+  showPrior,
 }: {
   node: ReportNode;
   depth: number;
   onSelectLedger: (node: ReportNode) => void;
   formatAmount: (value: string) => string;
+  showPrior?: boolean;
 }) {
   const [expanded, setExpanded] = useState(depth === 0);
   const hasChildren = Boolean(node.children?.length);
@@ -46,6 +53,11 @@ function TreeRow({
         title={`Open ${node.name}`}
       >
         <span className={styles.treeName}>{node.name}</span>
+        {showPrior && (
+          <span className={styles.treePriorAmount}>
+            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance)}
+          </span>
+        )}
         <span className={styles.treeAmount}>
           {formatAmount(node.balance)}
           <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
@@ -67,6 +79,11 @@ function TreeRow({
           {hasChildren ? expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}
         </span>
         <span className={styles.treeName}>{node.name}</span>
+        {showPrior && (
+          <span className={styles.treePriorAmount}>
+            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance)}
+          </span>
+        )}
         <span className={styles.treeAmount}>
           {formatAmount(node.balance)}
           <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
@@ -80,13 +97,14 @@ function TreeRow({
             depth={depth + 1}
             onSelectLedger={onSelectLedger}
             formatAmount={formatAmount}
+            showPrior={showPrior}
           />
         ))}
     </>
   );
 }
 
-export function ReportTree({ nodes, onSelectLedger, formatAmount }: ReportTreeProps) {
+export function ReportTree({ nodes, onSelectLedger, formatAmount, showPrior }: ReportTreeProps) {
   if (nodes.length === 0) {
     return <p className={styles.empty}>Nothing posted in this period.</p>;
   }
@@ -100,6 +118,7 @@ export function ReportTree({ nodes, onSelectLedger, formatAmount }: ReportTreePr
           depth={0}
           onSelectLedger={onSelectLedger}
           formatAmount={formatAmount}
+          showPrior={showPrior}
         />
       ))}
     </div>

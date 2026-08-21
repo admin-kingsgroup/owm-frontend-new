@@ -15,7 +15,18 @@ export interface ReportNode {
   credit: string;
   balance: string;
   balanceSide: BalanceSide;
+  /** The same row a year earlier. Absent unless a comparison was asked for and one exists. */
+  priorBalance?: string;
+  priorBalanceSide?: BalanceSide;
   children?: ReportNode[];
+}
+
+/** The period a statement is set against — the financial year immediately before it. */
+export interface ReportComparison {
+  financialYearId: string;
+  financialYearLabel: string;
+  from: string;
+  to: string;
 }
 
 export interface ReportPeriod {
@@ -54,6 +65,8 @@ export interface TrialBalanceReport {
 
 export interface BalanceSheetReport {
   period: ReportPeriod;
+  /** Null when not asked for, or when there is no prior year. */
+  comparison: ReportComparison | null;
   assets: ReportNode[];
   liabilities: ReportNode[];
   totals: {
@@ -61,14 +74,26 @@ export interface BalanceSheetReport {
     liabilities: string;
     currentPeriodProfit: string;
     difference: string;
+    priorAssets?: string;
+    priorLiabilities?: string;
+    priorCurrentPeriodProfit?: string;
   };
 }
 
 export interface ProfitAndLossReport {
   period: ReportPeriod;
+  /** Null when not asked for, or when there is no prior year. */
+  comparison: ReportComparison | null;
   income: ReportNode[];
   expenses: ReportNode[];
-  totals: { income: string; expenses: string; netProfit: string };
+  totals: {
+    income: string;
+    expenses: string;
+    netProfit: string;
+    priorIncome?: string;
+    priorExpenses?: string;
+    priorNetProfit?: string;
+  };
 }
 
 export interface LedgerStatementLine {

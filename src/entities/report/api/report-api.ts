@@ -16,6 +16,8 @@ export interface ReportParams {
   financialYearId?: string;
   from?: string;
   to?: string;
+  /** Ask for a prior-year column. Only the balance sheet and the profit and loss honour it. */
+  compare?: boolean;
 }
 
 async function fetchReport<T>(url: string, params: ReportParams): Promise<T> {

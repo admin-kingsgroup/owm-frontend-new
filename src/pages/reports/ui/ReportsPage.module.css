@@ -163,6 +163,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Last year sits ahead of this year and reads quieter — it is context, not the answer. */
+.treePriorAmount {
+  flex-shrink: 0;
+  min-width: 7rem;
+  text-align: right;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.panelPrior {
+  margin-left: auto;
+  padding-right: var(--space-3);
+  color: var(--ink-faint);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.compareField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .treeSide {
   margin-left: 0.25rem;
   font-size: 0.6875rem;

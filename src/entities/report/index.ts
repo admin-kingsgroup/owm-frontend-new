@@ -1,6 +1,7 @@
 export type {
   ReportNode,
   ReportPeriod,
+  ReportComparison,
   BalanceSide,
   TrialBalanceRow,
   TrialBalanceReport,
