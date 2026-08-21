@@ -8,7 +8,7 @@ import { listVoucherTypes } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { listLedgers } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
-import { getCompany } from '@/entities/company';
+import { getCompany, useCompanyStore } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listCurrencies } from '@/entities/currency';
 import type { Currency } from '@/entities/currency';
@@ -49,6 +49,10 @@ export function VouchersPage() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // The list the shell already holds — see the note beside `listedCompany` below.
+  const companies = useCompanyStore((state) => state.companies);
+  const listLoaded = useCompanyStore((state) => state.loaded);
 
   useEffect(() => {
     if (!companyId) return;
@@ -153,7 +157,28 @@ export function VouchersPage() {
     : [];
   const setupIncomplete = setupMissing.length > 0;
 
+  /*
+    The shell reads the company list on entering a company, so it has settled well before this
+    screen's own request for the company comes back. Preferring whichever arrived first means an
+    analytics workspace is turned away at the same moment the sidebar drops its Vouchers link,
+    rather than a beat later with the screen half-drawn in between.
+  */
+  const listedCompany = listLoaded ? companies?.find((entry) => entry.id === companyId) : undefined;
+  const company = loaded?.company ?? listedCompany;
+
   if (!companyId) return null;
+
+  /*
+    Nothing is drawn until it is known whether this company posts vouchers at all. Both sources are
+    in flight together and either one settles the question, so the wait is the shorter of the two —
+    and it is shorter still than it looks, because the table below is a spinner for that same
+    window anyway. Drawing a screen that is about to be replaced by "this company does not post
+    vouchers" is worse than a moment of nothing. An error releases the hold, so a company that
+    cannot be read reports that rather than spinning for ever.
+  */
+  if (company === undefined && !error) {
+    return <Loading label="Loading vouchers…" />;
+  }
 
   /*
     An analytics workspace keeps no double-entry books, which is why its overview offers the
@@ -162,11 +187,11 @@ export function VouchersPage() {
     voucher button; saying so plainly, and pointing at the screen that does apply, matches how
     KgPage turns away a company that is not a portfolio workspace.
   */
-  if (loaded && loaded.company.type === 'ANALYTICS') {
+  if (company?.type === 'ANALYTICS') {
     return (
       <EmptyState
         title="This company does not post vouchers"
-        description={`${loaded.company.name} is a portfolio workspace, so it has no double-entry books of its own. Its figures come from the businesses tracked under KG Business.`}
+        description={`${company.name} is a portfolio workspace, so it has no double-entry books of its own. Its figures come from the businesses tracked under KG Business.`}
         action={
           <Link to={`/companies/${companyId}/kg`}>
             <Button variant="primary">Open the portfolio</Button>

@@ -26,16 +26,54 @@
   margin: 0;
 }
 
-/* Monospaced and quiet: it is a fault reference to copy, not prose to read. */
-.detail {
-  max-width: 40rem;
+/* A key to quote, not prose to read — so it is monospaced, quiet, and easy to lift out. */
+.reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 100%;
   margin: 0.75rem 0 1rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background-color: var(--paper-card);
+}
+
+.referenceLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--ink-faint);
+}
+
+.referenceValue {
+  color: var(--ink-soft);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.75rem;
   overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copy:hover {
+  background-color: var(--hover-tint);
+  color: var(--ink);
 }
