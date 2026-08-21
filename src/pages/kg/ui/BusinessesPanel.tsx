@@ -82,9 +82,38 @@ export function BusinessesPanel({
     try {
       await deleteBusiness(companyId, business.id);
       onChanged(await listBusinesses(companyId));
+      return;
     } catch (err) {
-      // Refused once it has snapshots, with the reason — which tells the user to deactivate instead.
-      setError(getErrorMessage(err, 'Could not remove business'));
+      const message = getErrorMessage(err, 'Could not remove business');
+
+      /**
+       * The server refuses a business that has reported, and says so. For one created by mistake
+       * that refusal is a dead end, so the way out is offered here — but as a second, deliberate
+       * confirmation naming what is destroyed, never as a silent retry.
+       */
+      if (!message.includes('force=true')) {
+        setError(message);
+        return;
+      }
+
+      const forced = window.confirm(
+        `${business.name} has reported figures.\n\n` +
+          'Deactivating keeps them and stops it being chased for more — usually the right answer ' +
+          'for a business that has closed.\n\n' +
+          'Only if it was created by mistake: press OK to delete it together with every snapshot ' +
+          'and mapping it has. This cannot be undone.',
+      );
+      if (!forced) {
+        setError(message);
+        return;
+      }
+
+      try {
+        await deleteBusiness(companyId, business.id, true);
+        onChanged(await listBusinesses(companyId));
+      } catch (forceErr) {
+        setError(getErrorMessage(forceErr, 'Could not remove business'));
+      }
     }
   }
 

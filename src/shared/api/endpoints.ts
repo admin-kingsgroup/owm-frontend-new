@@ -46,7 +46,8 @@ export const endpoints = {
     partners: (companyId: string) => `/companies/${companyId}/kg/partners`,
     partner: (companyId: string, id: string) => `/companies/${companyId}/kg/partners/${id}`,
     businesses: (companyId: string) => `/companies/${companyId}/kg/businesses`,
-    business: (companyId: string, id: string) => `/companies/${companyId}/kg/businesses/${id}`,
+    business: (companyId: string, id: string, force = false) =>
+      `/companies/${companyId}/kg/businesses/${id}` + (force ? '?force=true' : ''),
     mappings: (companyId: string, businessId: string) =>
       `/companies/${companyId}/kg/businesses/${businessId}/mappings`,
     imports: (companyId: string, businessId: string) =>

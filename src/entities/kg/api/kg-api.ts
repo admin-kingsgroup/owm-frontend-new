@@ -52,8 +52,16 @@ export async function createBusiness(
   );
 }
 
-export async function deleteBusiness(companyId: string, id: string): Promise<void> {
-  await apiClient.delete(endpoints.kg.business(companyId, id));
+/**
+ * Deletes a business. `force` also destroys its snapshots and mappings, and is only for one created
+ * by mistake — the server refuses without it the moment anything has been reported.
+ */
+export async function deleteBusiness(
+  companyId: string,
+  id: string,
+  force = false,
+): Promise<void> {
+  await apiClient.delete(endpoints.kg.business(companyId, id, force));
 }
 
 // ---- mappings -------------------------------------------------------------------------------
