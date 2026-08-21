@@ -3,7 +3,7 @@ import { ChevronDown, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 
 import { useAuthStore } from '@/features/auth';
 import { cn } from '@/shared/lib';
-import { setTheme, useTheme } from '@/shared/hooks';
+import { setTheme, useTheme, useMenuKeys } from '@/shared/hooks';
 import type { ThemePreference } from '@/shared/hooks';
 
 import styles from './UserMenu.module.css';
@@ -26,6 +26,9 @@ export function UserMenu() {
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useMenuKeys(open, menuRef);
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +82,7 @@ export function UserMenu() {
       </button>
 
       {open && (
-        <div className={styles.menu} role="menu">
+        <div className={styles.menu} role="menu" ref={menuRef}>
           <div className={styles.menuHeader}>
             <span className={styles.menuName}>{user.name}</span>
             <span className={styles.menuEmail}>{user.email}</span>

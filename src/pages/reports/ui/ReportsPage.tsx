@@ -28,7 +28,7 @@ import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Button, Input, Loading, Modal } from '@/shared/ui';
-import { cn, getErrorMessage } from '@/shared/lib';
+import { cn, getErrorMessage, formatMoney } from '@/shared/lib';
 
 import { ReportTree } from './ReportTree';
 import { downloadCsv, flattenNodes } from './export-csv';
@@ -69,9 +69,7 @@ export function ReportsPage() {
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
   const [dayBook, setDayBook] = useState<DayBookReport | null>(null);
-  const [receiptsPayments, setReceiptsPayments] = useState<ReceiptsAndPaymentsReport | null>(
-    null,
-  );
+  const [receiptsPayments, setReceiptsPayments] = useState<ReceiptsAndPaymentsReport | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowReport | null>(null);
   const [receivables, setReceivables] = useState<OutstandingsReport | null>(null);
   const [payables, setPayables] = useState<OutstandingsReport | null>(null);
@@ -175,7 +173,16 @@ export function ReportsPage() {
     } else if (tab === 'trial-balance' && trialBalance) {
       downloadCsv(
         name('trial-balance'),
-        ['Code', 'Ledger', 'Opening Dr', 'Opening Cr', 'Debit', 'Credit', 'Closing Dr', 'Closing Cr'],
+        [
+          'Code',
+          'Ledger',
+          'Opening Dr',
+          'Opening Cr',
+          'Debit',
+          'Credit',
+          'Closing Dr',
+          'Closing Cr',
+        ],
         [
           ...trialBalance.rows.map((row) => [
             row.code,
@@ -235,7 +242,16 @@ export function ReportsPage() {
       if (!report) return;
       downloadCsv(
         name(tab),
-        ['Party', 'Reference', 'Bill date', 'Due date', 'Amount', 'Settled', 'Outstanding', 'Days overdue'],
+        [
+          'Party',
+          'Reference',
+          'Bill date',
+          'Due date',
+          'Amount',
+          'Settled',
+          'Outstanding',
+          'Days overdue',
+        ],
         report.bills.map((bill) => [
           bill.ledgerName,
           bill.reference,
@@ -250,7 +266,16 @@ export function ReportsPage() {
     } else if (tab === 'forex' && forex) {
       downloadCsv(
         name('forex-gain-loss'),
-        ['Party', 'Reference', 'Currency', 'FC outstanding', 'Booked', 'Revalued', 'Gain/Loss', 'Kind'],
+        [
+          'Party',
+          'Reference',
+          'Currency',
+          'FC outstanding',
+          'Booked',
+          'Revalued',
+          'Gain/Loss',
+          'Kind',
+        ],
         forex.lines.map((line) => [
           line.ledgerName,
           line.reference,
@@ -264,6 +289,23 @@ export function ReportsPage() {
       );
     }
   }
+
+  /**
+   * Every figure on this screen goes through here.
+   *
+   * The overview cards were formatting amounts and these tables were not, so the same balance read
+   * as two different numbers depending on which screen you were on. Grouping follows the company's
+   * own country, not the browser's — 51,76,350 rather than 5,176,350 for an Indian company opened
+   * on an en-US machine.
+   *
+   * The CSV export deliberately does NOT use this: a spreadsheet needs the raw decimal, and a
+   * grouped, symbol-prefixed string imports as text.
+   */
+  const money = useCallback(
+    (value: string) =>
+      formatMoney(value, { currency: company?.baseCurrency, country: company?.country }),
+    [company],
+  );
 
   if (!companyId) return null;
   if (loading) return <Loading label="Loading reports…" />;
@@ -367,23 +409,31 @@ export function ReportsPage() {
         <div className={styles.twoColumn}>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
-              Assets <span className={styles.panelTotal}>{balanceSheet.totals.assets}</span>
+              Assets <span className={styles.panelTotal}>{money(balanceSheet.totals.assets)}</span>
             </h2>
-            <ReportTree nodes={balanceSheet.assets} onSelectLedger={openLedger} />
+            <ReportTree
+              formatAmount={money}
+              nodes={balanceSheet.assets}
+              onSelectLedger={openLedger}
+            />
           </section>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
               Liabilities{' '}
-              <span className={styles.panelTotal}>{balanceSheet.totals.liabilities}</span>
+              <span className={styles.panelTotal}>{money(balanceSheet.totals.liabilities)}</span>
             </h2>
-            <ReportTree nodes={balanceSheet.liabilities} onSelectLedger={openLedger} />
+            <ReportTree
+              formatAmount={money}
+              nodes={balanceSheet.liabilities}
+              onSelectLedger={openLedger}
+            />
             <div className={styles.derivedRow}>
               <span>Profit for the period</span>
-              <span>{balanceSheet.totals.currentPeriodProfit}</span>
+              <span>{money(balanceSheet.totals.currentPeriodProfit)}</span>
             </div>
             {balanceSheet.totals.difference !== '0.00' && (
               <p className={styles.warning}>
-                Out of balance by {balanceSheet.totals.difference}. Check opening balances.
+                Out of balance by {money(balanceSheet.totals.difference)}. Check opening balances.
               </p>
             )}
           </section>
@@ -394,18 +444,27 @@ export function ReportsPage() {
         <div className={styles.twoColumn}>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
-              Income <span className={styles.panelTotal}>{profitLoss.totals.income}</span>
+              Income <span className={styles.panelTotal}>{money(profitLoss.totals.income)}</span>
             </h2>
-            <ReportTree nodes={profitLoss.income} onSelectLedger={openLedger} />
+            <ReportTree
+              formatAmount={money}
+              nodes={profitLoss.income}
+              onSelectLedger={openLedger}
+            />
           </section>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>
-              Expenses <span className={styles.panelTotal}>{profitLoss.totals.expenses}</span>
+              Expenses{' '}
+              <span className={styles.panelTotal}>{money(profitLoss.totals.expenses)}</span>
             </h2>
-            <ReportTree nodes={profitLoss.expenses} onSelectLedger={openLedger} />
+            <ReportTree
+              formatAmount={money}
+              nodes={profitLoss.expenses}
+              onSelectLedger={openLedger}
+            />
             <div className={styles.derivedRow}>
               <span>{Number(profitLoss.totals.netProfit) < 0 ? 'Net loss' : 'Net profit'}</span>
-              <span>{profitLoss.totals.netProfit}</span>
+              <span>{money(profitLoss.totals.netProfit)}</span>
             </div>
           </section>
         </div>
@@ -451,31 +510,31 @@ export function ReportsPage() {
                         {row.name}
                       </button>
                     </td>
-                    <td className={styles.num}>{row.openingDebit}</td>
-                    <td className={styles.num}>{row.openingCredit}</td>
+                    <td className={styles.num}>{money(row.openingDebit)}</td>
+                    <td className={styles.num}>{money(row.openingCredit)}</td>
                     <td className={styles.num}>{row.debit}</td>
                     <td className={styles.num}>{row.credit}</td>
-                    <td className={styles.num}>{row.closingDebit}</td>
-                    <td className={styles.num}>{row.closingCredit}</td>
+                    <td className={styles.num}>{money(row.closingDebit)}</td>
+                    <td className={styles.num}>{money(row.closingCredit)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
                   <td colSpan={2}>Total</td>
-                  <td className={styles.num}>{trialBalance.totals.openingDebit}</td>
-                  <td className={styles.num}>{trialBalance.totals.openingCredit}</td>
+                  <td className={styles.num}>{money(trialBalance.totals.openingDebit)}</td>
+                  <td className={styles.num}>{money(trialBalance.totals.openingCredit)}</td>
                   <td className={styles.num}>{trialBalance.totals.debit}</td>
                   <td className={styles.num}>{trialBalance.totals.credit}</td>
-                  <td className={styles.num}>{trialBalance.totals.closingDebit}</td>
-                  <td className={styles.num}>{trialBalance.totals.closingCredit}</td>
+                  <td className={styles.num}>{money(trialBalance.totals.closingDebit)}</td>
+                  <td className={styles.num}>{money(trialBalance.totals.closingCredit)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
           {trialBalance.totals.difference !== '0.00' && (
             <p className={styles.warning}>
-              Trial balance does not tie: difference {trialBalance.totals.difference}.
+              Trial balance does not tie: difference {money(trialBalance.totals.difference)}.
             </p>
           )}
         </section>
@@ -501,7 +560,7 @@ export function ReportsPage() {
                     <td>{row.voucherNumber}</td>
                     <td>{row.voucherTypeCode}</td>
                     <td>{row.narration ?? '—'}</td>
-                    <td className={styles.num}>{row.amount}</td>
+                    <td className={styles.num}>{money(row.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -522,7 +581,7 @@ export function ReportsPage() {
           <div className={styles.buckets}>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Opening</span>
-              <span className={styles.bucketAmount}>{receiptsPayments.openingBalance}</span>
+              <span className={styles.bucketAmount}>{money(receiptsPayments.openingBalance)}</span>
             </div>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Receipts</span>
@@ -534,13 +593,13 @@ export function ReportsPage() {
             </div>
             <div className={cn(styles.bucket, styles.bucketTotal)}>
               <span className={styles.bucketLabel}>Closing</span>
-              <span className={styles.bucketAmount}>{receiptsPayments.closingBalance}</span>
+              <span className={styles.bucketAmount}>{money(receiptsPayments.closingBalance)}</span>
             </div>
           </div>
 
           <p className={styles.hint}>
-            Only money that actually moved. An invoice raised but unpaid is income, so it appears
-            on the Profit &amp; Loss and not here.
+            Only money that actually moved. An invoice raised but unpaid is income, so it appears on
+            the Profit &amp; Loss and not here.
           </p>
 
           <div className={styles.twoColumn}>
@@ -554,7 +613,7 @@ export function ReportsPage() {
                   {receiptsPayments.receipts.map((row) => (
                     <tr key={`r-${row.ledgerId}`}>
                       <td>{row.name}</td>
-                      <td className={styles.num}>{row.amount}</td>
+                      <td className={styles.num}>{money(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -573,7 +632,7 @@ export function ReportsPage() {
                   {receiptsPayments.payments.map((row) => (
                     <tr key={`p-${row.ledgerId}`}>
                       <td>{row.name}</td>
-                      <td className={styles.num}>{row.amount}</td>
+                      <td className={styles.num}>{money(row.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -587,7 +646,7 @@ export function ReportsPage() {
           {receiptsPayments.totals.difference !== '0.00' && (
             <p className={styles.warning}>
               Opening plus receipts less payments does not reach the closing balance: difference{' '}
-              {receiptsPayments.totals.difference}.
+              {money(receiptsPayments.totals.difference)}.
             </p>
           )}
         </section>
@@ -598,30 +657,38 @@ export function ReportsPage() {
           <div className={styles.buckets}>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Opening</span>
-              <span className={styles.bucketAmount}>{cashFlow.openingBalance}</span>
+              <span className={styles.bucketAmount}>{money(cashFlow.openingBalance)}</span>
             </div>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Net change</span>
-              <span className={styles.bucketAmount}>{cashFlow.totals.netChange}</span>
+              <span className={styles.bucketAmount}>{money(cashFlow.totals.netChange)}</span>
             </div>
             <div className={cn(styles.bucket, styles.bucketTotal)}>
               <span className={styles.bucketLabel}>Closing</span>
-              <span className={styles.bucketAmount}>{cashFlow.closingBalance}</span>
+              <span className={styles.bucketAmount}>{money(cashFlow.closingBalance)}</span>
             </div>
           </div>
 
           <div className={styles.twoColumn}>
             <section className={styles.panel}>
               <h2 className={styles.panelTitle}>
-                Cash in <span className={styles.panelTotal}>{cashFlow.totals.inflow}</span>
+                Cash in <span className={styles.panelTotal}>{money(cashFlow.totals.inflow)}</span>
               </h2>
-              <ReportTree nodes={cashFlow.inflow} onSelectLedger={openLedger} />
+              <ReportTree
+                formatAmount={money}
+                nodes={cashFlow.inflow}
+                onSelectLedger={openLedger}
+              />
             </section>
             <section className={styles.panel}>
               <h2 className={styles.panelTitle}>
-                Cash out <span className={styles.panelTotal}>{cashFlow.totals.outflow}</span>
+                Cash out <span className={styles.panelTotal}>{money(cashFlow.totals.outflow)}</span>
               </h2>
-              <ReportTree nodes={cashFlow.outflow} onSelectLedger={openLedger} />
+              <ReportTree
+                formatAmount={money}
+                nodes={cashFlow.outflow}
+                onSelectLedger={openLedger}
+              />
             </section>
           </div>
         </>
@@ -661,7 +728,7 @@ export function ReportsPage() {
                     <td>{bill.ledgerName}</td>
                     <td>{bill.reference}</td>
                     <td>{bill.dueDate ? asDay(bill.dueDate) : asDay(bill.billDate)}</td>
-                    <td className={styles.num}>{bill.amount}</td>
+                    <td className={styles.num}>{money(bill.amount)}</td>
                     <td className={styles.num}>{bill.settled}</td>
                     <td className={styles.num}>{bill.outstanding}</td>
                     <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
@@ -756,7 +823,7 @@ export function ReportsPage() {
             <div className={styles.statementHead}>
               <span>Opening</span>
               <span>
-                {statement.openingBalance} {statement.openingSide === 'DEBIT' ? 'Dr' : 'Cr'}
+                {money(statement.openingBalance)} {statement.openingSide === 'DEBIT' ? 'Dr' : 'Cr'}
               </span>
             </div>
             <div className={styles.tableWrap}>
@@ -777,7 +844,7 @@ export function ReportsPage() {
                       <td>{line.voucherNumber}</td>
                       <td className={styles.num}>{line.debit}</td>
                       <td className={styles.num}>{line.credit}</td>
-                      <td className={styles.num}>{line.runningBalance}</td>
+                      <td className={styles.num}>{money(line.runningBalance)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -789,7 +856,7 @@ export function ReportsPage() {
             <div className={styles.statementHead}>
               <span>Closing</span>
               <span>
-                {statement.closingBalance} {statement.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}
+                {money(statement.closingBalance)} {statement.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}
               </span>
             </div>
             <button type="button" className={styles.closeLink} onClick={() => setStatement(null)}>

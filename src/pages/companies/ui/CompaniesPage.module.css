@@ -69,6 +69,15 @@
 }
 
 .cardCode {
+  /*
+    Lifted above .cardLink::after so it can still be selected and copied. The overlay swallows
+    drag-selection everywhere else on the card, and this is the one string on it anyone retypes
+    into another system.
+  */
+  position: relative;
+  z-index: 1;
+  cursor: text;
+  user-select: text;
   background-color: var(--chip-bg);
   color: var(--chip-fg);
   font-size: 0.6875rem;
@@ -175,10 +184,13 @@
 
 /* ---- group summary strip ---- */
 
+/* A grid, not wrapping flex: with an odd number of figures the flex version left the last one
+   alone on a second row beside a wide gap. Columns size themselves, so two currencies fill the
+   row evenly and one currency still reads as a row of counts. */
 .totals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5) var(--space-7);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--space-4) var(--space-5);
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -219,6 +231,13 @@
 }
 
 /* ---- per-card figures ---- */
+
+/* The line trails the figures and hugs the right edge, so the two amounts keep their own row.
+   Placed first it became a flex item ahead of them and pushed Net profit onto a second line. */
+.figures > svg {
+  margin-left: auto;
+  align-self: center;
+}
 
 .figures {
   display: flex;
@@ -297,11 +316,29 @@
   color: var(--warning-fg);
   background-color: var(--warning-bg-soft);
   border: 1px solid var(--warning-bd);
-  padding: 0.1875rem 0.5rem;
+  /* 0.1875rem left this 22px tall — two short of the 24x24 minimum target size (WCAG 2.5.8). */
+  padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .tagAction:hover {
   background-color: var(--warning-bd);
+}
+
+/* Matches the shell's own breakpoint: below it the page is one column, not a rail and a pane. */
+@media (max-width: 60rem) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grid {
+    /* 17.5rem plus the page gutters overflows a 390px viewport; the cards are readable narrower. */
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+
+  .totals {
+    gap: var(--space-4) var(--space-5);
+  }
 }

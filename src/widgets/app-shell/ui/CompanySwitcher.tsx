@@ -4,6 +4,7 @@ import { Building2, Check, ChevronDown } from 'lucide-react';
 
 import type { Company } from '@/entities/company';
 import { cn } from '@/shared/lib';
+import { useMenuKeys } from '@/shared/hooks';
 
 import styles from './CompanySwitcher.module.css';
 
@@ -29,6 +30,9 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useMenuKeys(open, menuRef);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +59,12 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
   // Nothing to switch between, or the list has not arrived — the trigger would be a dead control.
   if (!companies || companies.length < 2 || !active) return null;
 
+  // Deactivated companies stay reachable, but sink below the ones in daily use.
+  const ordered = [...companies].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'ACTIVE' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
   function switchTo(company: Company) {
     setOpen(false);
     if (company.id === companyId) return;
@@ -76,13 +86,14 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
       >
         <Building2 size={14} className={styles.icon} />
         <span className={styles.name}>{active.name}</span>
+        {active.status !== 'ACTIVE' && <span className={styles.triggerInactive}>Deactivated</span>}
         <span className={styles.code}>{active.code}</span>
         <ChevronDown size={14} className={cn(styles.chevron, open && styles.chevronOpen)} />
       </button>
 
       {open && (
-        <div className={styles.menu} role="menu" aria-label="Switch company">
-          {companies.map((company) => (
+        <div className={styles.menu} role="menu" aria-label="Switch company" ref={menuRef}>
+          {ordered.map((company) => (
             <button
               key={company.id}
               type="button"
@@ -95,6 +106,11 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
                 {company.id === companyId && <Check size={14} />}
               </span>
               <span className={styles.optionName}>{company.name}</span>
+              {/* Without this you can switch into a deactivated company and only find out from a
+                  badge two screens later. */}
+              {company.status !== 'ACTIVE' && (
+                <span className={styles.optionInactive}>Deactivated</span>
+              )}
               <span className={styles.optionCode}>{company.code}</span>
             </button>
           ))}

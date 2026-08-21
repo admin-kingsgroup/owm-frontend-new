@@ -1,0 +1,6 @@
+.chart {
+  display: block;
+  flex-shrink: 0;
+  /* The line is meaning, not decoration, so it must survive a print. */
+  overflow: visible;
+}

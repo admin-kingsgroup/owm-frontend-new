@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { Building2, LayoutGrid, Receipt, BarChart3, PieChart } from 'lucide-react';
 
-import { listCompanies } from '@/entities/company';
-import type { Company } from '@/entities/company';
+import { useCompanyStore } from '@/entities/company';
 import { cn } from '@/shared/lib';
+import { ErrorBoundary } from '@/shared/ui';
 
 import { CompanySwitcher } from './CompanySwitcher';
 import { UserMenu } from './UserMenu';
@@ -12,6 +12,7 @@ import styles from './AppShell.module.css';
 
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
+  const location = useLocation();
   const inCompany = Boolean(companyId);
 
   /**
@@ -21,36 +22,33 @@ export function AppShell() {
    * company's type. Keyed on `inCompany` rather than `companyId`, so switching company reuses the
    * list it just read instead of fetching it again.
    */
-  const [companies, setCompanies] = useState<Company[] | null>(null);
+  // The same list the companies page holds, rather than a second copy. Sharing it means entering
+  // a company costs no extra request, and a company created or renamed on that page reaches the
+  // switcher without a reload. A failed load leaves it null, which the section link below and the
+  // switcher each already handle: chrome, not content.
+  const companies = useCompanyStore((state) => state.companies);
+  const listLoaded = useCompanyStore((state) => state.loaded);
+  const loadCompanies = useCompanyStore((state) => state.load);
 
   useEffect(() => {
     if (!inCompany) return;
-    let cancelled = false;
-
-    listCompanies()
-      .then((result) => {
-        if (!cancelled) setCompanies(result);
-      })
-      .catch(() => {
-        // Chrome, not content. The shell still works without the list: the switcher hides itself
-        // and the section link below settles on Vouchers rather than vanishing.
-        if (!cancelled) setCompanies([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [inCompany]);
+    void loadCompanies();
+  }, [inCompany, loadCompanies]);
 
   /**
-   * `null` while the list is still in flight. Vouchers and Portfolio are mutually exclusive, so
-   * the slot stays empty until the answer is known — showing one and then swapping it for the
+   * `null` only while the list is still in flight. Vouchers and Portfolio are mutually exclusive,
+   * so the slot stays empty until the answer is known — showing one and then swapping it for the
    * other would offer a link that is about to disappear.
+   *
+   * Keyed on the store's `loaded` rather than on `companies === null`, because those are not the
+   * same thing: a failed load settles with no data, and reading it as "still loading" would leave
+   * a company with no section link at all until the page was reloaded. Settled-but-empty falls
+   * through to Vouchers, which is what two of the three company types want.
    */
   const section =
-    !companyId || companies === null
+    !companyId || !listLoaded
       ? null
-      : companies.find((company) => company.id === companyId)?.type === 'ANALYTICS'
+      : companies?.find((company) => company.id === companyId)?.type === 'ANALYTICS'
         ? 'portfolio'
         : 'vouchers';
 
@@ -85,6 +83,19 @@ export function AppShell() {
                 <LayoutGrid size={16} />
                 Overview
               </NavLink>
+              {/*
+                Holds the row until the answer arrives. Rendering nothing would let Reports sit one
+                row higher for as long as the company list takes, then jump — a shift on the one
+                control someone is most likely to be reaching for.
+              */}
+              {section === null && (
+                <span className={cn(styles.navLink, styles.navPlaceholder)} aria-hidden="true">
+                  {/* An icon-sized box and a text line, so the row measures exactly like a real
+                      one without a hardcoded height to drift from it. */}
+                  <span className={styles.navPlaceholderIcon} />
+                  &nbsp;
+                </span>
+              )}
               {section === 'portfolio' && (
                 <NavLink
                   to={`/companies/${companyId}/kg`}
@@ -127,7 +138,13 @@ export function AppShell() {
         </header>
 
         <main className={styles.content}>
-          <Outlet />
+          {/*
+            Keyed on the path so navigating away clears a caught error. React boundaries do not
+            reset themselves, and without the key one broken screen would follow you around the app.
+          */}
+          <ErrorBoundary key={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

@@ -62,3 +62,29 @@ describe('formatMoneyWithSide', () => {
     expect(formatMoneyWithSide('0')).toBe('0.00');
   });
 });
+
+describe('regional grouping', () => {
+  it('groups the Indian way for an Indian company, whatever the browser is set to', () => {
+    // 51,76,350 and not 5,176,350 — the same digits, read wrongly at a glance by the reader it
+    // is meant for. This is the whole reason the country is threaded through.
+    expect(formatMoney('5176350', { currency: 'INR', country: 'IN' })).toContain('51,76,350.00');
+  });
+
+  it('groups in threes for a company that reads that way', () => {
+    expect(formatMoney('5176350', { currency: 'USD', country: 'US' })).toContain('5,176,350.00');
+  });
+
+  it('falls back to the reader when no country is known', () => {
+    expect(() => formatMoney('5176350', { currency: 'INR' })).not.toThrow();
+  });
+
+  it('ignores a country it cannot make sense of rather than throwing', () => {
+    expect(() => formatMoney('1000', { currency: 'INR', country: 'not-a-country' })).not.toThrow();
+  });
+
+  it('keeps the accounting brackets when grouping regionally', () => {
+    expect(formatMoney('-219600', { currency: 'INR', country: 'IN' })).toMatch(
+      /^\(.*2,19,600\.00\)$/,
+    );
+  });
+});

@@ -14,6 +14,7 @@ export type {
   ReceiptsAndPaymentsReport,
   CashFlowReport,
   CompanyOverview,
+  CompanyTrendPoint,
   GroupOverviewTotalsByCurrency,
   GroupOverview,
 } from './model/types';

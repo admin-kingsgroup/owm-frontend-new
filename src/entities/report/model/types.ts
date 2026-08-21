@@ -111,17 +111,30 @@ export interface DayBookReport {
 }
 
 /** One company's line on the group overview. Amounts are strings; see `formatMoney`. */
+/** One month of a company's movement, for the overview sparkline. */
+export interface CompanyTrendPoint {
+  /** First day of the month, "YYYY-MM-DD". */
+  month: string;
+  /** Running cash and bank position at the end of that month. */
+  cashAndBank: string;
+  /** Profit earned in that month alone, not cumulative. */
+  netProfit: string;
+}
+
 export interface CompanyOverview {
   companyId: string;
   name: string;
   code: string;
   baseCurrency: string;
+  /** Inactive companies are listed but excluded from every group total. */
+  status: 'ACTIVE' | 'INACTIVE';
   financialYearId: string | null;
   financialYearLabel: string | null;
   financialYearStatus: 'OPEN' | 'CLOSED' | null;
   cashAndBank: string;
   netProfit: string;
   draftVoucherCount: number;
+  trend: CompanyTrendPoint[];
   /** Set when this company's figures could not be computed. The row still appears. */
   error: string | null;
 }
@@ -138,8 +151,11 @@ export interface GroupOverview {
     /** One entry per currency in the group — never summed across currencies. */
     byCurrency: GroupOverviewTotalsByCurrency[];
     draftVoucherCount: number;
+    /** Active companies — the population the other totals are computed over. */
     companyCount: number;
     openYearCount: number;
+    /** Listed, but excluded from every figure above. */
+    inactiveCount: number;
   };
 }
 

@@ -9,6 +9,11 @@ import styles from './ReportsPage.module.css';
 export interface ReportTreeProps {
   nodes: ReportNode[];
   onSelectLedger: (node: ReportNode) => void;
+  /**
+   * How to render an amount. Passed in rather than imported, so the tree stays presentational and
+   * the page decides the currency and which region's digit grouping to use.
+   */
+  formatAmount: (value: string) => string;
 }
 
 /**
@@ -20,10 +25,12 @@ function TreeRow({
   node,
   depth,
   onSelectLedger,
+  formatAmount,
 }: {
   node: ReportNode;
   depth: number;
   onSelectLedger: (node: ReportNode) => void;
+  formatAmount: (value: string) => string;
 }) {
   const [expanded, setExpanded] = useState(depth === 0);
   const hasChildren = Boolean(node.children?.length);
@@ -40,7 +47,7 @@ function TreeRow({
       >
         <span className={styles.treeName}>{node.name}</span>
         <span className={styles.treeAmount}>
-          {node.balance}
+          {formatAmount(node.balance)}
           <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
         </span>
       </button>
@@ -57,17 +64,11 @@ function TreeRow({
         aria-expanded={hasChildren ? expanded : undefined}
       >
         <span className={styles.treeChevron}>
-          {hasChildren ? (
-            expanded ? (
-              <ChevronDown size={13} />
-            ) : (
-              <ChevronRight size={13} />
-            )
-          ) : null}
+          {hasChildren ? expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}
         </span>
         <span className={styles.treeName}>{node.name}</span>
         <span className={styles.treeAmount}>
-          {node.balance}
+          {formatAmount(node.balance)}
           <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
         </span>
       </button>
@@ -78,13 +79,14 @@ function TreeRow({
             node={child}
             depth={depth + 1}
             onSelectLedger={onSelectLedger}
+            formatAmount={formatAmount}
           />
         ))}
     </>
   );
 }
 
-export function ReportTree({ nodes, onSelectLedger }: ReportTreeProps) {
+export function ReportTree({ nodes, onSelectLedger, formatAmount }: ReportTreeProps) {
   if (nodes.length === 0) {
     return <p className={styles.empty}>Nothing posted in this period.</p>;
   }
@@ -97,6 +99,7 @@ export function ReportTree({ nodes, onSelectLedger }: ReportTreeProps) {
           node={node}
           depth={0}
           onSelectLedger={onSelectLedger}
+          formatAmount={formatAmount}
         />
       ))}
     </div>

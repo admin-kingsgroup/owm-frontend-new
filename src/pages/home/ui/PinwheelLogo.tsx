@@ -1,12 +1,19 @@
 import styles from './PinwheelLogo.module.css';
 
+/**
+ * One hue, stepped light to dark around the turn.
+ *
+ * The mark used to be six unrelated colours — violet, blue, teal — from before the product
+ * settled on a single amber accent. A logo in colours the rest of the interface never uses reads
+ * as belonging to something else, and this is the first thing anyone sees.
+ */
 const BLADES = [
-  { angle: 0, color: '#9a6cf0' },
-  { angle: 60, color: '#d8d3c8' },
-  { angle: 120, color: '#4f8bff' },
-  { angle: 180, color: '#37b6a4' },
-  { angle: 240, color: '#e8a13a' },
-  { angle: 300, color: '#e3674e' },
+  { angle: 0, color: '#f5b06a' },
+  { angle: 60, color: '#e59a4e' },
+  { angle: 120, color: '#d3833a' },
+  { angle: 180, color: '#c0702a' },
+  { angle: 240, color: '#a75d1c' },
+  { angle: 300, color: '#8f4c14' },
 ];
 
 export interface PinwheelLogoProps {

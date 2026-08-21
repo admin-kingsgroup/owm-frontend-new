@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Building2, ArrowRight, Pencil, Power } from 'lucide-react';
 
-import { listCompanies, updateCompany, companyStatusVariant } from '@/entities/company';
+import { updateCompany, companyStatusVariant, useCompanyStore } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { getGroupOverview } from '@/entities/report';
 import type { CompanyOverview, GroupOverview } from '@/entities/report';
 import { CreateCompanyForm, EditCompanyForm } from '@/features/company';
-import { Button, Modal, Loading, EmptyState, Badge } from '@/shared/ui';
+import { Button, Modal, Loading, EmptyState, Badge, Sparkline } from '@/shared/ui';
 import { cn, formatMoney, getErrorMessage } from '@/shared/lib';
 
 import styles from './CompaniesPage.module.css';
@@ -22,7 +22,14 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
 export function CompaniesPage() {
   const navigate = useNavigate();
 
-  const [companies, setCompanies] = useState<Company[] | null>(null);
+  // One shared list, so the topbar switcher and this page cannot disagree and a company created
+  // here is visible everywhere immediately.
+  const companies = useCompanyStore((state) => state.companies);
+  const companiesLoaded = useCompanyStore((state) => state.loaded);
+  const companiesError = useCompanyStore((state) => state.error);
+  const loadCompanies = useCompanyStore((state) => state.load);
+  const upsertCompany = useCompanyStore((state) => state.upsert);
+
   const [overview, setOverview] = useState<GroupOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** The figures failing is a degraded page, not a broken one — kept apart from `error`. */
@@ -34,30 +41,34 @@ export function CompaniesPage() {
   useEffect(() => {
     let cancelled = false;
 
-    // Settled rather than all: the company list is what the page needs in order to render at all,
-    // and the figures enrich it. Either one failing must not take the other down with it.
-    Promise.allSettled([listCompanies(), getGroupOverview()]).then(([list, figures]) => {
-      if (cancelled) return;
-
-      if (list.status === 'fulfilled') {
-        setCompanies(list.value);
-      } else {
-        setError(getErrorMessage(list.reason, 'Could not load companies'));
-      }
-
-      if (figures.status === 'fulfilled') {
-        setOverview(figures.value);
-      } else {
-        setFiguresError(
-          getErrorMessage(figures.reason, 'Could not load figures for these companies'),
-        );
-      }
-    });
+    // The list and the figures are independent: either failing must not take the other down. The
+    // list is owned by the store; only the figures are local to this screen.
+    void loadCompanies();
+    getGroupOverview()
+      .then((result) => {
+        if (!cancelled) setOverview(result);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFiguresError(getErrorMessage(err, 'Could not load figures for these companies'));
+        }
+      });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadCompanies]);
+
+  /**
+   * Which country's conventions to group a figure by. A per-currency total has no single company
+   * behind it, so it takes the country of the first company using that currency — which is the
+   * right answer whenever a currency belongs to one region, and no worse than the browser's guess
+   * when it does not.
+   */
+  const countryOf = useCallback(
+    (currency: string) => companies?.find((c) => c.baseCurrency === currency)?.country,
+    [companies],
+  );
 
   const figuresById = useMemo(
     () => new Map((overview?.companies ?? []).map((row) => [row.companyId, row])),
@@ -71,47 +82,70 @@ export function CompaniesPage() {
   const groupStats = useMemo(() => {
     if (!overview) return [];
 
-    const multiCurrency = overview.totals.byCurrency.length > 1;
-    const currencyStats = overview.totals.byCurrency.flatMap((total) => [
-      {
-        key: `${total.currency}-cash`,
-        label: multiCurrency ? `Cash & bank · ${total.currency}` : 'Cash & bank',
-        value: formatMoney(total.cashAndBank, { currency: total.currency }),
-        negative: Number(total.cashAndBank) < 0,
-      },
-      {
-        key: `${total.currency}-profit`,
-        label: multiCurrency ? `Net profit · ${total.currency}` : 'Net profit',
-        value: formatMoney(total.netProfit, { currency: total.currency }),
-        negative: Number(total.netProfit) < 0,
-      },
-    ]);
+    const { totals } = overview;
+    const multiCurrency = totals.byCurrency.length > 1;
+
+    // With a single company the strip would restate that company's own card word for word. The
+    // counts still earn their place, because the card does not carry them.
+    const currencyStats =
+      totals.companyCount <= 1
+        ? []
+        : totals.byCurrency.flatMap((total) => {
+            const country = countryOf(total.currency);
+            return [
+              {
+                key: `${total.currency}-cash`,
+                label: multiCurrency ? `Cash & bank · ${total.currency}` : 'Cash & bank',
+                value: formatMoney(total.cashAndBank, { currency: total.currency, country }),
+                negative: Number(total.cashAndBank) < 0,
+              },
+              {
+                key: `${total.currency}-profit`,
+                label: multiCurrency ? `Net profit · ${total.currency}` : 'Net profit',
+                value: formatMoney(total.netProfit, { currency: total.currency, country }),
+                negative: Number(total.netProfit) < 0,
+              },
+            ];
+          });
 
     return [
       ...currencyStats,
       {
         key: 'drafts',
         label: 'Awaiting posting',
-        value: String(overview.totals.draftVoucherCount),
+        value: String(totals.draftVoucherCount),
         negative: false,
       },
       {
         key: 'years',
         label: 'Open years',
-        value: `${overview.totals.openYearCount} of ${overview.totals.companyCount}`,
+        value: `${totals.openYearCount} of ${totals.companyCount}`,
         negative: false,
       },
+      // Only worth a slot when there is something to explain — it is the reason the figures above
+      // do not add up to what the list below shows.
+      ...(totals.inactiveCount > 0
+        ? [
+            {
+              key: 'inactive',
+              label: 'Deactivated',
+              value: `${totals.inactiveCount} · not counted`,
+              negative: false,
+            },
+          ]
+        : []),
     ];
-  }, [overview]);
+  }, [overview, countryOf]);
 
   function handleCreated(company: Company) {
+    upsertCompany(company);
     setCreateModalOpen(false);
     navigate(`/companies/${company.id}`);
   }
 
   function handleEdited(company: Company) {
     setEditingCompany(null);
-    setCompanies((current) => current?.map((c) => (c.id === company.id ? company : c)) ?? current);
+    upsertCompany(company);
   }
 
   async function handleToggleStatus(company: Company) {
@@ -128,9 +162,7 @@ export function CompaniesPage() {
       const updated = await updateCompany(company.id, {
         status: company.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
       });
-      setCompanies(
-        (current) => current?.map((c) => (c.id === updated.id ? updated : c)) ?? current,
-      );
+      upsertCompany(updated);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not update company status'));
     } finally {
@@ -138,7 +170,11 @@ export function CompaniesPage() {
     }
   }
 
-  function renderFigures(figures: CompanyOverview | undefined, companyId: string) {
+  function renderFigures(
+    figures: CompanyOverview | undefined,
+    companyId: string,
+    country?: string,
+  ) {
     if (!figures) return null;
 
     // A company that cannot be reported on still belongs on the list. Saying why beats showing
@@ -158,7 +194,7 @@ export function CompaniesPage() {
                 Number(figures.cashAndBank) < 0 && styles.figureNegative,
               )}
             >
-              {formatMoney(figures.cashAndBank, { currency: figures.baseCurrency })}
+              {formatMoney(figures.cashAndBank, { currency: figures.baseCurrency, country })}
             </span>
           </div>
           <div className={styles.figure}>
@@ -169,9 +205,21 @@ export function CompaniesPage() {
                 Number(figures.netProfit) < 0 && styles.figureNegative,
               )}
             >
-              {formatMoney(figures.netProfit, { currency: figures.baseCurrency })}
+              {formatMoney(figures.netProfit, { currency: figures.baseCurrency, country })}
             </span>
           </div>
+          {/*
+            The line is normalised to its own range, so it shows direction of travel only — the
+            figure beside it carries the amount. Nothing is drawn before two months exist, rather
+            than a flat line implying a history that is not there.
+          */}
+          {figures.trend.length > 1 && (
+            <Sparkline
+              values={figures.trend.map((point) => Number(point.cashAndBank))}
+              color={Number(figures.netProfit) < 0 ? 'var(--data-2)' : 'var(--data-1)'}
+              label={`Cash and bank over ${figures.trend.length} months`}
+            />
+          )}
         </div>
 
         <div className={styles.cardTags}>
@@ -218,9 +266,25 @@ export function CompaniesPage() {
         </p>
       )}
 
-      {!companies ? (
+      {/*
+        `loaded` rather than `companies !== null`: a failed request has no data either, and
+        treating the two the same left the error message sitting above a spinner that never
+        stopped.
+      */}
+      {!companiesLoaded ? (
         <Loading label="Loading companies…" />
-      ) : companies.length === 0 ? (
+      ) : companiesError ? (
+        <EmptyState
+          icon={<Building2 size={32} />}
+          title="Could not load companies"
+          description={companiesError}
+          action={
+            <Button type="button" variant="ghost" onClick={() => void loadCompanies(true)}>
+              Try again
+            </Button>
+          }
+        />
+      ) : !companies || companies.length === 0 ? (
         <EmptyState
           icon={<Building2 size={32} />}
           title="No companies yet"
@@ -264,7 +328,7 @@ export function CompaniesPage() {
                   {company.country}
                 </p>
 
-                {renderFigures(figuresById.get(company.id), company.id)}
+                {renderFigures(figuresById.get(company.id), company.id, company.country)}
 
                 <div className={styles.cardFooter}>
                   {/*

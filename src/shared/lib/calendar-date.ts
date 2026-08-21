@@ -1,3 +1,5 @@
+import { localeFor } from './format-money';
+
 /**
  * The API treats voucher and financial-year dates as calendar days and serialises them as UTC
  * midnight ("2026-08-19T00:00:00.000Z"). Reading those back with the browser's local timezone
@@ -19,9 +21,15 @@ export function toDateInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Renders an API calendar day in the viewer's locale format, reading it back in UTC. */
-export function formatCalendarDay(value: string | Date): string {
-  return new Date(value).toLocaleDateString(undefined, { timeZone: 'UTC' });
+/**
+ * Renders an API calendar day, reading it back in UTC.
+ *
+ * Given the company's country the day is written the way that country writes it — 12/05/2026 in
+ * India rather than the browser's 5/12/2026, which is the same eight characters meaning a
+ * different day. Without one it falls back to the reader's own locale.
+ */
+export function formatCalendarDay(value: string | Date, country?: string): string {
+  return new Date(value).toLocaleDateString(localeFor(country), { timeZone: 'UTC' });
 }
 
 /** Calendar year of an API date, read in UTC so it cannot slip across a 1 January boundary. */

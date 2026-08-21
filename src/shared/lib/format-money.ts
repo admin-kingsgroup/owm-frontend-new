@@ -19,14 +19,37 @@ const MAX_EXACT = Number.MAX_SAFE_INTEGER / 100;
  */
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
-function formatterFor(currency?: string): Intl.NumberFormat {
-  const key = currency ?? '';
+/**
+ * The locale to group digits by.
+ *
+ * Grouping is regional, not linguistic: 16,80,750 is how the figure is read in India whichever
+ * language the reader's browser is set to, and plenty of Indian users run an en-US machine. So the
+ * company's own country decides the region while the browser keeps deciding the language. Built
+ * through `Intl.Locale` rather than a country-to-locale table, so nothing is hardcoded.
+ *
+ * Without a country it returns undefined, which leaves `Intl` on the reader's own locale.
+ */
+export function localeFor(country?: string): string | undefined {
+  if (!country) return undefined;
+
+  try {
+    const browser =
+      typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en';
+    const language = new Intl.Locale(browser).language;
+    return new Intl.Locale(language, { region: country.toUpperCase() }).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function formatterFor(currency?: string, locale?: string): Intl.NumberFormat {
+  const key = `${locale ?? ''}|${currency ?? ''}`;
   const cached = formatterCache.get(key);
   if (cached) return cached;
 
   let formatter: Intl.NumberFormat;
   try {
-    formatter = new Intl.NumberFormat(undefined, {
+    formatter = new Intl.NumberFormat(locale, {
       ...(currency ? { style: 'currency', currency } : {}),
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -34,7 +57,7 @@ function formatterFor(currency?: string): Intl.NumberFormat {
   } catch {
     // An unrecognised currency code throws rather than degrading. A wrong symbol is a display
     // problem; a thrown error takes the whole screen down, so fall back to a bare number.
-    formatter = new Intl.NumberFormat(undefined, {
+    formatter = new Intl.NumberFormat(locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -52,6 +75,11 @@ export interface FormatMoneyOptions {
    * default here because every figure this app shows is an accounting figure.
    */
   accounting?: boolean;
+  /**
+   * ISO 3166-1 alpha-2 code of the company the figure belongs to, e.g. "IN". Decides digit
+   * grouping. Omit to group the way the reader's own browser would.
+   */
+  country?: string;
 }
 
 /**
@@ -59,7 +87,7 @@ export interface FormatMoneyOptions {
  * malformed figure shows as itself rather than as "NaN".
  */
 export function formatMoney(value: string | number, options: FormatMoneyOptions = {}): string {
-  const { currency, accounting = true } = options;
+  const { currency, accounting = true, country } = options;
 
   // Blank and null must be caught before the conversion, not after: Number('') and Number(null)
   // are both 0, which would render a missing amount as a confident 0.00 balance.
@@ -78,7 +106,7 @@ export function formatMoney(value: string | number, options: FormatMoneyOptions 
     return String(value);
   }
 
-  const magnitude = formatterFor(currency).format(Math.abs(numeric));
+  const magnitude = formatterFor(currency, localeFor(country)).format(Math.abs(numeric));
 
   if (numeric < 0) {
     return accounting ? `(${magnitude})` : `-${magnitude}`;

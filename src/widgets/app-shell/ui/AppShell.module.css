@@ -84,6 +84,23 @@
   box-shadow: inset 3px 0 0 var(--accent-2);
 }
 
+/*
+  An empty stand-in for the Vouchers/Portfolio row while the company list decides which of the two
+  belongs here. Explicit height rather than inherited padding, because it holds no content of its
+  own. Hidden from assistive tech — there is nothing yet to announce.
+*/
+.navPlaceholder {
+  /* In layout, out of sight and out of the accessibility tree — it holds a row, not a control. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.navPlaceholderIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .main {
   display: flex;
   flex-direction: column;
@@ -113,4 +130,71 @@
   flex: 1;
   padding: 2.375rem 2.75rem;
   overflow-y: auto;
+}
+
+/*
+  Below this width the fixed 16.5rem rail plus the content padding is wider than the viewport, so
+  the whole page scrolled sideways and the user menu fell off the right edge. The shell stacks
+  instead: the rail becomes a bar across the top whose nav scrolls on its own, and the content
+  takes the full width.
+*/
+@media (max-width: 60rem) {
+  .shell {
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border-right: none;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .brand {
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  /* The wordmark and its strapline are what a narrow bar can least afford; the mark still reads. */
+  .brandName,
+  .brandSub {
+    display: none;
+  }
+
+  .nav {
+    flex-direction: row;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .navLink {
+    white-space: nowrap;
+  }
+
+  /* Read as a left edge down the rail; across the top it belongs under the item. */
+  .navLinkActive {
+    box-shadow: inset 0 -3px 0 var(--accent-2);
+  }
+
+  .navPlaceholder {
+    /* Nothing shifts vertically in a horizontal bar, so what is reserved here is width. */
+    width: 5.5rem;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: 3.25rem;
+    gap: 0.625rem;
+    padding: 0.5rem 0.875rem;
+  }
+
+  .content {
+    padding: 1.25rem 0.875rem;
+  }
 }

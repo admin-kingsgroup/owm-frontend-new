@@ -9,7 +9,13 @@ import { useSyncExternalStore } from 'react';
  */
 export type ThemePreference = 'system' | 'light' | 'dark';
 
-/** Shared with the pre-paint script in index.html — change both together or the page flashes. */
+/**
+ * Shared with the pre-paint script in index.html — change both together or the page flashes.
+ *
+ * Reached through `window` rather than the bare global on purpose: under Node 26 a built-in
+ * experimental `localStorage` shadows the one jsdom installs, and throws unless the process was
+ * started with --localstorage-file. In a browser the two are the same object.
+ */
 export const THEME_STORAGE_KEY = 'owm.theme';
 
 const isPreference = (value: unknown): value is ThemePreference =>
@@ -17,7 +23,7 @@ const isPreference = (value: unknown): value is ThemePreference =>
 
 function readStored(): ThemePreference {
   try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     return isPreference(stored) ? stored : 'system';
   } catch {
     // Private browsing can throw on access rather than return null.
@@ -67,7 +73,7 @@ export function setTheme(preference: ThemePreference): void {
   apply(preference);
 
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, preference);
+    window.localStorage.setItem(THEME_STORAGE_KEY, preference);
   } catch {
     // A theme that cannot be remembered is still worth applying for this session.
   }

@@ -2,12 +2,16 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
- * Node environment, deliberately.
+ * Node by default, jsdom where a test asks for it.
  *
- * These cover the pure logic — the money and date maths, the CSV escaping, the number preview —
- * which is where a silent wrong answer can reach a financial statement. Rendering components would
- * need jsdom and a testing library on top; that is a separate decision, and this suite is useful
- * without it.
+ * Most of what is worth testing is pure logic — the money and date maths, the CSV escaping, the
+ * number preview — which is where a silent wrong answer reaches a financial statement, and none of
+ * it needs a DOM. The pieces that do, such as the theme control writing an attribute onto <html>
+ * or a menu moving focus, opt in per file with:
+ *
+ *     // @vitest-environment jsdom
+ *
+ * so the fast default is not paid for by every test.
  */
 export default defineConfig({
   resolve: {
@@ -17,6 +21,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    setupFiles: ['./vitest.setup.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 });

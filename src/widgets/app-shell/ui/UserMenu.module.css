@@ -162,3 +162,14 @@
   color: var(--on-accent);
   background-color: var(--accent);
 }
+
+/* Paired with the shell's stacked bar: the avatar alone identifies the account on a narrow screen. */
+@media (max-width: 60rem) {
+  .name {
+    display: none;
+  }
+
+  .trigger {
+    padding: 0.25rem;
+  }
+}

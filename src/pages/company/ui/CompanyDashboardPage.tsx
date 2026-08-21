@@ -18,7 +18,7 @@ import { CreateAccountGroupForm } from '@/features/account-group';
 import { CreateLedgerForm, EditLedgerForm } from '@/features/ledger';
 import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-type';
 import { Button, Modal, Loading, Badge, EmptyState } from '@/shared/ui';
-import { getErrorMessage, cn, formatRecordId, calendarYear } from '@/shared/lib';
+import { getErrorMessage, cn, formatRecordId, calendarYear, formatMoney } from '@/shared/lib';
 
 import { AccountGroupTree } from './AccountGroupTree';
 import { FinancialYearsPanel } from './FinancialYearsPanel';
@@ -75,19 +75,18 @@ export function CompanyDashboardPage() {
           openingResult,
           seriesResult,
           currenciesResult,
-        ] =
-          await Promise.all([
-            getCompany(id),
-            listAccountGroups(id),
-            listLedgers(id),
-            listVoucherTypes(id),
-            getOpeningBalanceSummary(id),
-            listNumberSeries(id),
-            // Optional context for the ledger form, not something the page depends on. A company
-            // with multi-currency off has none, and failing the whole dashboard over that would
-            // be the wrong trade.
-            listCurrencies(id).catch(() => [] as Currency[]),
-          ]);
+        ] = await Promise.all([
+          getCompany(id),
+          listAccountGroups(id),
+          listLedgers(id),
+          listVoucherTypes(id),
+          getOpeningBalanceSummary(id),
+          listNumberSeries(id),
+          // Optional context for the ledger form, not something the page depends on. A company
+          // with multi-currency off has none, and failing the whole dashboard over that would
+          // be the wrong trade.
+          listCurrencies(id).catch(() => [] as Currency[]),
+        ]);
         if (cancelled) return;
         setCompany(companyResult);
         setGroups(groupsResult);
@@ -126,7 +125,9 @@ export function CompanyDashboardPage() {
     : ledgers;
 
   async function handleDeleteVoucherType(voucherType: VoucherType) {
-    const confirmed = window.confirm(`Delete voucher type "${voucherType.name}"? This can't be undone.`);
+    const confirmed = window.confirm(
+      `Delete voucher type "${voucherType.name}"? This can't be undone.`,
+    );
     if (!confirmed) return;
 
     setDeletingVoucherTypeId(voucherType.id);
@@ -200,8 +201,7 @@ export function CompanyDashboardPage() {
           </div>
           <p className={styles.subtitle}>
             {company.code} · {company.baseCurrency} · {company.country} · FY{' '}
-            {calendarYear(company.financialYearStart)}–
-            {calendarYear(company.financialYearEnd)}
+            {calendarYear(company.financialYearStart)}–{calendarYear(company.financialYearEnd)}
           </p>
         </div>
         {/*
@@ -221,11 +221,23 @@ export function CompanyDashboardPage() {
 
       {openingBalance && openingBalance.difference !== '0.00' && (
         <div className={styles.openingDiff}>
-          <strong>Difference in opening balances:</strong> {company.baseCurrency}{' '}
-          {openingBalance.difference}
+          <strong>Difference in opening balances:</strong>{' '}
+          {formatMoney(openingBalance.difference, {
+            currency: company.baseCurrency,
+            country: company.country,
+          })}
           <span className={styles.openingDiffHint}>
-            Debits {openingBalance.totalDebit} · credits {openingBalance.totalCredit}. Opening
-            balances should net to zero once every ledger has been entered.
+            Debits{' '}
+            {formatMoney(openingBalance.totalDebit, {
+              currency: company.baseCurrency,
+              country: company.country,
+            })}{' '}
+            · credits{' '}
+            {formatMoney(openingBalance.totalCredit, {
+              currency: company.baseCurrency,
+              country: company.country,
+            })}
+            . Opening balances should net to zero once every ledger has been entered.
           </span>
         </div>
       )}
@@ -330,7 +342,11 @@ export function CompanyDashboardPage() {
                       <td>{ledger.name}</td>
                       <td>{ledger.ledgerType}</td>
                       <td className={styles.mono}>
-                        {Number(ledger.openingBalance).toFixed(2)} {ledger.openingBalanceType}
+                        {formatMoney(ledger.openingBalance, {
+                          currency: company.baseCurrency,
+                          country: company.country,
+                        })}{' '}
+                        {ledger.openingBalanceType}
                       </td>
                       {/*
                         Which accounts are foreign is the question the field exists to answer, so it
@@ -340,8 +356,8 @@ export function CompanyDashboardPage() {
                       <td className={styles.mono}>
                         {ledger.currencyId ? (
                           <Badge variant="neutral">
-                            {currencies.find((currency) => currency.id === ledger.currencyId)?.code ??
-                              'Unknown'}
+                            {currencies.find((currency) => currency.id === ledger.currencyId)
+                              ?.code ?? 'Unknown'}
                           </Badge>
                         ) : (
                           <span className={styles.muted}>{company.baseCurrency}</span>
@@ -437,7 +453,9 @@ export function CompanyDashboardPage() {
                         aria-label="Delete voucher type"
                         disabled={voucherType.isSystem || deletingVoucherTypeId === voucherType.id}
                         title={
-                          voucherType.isSystem ? 'System voucher types cannot be deleted' : undefined
+                          voucherType.isSystem
+                            ? 'System voucher types cannot be deleted'
+                            : undefined
                         }
                         onClick={() => handleDeleteVoucherType(voucherType)}
                       >
@@ -482,7 +500,11 @@ export function CompanyDashboardPage() {
         />
       </Modal>
 
-      <Modal open={editingLedger !== null} onClose={() => setEditingLedger(null)} title="Edit ledger">
+      <Modal
+        open={editingLedger !== null}
+        onClose={() => setEditingLedger(null)}
+        title="Edit ledger"
+      >
         {editingLedger && (
           <EditLedgerForm
             companyId={companyId}

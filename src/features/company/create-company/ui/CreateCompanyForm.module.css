@@ -87,7 +87,8 @@
   color: var(--ink-faint);
 }
 
+/* --ink-faint is already the quiet foreground, and it sits on the 4.5:1 floor. Dimming it to
+   0.75 measured 3.01:1, so the colour carries the emphasis on its own. */
 .previewMuted {
   color: var(--ink-faint);
-  opacity: 0.75;
 }

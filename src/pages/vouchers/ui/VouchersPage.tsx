@@ -15,7 +15,7 @@ import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
-import { getErrorMessage, formatCalendarDay } from '@/shared/lib';
+import { getErrorMessage, formatCalendarDay, formatMoney } from '@/shared/lib';
 
 import styles from './VouchersPage.module.css';
 
@@ -154,6 +154,27 @@ export function VouchersPage() {
   const setupIncomplete = setupMissing.length > 0;
 
   if (!companyId) return null;
+
+  /*
+    An analytics workspace keeps no double-entry books, which is why its overview offers the
+    portfolio where the others offer vouchers and why the sidebar carries no Vouchers link for it.
+    Reached by a typed or bookmarked URL this screen would still show filters and an enabled New
+    voucher button; saying so plainly, and pointing at the screen that does apply, matches how
+    KgPage turns away a company that is not a portfolio workspace.
+  */
+  if (loaded && loaded.company.type === 'ANALYTICS') {
+    return (
+      <EmptyState
+        title="This company does not post vouchers"
+        description={`${loaded.company.name} is a portfolio workspace, so it has no double-entry books of its own. Its figures come from the businesses tracked under KG Business.`}
+        action={
+          <Link to={`/companies/${companyId}/kg`}>
+            <Button variant="primary">Open the portfolio</Button>
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -337,10 +358,20 @@ export function VouchersPage() {
                     </td>
                     <td>{entry.ledgerCode}</td>
                     <td className={styles.mono}>
-                      {Number(entry.debit) > 0 ? Number(entry.debit).toFixed(2) : ''}
+                      {Number(entry.debit) > 0
+                        ? formatMoney(entry.debit, {
+                            currency: loaded?.company?.baseCurrency,
+                            country: loaded?.company?.country,
+                          })
+                        : ''}
                     </td>
                     <td className={styles.mono}>
-                      {Number(entry.credit) > 0 ? Number(entry.credit).toFixed(2) : ''}
+                      {Number(entry.credit) > 0
+                        ? formatMoney(entry.credit, {
+                            currency: loaded?.company?.baseCurrency,
+                            country: loaded?.company?.country,
+                          })
+                        : ''}
                     </td>
                   </tr>
                 ))}

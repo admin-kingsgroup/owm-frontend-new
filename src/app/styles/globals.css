@@ -20,6 +20,10 @@
 
    Contrast: every foreground token is >= 4.5:1 (WCAG AA) against the surface
    it is intended for, in both themes. Re-measure before changing any of them.
+
+   They sit ON the floor, not above it — --ink-faint is 4.66:1. Do not dim one
+   with `opacity` to make it quieter: 0.75 takes --ink-faint to 3.01:1 and out
+   of AA. Reach for --ink-faint itself, or a smaller size, instead.
    ============================================================================ */
 
 :root {
@@ -115,6 +119,56 @@
   --data-3: #4b5a8f;
   --data-4: #9a7b28;
 
+  /* ---- Dark palette values ------------------------------------------
+     Defined once, here, and applied by the two selectors further down.
+     Plain CSS cannot share a declaration block between a media query and
+     an attribute selector, so the *aliasing* is unavoidably written
+     twice — but a colour is only ever edited in this one place. */
+  --dk-paper: #14161a;
+  --dk-paper-card: #1b1e23;
+  --dk-paper-sunken: #101216;
+  --dk-ink: #eceef1;
+  --dk-ink-soft: #a8b0bb;
+  --dk-ink-faint: #8b929c;
+  --dk-border: #2b2f36;
+  --dk-border-soft: #22262c;
+
+  --dk-sidebar: #1b1e23;
+  --dk-sidebar-text: #eceef1;
+  --dk-sidebar-dim: #969ea9;
+  --dk-sidebar-border: #2b2f36;
+
+  --dk-accent-rgb: 229, 154, 78;
+  --dk-accent: #e59a4e;
+  --dk-accent-2: #f5b06a;
+  /* White on light amber fails; the fill needs dark ink instead (8.1:1). */
+  --dk-on-accent: #191106;
+
+  --dk-overlay: rgba(0, 0, 0, 0.6);
+  --dk-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --dk-shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --dk-shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
+
+  --dk-chip-bg: #252a31;
+  --dk-chip-fg: #a9b1bc;
+
+  --dk-success-fg: #5fbb8a;
+  --dk-success-bd: #2d5a45;
+  --dk-success-bg-soft: #152520;
+  --dk-warning-fg: #dcb45e;
+  --dk-warning-bd: #5a4b21;
+  --dk-warning-bg-soft: #241f10;
+  --dk-danger-fg: #ec7070;
+  --dk-danger-bd: #653333;
+  --dk-danger-bg-soft: #2a1616;
+  --dk-neutral-fg: #98a0ab;
+  --dk-neutral-bd: #3a414a;
+
+  --dk-data-1: #4fb0a4;
+  --dk-data-2: #d98f5d;
+  --dk-data-3: #8092cf;
+  --dk-data-4: #cfa94c;
+
   /* ---- 3. Derived ---------------------------------------------------- */
   /* These reference the raw tokens above, so each one resolves against
      whichever palette is active. Define them once, here, only. */
@@ -126,110 +180,96 @@
 }
 
 /* ---- Palette: dark -------------------------------------------------------
-   The next two blocks are the same declarations twice: once for "OS is dark
-   and the user has not explicitly chosen light", once for an explicit dark
-   choice. Plain CSS cannot share them, so KEEP THEM IN SYNC — change one and
-   you must change the other. Only raw values belong here; the derived tokens
-   above pick these up on their own.
+   Two selectors, because the OS preference and an explicit choice cannot share
+   a block: one for "OS is dark and the user has not chosen light", one for an
+   explicit dark choice. Both only alias the --dk-* values defined above, so a
+   colour still has exactly one definition.
    -------------------------------------------------------------------------- */
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --paper: #14161a;
-    --paper-card: #1b1e23;
-    --paper-sunken: #101216;
-    --ink: #eceef1;
-    --ink-soft: #a8b0bb;
-    --ink-faint: #8b929c;
-    --border: #2b2f36;
-    --border-soft: #22262c;
-
-    --sidebar: #1b1e23;
-    --sidebar-text: #eceef1;
-    --sidebar-dim: #969ea9;
-    --sidebar-border: #2b2f36;
-
-    --accent-rgb: 229, 154, 78;
-    --accent: #e59a4e;
-    --accent-2: #f5b06a;
-    /* White on light amber fails; the fill needs dark ink instead (8.1:1). */
-    --on-accent: #191106;
-
-    --overlay: rgba(0, 0, 0, 0.6);
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
-    --shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
-
-    --chip-bg: #252a31;
-    --chip-fg: #a9b1bc;
-
-    --success-fg: #5fbb8a;
-    --success-bd: #2d5a45;
-    --success-bg-soft: #152520;
-    --warning-fg: #dcb45e;
-    --warning-bd: #5a4b21;
-    --warning-bg-soft: #241f10;
-    --danger-fg: #ec7070;
-    --danger-bd: #653333;
-    --danger-bg-soft: #2a1616;
-    --neutral-fg: #98a0ab;
-    --neutral-bd: #3a414a;
-
-    --data-1: #4fb0a4;
-    --data-2: #d98f5d;
-    --data-3: #8092cf;
-    --data-4: #cfa94c;
+    --paper: var(--dk-paper);
+    --paper-card: var(--dk-paper-card);
+    --paper-sunken: var(--dk-paper-sunken);
+    --ink: var(--dk-ink);
+    --ink-soft: var(--dk-ink-soft);
+    --ink-faint: var(--dk-ink-faint);
+    --border: var(--dk-border);
+    --border-soft: var(--dk-border-soft);
+    --sidebar: var(--dk-sidebar);
+    --sidebar-text: var(--dk-sidebar-text);
+    --sidebar-dim: var(--dk-sidebar-dim);
+    --sidebar-border: var(--dk-sidebar-border);
+    --accent-rgb: var(--dk-accent-rgb);
+    --accent: var(--dk-accent);
+    --accent-2: var(--dk-accent-2);
+    --on-accent: var(--dk-on-accent);
+    --overlay: var(--dk-overlay);
+    --shadow-1: var(--dk-shadow-1);
+    --shadow-2: var(--dk-shadow-2);
+    --shadow-3: var(--dk-shadow-3);
+    --chip-bg: var(--dk-chip-bg);
+    --chip-fg: var(--dk-chip-fg);
+    --success-fg: var(--dk-success-fg);
+    --success-bd: var(--dk-success-bd);
+    --success-bg-soft: var(--dk-success-bg-soft);
+    --warning-fg: var(--dk-warning-fg);
+    --warning-bd: var(--dk-warning-bd);
+    --warning-bg-soft: var(--dk-warning-bg-soft);
+    --danger-fg: var(--dk-danger-fg);
+    --danger-bd: var(--dk-danger-bd);
+    --danger-bg-soft: var(--dk-danger-bg-soft);
+    --neutral-fg: var(--dk-neutral-fg);
+    --neutral-bd: var(--dk-neutral-bd);
+    --data-1: var(--dk-data-1);
+    --data-2: var(--dk-data-2);
+    --data-3: var(--dk-data-3);
+    --data-4: var(--dk-data-4);
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #14161a;
-  --paper-card: #1b1e23;
-  --paper-sunken: #101216;
-  --ink: #eceef1;
-  --ink-soft: #a8b0bb;
-  --ink-faint: #8b929c;
-  --border: #2b2f36;
-  --border-soft: #22262c;
-
-  --sidebar: #1b1e23;
-  --sidebar-text: #eceef1;
-  --sidebar-dim: #969ea9;
-  --sidebar-border: #2b2f36;
-
-  --accent-rgb: 229, 154, 78;
-  --accent: #e59a4e;
-  --accent-2: #f5b06a;
-  --on-accent: #191106;
-
-  --overlay: rgba(0, 0, 0, 0.6);
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
-  --shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
-
-  --chip-bg: #252a31;
-  --chip-fg: #a9b1bc;
-
-  --success-fg: #5fbb8a;
-  --success-bd: #2d5a45;
-  --success-bg-soft: #152520;
-  --warning-fg: #dcb45e;
-  --warning-bd: #5a4b21;
-  --warning-bg-soft: #241f10;
-  --danger-fg: #ec7070;
-  --danger-bd: #653333;
-  --danger-bg-soft: #2a1616;
-  --neutral-fg: #98a0ab;
-  --neutral-bd: #3a414a;
-
-  --data-1: #4fb0a4;
-  --data-2: #d98f5d;
-  --data-3: #8092cf;
-  --data-4: #cfa94c;
+  --paper: var(--dk-paper);
+  --paper-card: var(--dk-paper-card);
+  --paper-sunken: var(--dk-paper-sunken);
+  --ink: var(--dk-ink);
+  --ink-soft: var(--dk-ink-soft);
+  --ink-faint: var(--dk-ink-faint);
+  --border: var(--dk-border);
+  --border-soft: var(--dk-border-soft);
+  --sidebar: var(--dk-sidebar);
+  --sidebar-text: var(--dk-sidebar-text);
+  --sidebar-dim: var(--dk-sidebar-dim);
+  --sidebar-border: var(--dk-sidebar-border);
+  --accent-rgb: var(--dk-accent-rgb);
+  --accent: var(--dk-accent);
+  --accent-2: var(--dk-accent-2);
+  --on-accent: var(--dk-on-accent);
+  --overlay: var(--dk-overlay);
+  --shadow-1: var(--dk-shadow-1);
+  --shadow-2: var(--dk-shadow-2);
+  --shadow-3: var(--dk-shadow-3);
+  --chip-bg: var(--dk-chip-bg);
+  --chip-fg: var(--dk-chip-fg);
+  --success-fg: var(--dk-success-fg);
+  --success-bd: var(--dk-success-bd);
+  --success-bg-soft: var(--dk-success-bg-soft);
+  --warning-fg: var(--dk-warning-fg);
+  --warning-bd: var(--dk-warning-bd);
+  --warning-bg-soft: var(--dk-warning-bg-soft);
+  --danger-fg: var(--dk-danger-fg);
+  --danger-bd: var(--dk-danger-bd);
+  --danger-bg-soft: var(--dk-danger-bg-soft);
+  --neutral-fg: var(--dk-neutral-fg);
+  --neutral-bd: var(--dk-neutral-bd);
+  --data-1: var(--dk-data-1);
+  --data-2: var(--dk-data-2);
+  --data-3: var(--dk-data-3);
+  --data-4: var(--dk-data-4);
 }
 
 /* ============================================================================
@@ -301,12 +341,20 @@ textarea:focus-visible {
    The theme is forced to light regardless of what is on screen: printing a dark theme wastes
    toner and reads badly. `print-color-adjust` is deliberately NOT set, so the browser drops
    decorative backgrounds while keeping text black.
+
+   Scope: this block owns the palette and the application chrome — anything present on every
+   screen. Rules for one screen's own layout belong in that screen's module, and Reports has its
+   own @media print block for exactly that. Check both before changing either.
    ============================================================================ */
 
 @media print {
-  :root,
-  :root[data-theme='dark'],
-  :root[data-theme='light'] {
+  /* `:root:root` is (0,2,0) — deliberately. A bare `:root` is (0,1,0) and loses to
+     `:root:not([data-theme='light'])` in the dark block above, which still matches while
+     printing. That left --ink near-white on paper whose background the browser drops,
+     printing a blank page for anyone on a dark OS who had not picked a theme. */
+  :root:root,
+  :root:root[data-theme='dark'],
+  :root:root[data-theme='light'] {
     color-scheme: light;
 
     --paper: #ffffff;

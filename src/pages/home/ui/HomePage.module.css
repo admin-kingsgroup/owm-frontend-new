@@ -42,6 +42,9 @@
 
 .title {
   margin-top: 1.25rem;
+  /* The same face every heading inside the app uses — the login screen is the first thing a
+     user sees and should not look like a different product. */
+  font-family: var(--font-serif);
   font-size: 2.375rem;
   font-weight: 700;
   color: #f4f1ea;
@@ -75,6 +78,9 @@
   z-index: 1;
 }
 
+/* This is fine print, not decoration, so it has to be readable. `opacity: 0.55` over #7e8497
+   computed to about 2.4:1 against this background; the colour alone is 5.2:1. Emphasis is
+   carried by a lighter colour rather than by making the rest fainter. */
 .footer p {
   font-size: 0.59375rem;
   color: #7e8497;
@@ -82,9 +88,8 @@
   text-transform: uppercase;
   font-weight: 500;
   line-height: 1.8;
-  opacity: 0.55;
 }
 
 .footerConfidential {
-  opacity: 0.65;
+  color: #9ba1b2;
 }
