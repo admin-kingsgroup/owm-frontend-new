@@ -193,7 +193,13 @@ export function VouchersPage() {
           type="button"
           variant="primary"
           onClick={() => setCreateModalOpen(true)}
-          disabled={setupIncomplete}
+          /*
+            Also while the setup is still in flight. `setupMissing` is empty until it lands, so
+            this read as "nothing missing" and let the form open on no ledgers and no voucher
+            types — where it announced "Finish setting up this company" about a company that is
+            set up perfectly well. The same distinction the subtitle above already draws.
+          */
+          disabled={!setupLoadedOk || setupIncomplete}
           aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
         >
           <Plus size={16} /> New voucher

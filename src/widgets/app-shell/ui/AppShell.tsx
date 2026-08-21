@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { Building2, LayoutGrid, Receipt, BarChart3, PieChart } from 'lucide-react';
 
@@ -13,6 +13,7 @@ import styles from './AppShell.module.css';
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
   const location = useLocation();
+  const navRef = useRef<HTMLElement>(null);
   const inCompany = Boolean(companyId);
 
   /**
@@ -52,6 +53,35 @@ export function AppShell() {
         ? 'portfolio'
         : 'vouchers';
 
+  /**
+   * Below 60rem the nav is a strip that scrolls sideways, and the item you are on can sit past its
+   * right edge — leaving the one cue that says which section you are in off screen. It depends on
+   * `section` as well as the path because the strip only becomes wider than the screen once the
+   * reserved slot has resolved into a real link. `nearest` everywhere means this does nothing at
+   * all on the vertical rail, where every item always fits.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    function reveal() {
+      if (cancelled) return;
+      const active = navRef.current?.querySelector(`.${styles.navLinkActive}`);
+      active?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    }
+
+    reveal();
+    /*
+      Again once the webfonts land. The strip is first laid out in the fallback face, and when
+      Inter swaps in every item changes width — enough to slide the item just revealed back off
+      the edge. Already-resolved after the first navigation, so this costs a microtask.
+    */
+    document.fonts?.ready.then(reveal);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, section]);
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -63,7 +93,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <nav className={styles.nav}>
+        <nav className={styles.nav} ref={navRef}>
           <NavLink
             to="/companies"
             end
