@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2, BarChart3 } from 'lucide-react';
 
-import { getCompany, companyStatusVariant } from '@/entities/company';
+import { getCompany, companyStatusVariant, useCompanyStore } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listAccountGroups, deleteAccountGroup } from '@/entities/account-group';
 import type { AccountGroup } from '@/entities/account-group';
@@ -39,6 +39,7 @@ export function CompanyDashboardPage() {
   const { companyId } = useParams<{ companyId: string }>();
 
   const [company, setCompany] = useState<Company | null>(null);
+  const upsertCompany = useCompanyStore((state) => state.upsert);
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
   const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
@@ -108,6 +109,15 @@ export function CompanyDashboardPage() {
       cancelled = true;
     };
   }, [companyId]);
+
+  /**
+   * A company edited here is the same record the switcher and the companies page are showing, so
+   * the change is published to the shared store rather than kept in this screen's state.
+   */
+  function handleCompanyChanged(updated: Company) {
+    setCompany(updated);
+    upsertCompany(updated);
+  }
 
   if (!companyId) return null;
   const id = companyId;
@@ -288,7 +298,9 @@ export function CompanyDashboardPage() {
         <CurrenciesPanel companyId={id} baseCurrency={company.baseCurrency} />
       )}
 
-      {tab === 'settings' && <CompanySettingsPanel company={company} onChanged={setCompany} />}
+      {tab === 'settings' && (
+        <CompanySettingsPanel company={company} onChanged={handleCompanyChanged} />
+      )}
 
       {tab === 'accounts' && (
         <div className={styles.accountsLayout}>

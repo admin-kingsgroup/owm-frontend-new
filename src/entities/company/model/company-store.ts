@@ -36,9 +36,12 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
   loading: false,
 
   load: async (force = false) => {
-    const { loaded, loading } = get();
+    const { loaded, loading, error } = get();
     if (loading) return;
-    if (loaded && !force) return;
+    // A load that failed is settled but has nothing to show, so the next caller is allowed to try
+    // again. Without the `!error` the first failure stuck for the session: the shell would go on
+    // calling load() and returning early, leaving the switcher hidden until a full reload.
+    if (loaded && !error && !force) return;
 
     set({ loading: true, error: null });
     try {
@@ -54,11 +57,12 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
     set((state) => {
       const current = state.companies ?? [];
       const exists = current.some((entry) => entry.id === company.id);
-      return {
-        companies: exists
-          ? current.map((entry) => (entry.id === company.id ? company : entry))
-          : [...current, company].sort((a, b) => a.name.localeCompare(b.name)),
-        loaded: true,
-      };
+      const next = exists
+        ? current.map((entry) => (entry.id === company.id ? company : entry))
+        : [...current, company];
+
+      // Sorted on every write, not only on insert. Sorting the insert alone left a renamed company
+      // sitting in its old slot until the next reload, which reads as the rename not having taken.
+      return { companies: next.sort((a, b) => a.name.localeCompare(b.name)), loaded: true };
     }),
 }));

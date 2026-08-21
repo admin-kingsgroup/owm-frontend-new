@@ -348,6 +348,7 @@ export function CompaniesPage() {
                       type="button"
                       className={styles.iconButton}
                       aria-label="Edit company"
+                      title="Edit company"
                       onClick={() => setEditingCompany(company)}
                     >
                       <Pencil size={14} />
@@ -357,6 +358,11 @@ export function CompaniesPage() {
                       className={styles.iconButton}
                       aria-label={
                         company.status === 'ACTIVE' ? 'Deactivate company' : 'Activate company'
+                      }
+                      /* An unlabelled power glyph told a sighted user nothing — the screen reader
+                         had a name for it and the eye did not, so the action read as missing. */
+                      title={
+                        company.status === 'ACTIVE' ? 'Deactivate company' : 'Reactivate company'
                       }
                       disabled={togglingId === company.id}
                       onClick={() => handleToggleStatus(company)}

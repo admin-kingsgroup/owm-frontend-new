@@ -2,7 +2,8 @@ import { useState } from 'react';
 
 import { updateCompany } from '@/entities/company';
 import type { Company, CompanyFeatures } from '@/entities/company';
-import { Checkbox } from '@/shared/ui';
+import { Badge, Button, Checkbox } from '@/shared/ui';
+import { companyStatusVariant } from '@/entities/company';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './CompanySettingsPanel.module.css';
@@ -61,6 +62,7 @@ const FEATURES: Array<{
 
 export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPanelProps) {
   const [saving, setSaving] = useState<FeatureKey | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function toggle(key: FeatureKey, value: boolean) {
@@ -72,6 +74,32 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
       setError(getErrorMessage(err, 'Could not update this setting'));
     } finally {
       setSaving(null);
+    }
+  }
+
+  /**
+   * Deactivating is reversible and destroys nothing, so it lives here beside the other settings
+   * rather than behind a danger zone. It still asks first, because from this screen the company
+   * being changed is the one you are standing in.
+   */
+  async function toggleStatus() {
+    const deactivating = company.status === 'ACTIVE';
+
+    if (deactivating) {
+      const confirmed = window.confirm(
+        `Deactivate ${company.name}? It will be hidden from day-to-day use and left out of the group totals, but nothing is deleted — you can reactivate it any time.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setTogglingStatus(true);
+    setError(null);
+    try {
+      onChanged(await updateCompany(company.id, { status: deactivating ? 'INACTIVE' : 'ACTIVE' }));
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not change the company status'));
+    } finally {
+      setTogglingStatus(false);
     }
   }
 
@@ -123,6 +151,32 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
         The base currency is fixed when the company is created — every report totals in it, and
         vouchers already posted are denominated in it.
       </p>
+
+      {/*
+        The only way to do this used to be an unlabelled power icon on a card two screens away,
+        which is the same as there being no way to do it.
+      */}
+      <div className={styles.status}>
+        <div className={styles.statusText}>
+          <div className={styles.statusHeading}>
+            Status
+            <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
+          </div>
+          <p className={styles.hint}>
+            {company.status === 'ACTIVE'
+              ? 'This company is in day-to-day use and counts towards the group totals.'
+              : 'This company is hidden from day-to-day use and left out of the group totals. Its books are untouched and still readable.'}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant={company.status === 'ACTIVE' ? 'ghost' : 'primary'}
+          onClick={toggleStatus}
+          disabled={togglingStatus}
+        >
+          {company.status === 'ACTIVE' ? 'Deactivate company' : 'Reactivate company'}
+        </Button>
+      </div>
     </div>
   );
 }
