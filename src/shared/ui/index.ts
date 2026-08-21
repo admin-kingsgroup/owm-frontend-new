@@ -8,4 +8,5 @@ export * from './select';
 export * from './textarea';
 export * from './badge';
 export * from './checkbox';
+export * from './column-chart';
 export * from './sparkline';

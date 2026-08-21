@@ -80,12 +80,23 @@ export interface BalanceSheetReport {
   };
 }
 
+/** One month of the period, for the chart above the statement. Never cumulative. */
+export interface ProfitAndLossMonth {
+  /** First day of the month, "YYYY-MM-DD". */
+  month: string;
+  income: string;
+  expenses: string;
+  netProfit: string;
+}
+
 export interface ProfitAndLossReport {
   period: ReportPeriod;
   /** Null when not asked for, or when there is no prior year. */
   comparison: ReportComparison | null;
   income: ReportNode[];
   expenses: ReportNode[];
+  /** Month by month. Empty when nothing has been posted. */
+  monthly: ProfitAndLossMonth[];
   totals: {
     income: string;
     expenses: string;
@@ -208,6 +219,14 @@ export interface ReceiptsAndPaymentsReport {
   totals: { receipts: string; payments: string; difference: string };
 }
 
+/** One month of cash movement, for the chart above the statement. */
+export interface CashFlowMonth {
+  month: string;
+  inflow: string;
+  outflow: string;
+  netChange: string;
+}
+
 export interface CashFlowReport {
   period: ReportPeriod;
   openingBalance: string;
@@ -216,5 +235,7 @@ export interface CashFlowReport {
   outflow: ReportNode[];
   closingBalance: string;
   closingSide: BalanceSide;
+  /** Month by month. Empty when nothing has been posted. */
+  monthly: CashFlowMonth[];
   totals: { inflow: string; outflow: string; netChange: string };
 }
