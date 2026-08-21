@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
@@ -15,6 +15,7 @@ export interface ModalProps {
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   /*
     Tab used to walk straight out of the dialog and into the page behind it, which is still there
@@ -44,10 +45,20 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         className={styles.modal}
         role="dialog"
         aria-modal="true"
+        /*
+          A dialog with no accessible name is announced as just "dialog", which tells a screen
+          reader user that something opened and nothing about what. Every caller passes a title,
+          so point at it; the fallback is only for one that does not.
+        */
+        {...(title ? { 'aria-labelledby': titleId } : { 'aria-label': 'Dialog' })}
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.header}>
-          {title && <h2 className={styles.title}>{title}</h2>}
+          {title && (
+            <h2 id={titleId} className={styles.title}>
+              {title}
+            </h2>
+          )}
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
