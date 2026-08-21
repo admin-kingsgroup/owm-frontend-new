@@ -19,7 +19,9 @@ const unwrap = <T>(response: { data: ApiSuccessResponse<T> }) => response.data.d
 // ---- partners -------------------------------------------------------------------------------
 
 export async function listPartners(companyId: string): Promise<Partner[]> {
-  return unwrap(await apiClient.get<ApiSuccessResponse<Partner[]>>(endpoints.kg.partners(companyId)));
+  return unwrap(
+    await apiClient.get<ApiSuccessResponse<Partner[]>>(endpoints.kg.partners(companyId)),
+  );
 }
 
 export async function createPartner(
@@ -56,11 +58,7 @@ export async function createBusiness(
  * Deletes a business. `force` also destroys its snapshots and mappings, and is only for one created
  * by mistake — the server refuses without it the moment anything has been reported.
  */
-export async function deleteBusiness(
-  companyId: string,
-  id: string,
-  force = false,
-): Promise<void> {
+export async function deleteBusiness(companyId: string, id: string, force = false): Promise<void> {
   await apiClient.delete(endpoints.kg.business(companyId, id, force));
 }
 
@@ -113,10 +111,14 @@ export async function runImport(
   periodMonth: number,
 ): Promise<{ snapshot: Snapshot; skipped: ImportPreview['skipped'] }> {
   return unwrap(
-    await apiClient.post<ApiSuccessResponse<{ snapshot: Snapshot; skipped: ImportPreview['skipped'] }>>(
-      endpoints.kg.imports(companyId, businessId),
-      { format: 'CSV', content, periodYear, periodMonth },
-    ),
+    await apiClient.post<
+      ApiSuccessResponse<{ snapshot: Snapshot; skipped: ImportPreview['skipped'] }>
+    >(endpoints.kg.imports(companyId, businessId), {
+      format: 'CSV',
+      content,
+      periodYear,
+      periodMonth,
+    }),
   );
 }
 

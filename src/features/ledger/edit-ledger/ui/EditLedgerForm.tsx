@@ -166,7 +166,6 @@ export function EditLedgerForm({
         </div>
       </div>
 
-
       {currencies.length > 0 && !ledger.isSystem && (
         <div className={styles.field}>
           <label className={styles.label} htmlFor="edit-ledger-currency">

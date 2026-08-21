@@ -16,13 +16,7 @@ export type VoucherCategory =
 export type NumberingMethod = 'AUTO' | 'AUTO_MANUAL_OVERRIDE' | 'MANUAL';
 
 export type ResetFrequency =
-  | 'NEVER'
-  | 'DAILY'
-  | 'WEEKLY'
-  | 'MONTHLY'
-  | 'QUARTERLY'
-  | 'HALF_YEARLY'
-  | 'YEARLY';
+  'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'YEARLY';
 
 export type VoucherNumberFormat = 'COMPANY_PREFIXED' | 'TALLY_STYLE';
 

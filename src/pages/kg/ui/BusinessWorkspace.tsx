@@ -240,8 +240,8 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
             <div className={styles.placements}>
               <p className={styles.warn}>
                 {preview.unmapped.length} ledger
-                {preview.unmapped.length === 1 ? ' has' : 's have'} nowhere to go. Place them below —
-                the import stays blocked until then, because a row with no home would otherwise
+                {preview.unmapped.length === 1 ? ' has' : 's have'} nowhere to go. Place them below
+                — the import stays blocked until then, because a row with no home would otherwise
                 vanish from every total.
               </p>
 
@@ -410,7 +410,11 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
                 <td className={styles.mono}>{snapshot.metrics?.netProfit ?? '—'}</td>
                 <td>
                   {snapshot.status === 'DRAFT' && (
-                    <Button variant="secondary" onClick={() => handleLock(snapshot)} disabled={busy}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleLock(snapshot)}
+                      disabled={busy}
+                    >
                       <Lock size={13} /> Lock
                     </Button>
                   )}

@@ -21,20 +21,14 @@ export async function createFinancialYear(
   return data.data;
 }
 
-export async function closeFinancialYear(
-  companyId: string,
-  id: string,
-): Promise<FinancialYear> {
+export async function closeFinancialYear(companyId: string, id: string): Promise<FinancialYear> {
   const { data } = await apiClient.post<ApiSuccessResponse<FinancialYear>>(
     endpoints.financialYears.close(companyId, id),
   );
   return data.data;
 }
 
-export async function reopenFinancialYear(
-  companyId: string,
-  id: string,
-): Promise<FinancialYear> {
+export async function reopenFinancialYear(companyId: string, id: string): Promise<FinancialYear> {
   const { data } = await apiClient.post<ApiSuccessResponse<FinancialYear>>(
     endpoints.financialYears.reopen(companyId, id),
   );

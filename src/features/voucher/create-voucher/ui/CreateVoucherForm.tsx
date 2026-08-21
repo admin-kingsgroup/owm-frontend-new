@@ -130,12 +130,12 @@ export function CreateVoucherForm({
         .filter((allocation) => Number(allocation.amount) > 0)
         .map((allocation) => ({
           allocationType: allocation.allocationType,
-          reference:
-            allocation.allocationType === 'ON_ACCOUNT' ? undefined : allocation.reference,
+          reference: allocation.allocationType === 'ON_ACCOUNT' ? undefined : allocation.reference,
           amount: Number(allocation.amount),
-          dueDate: allocation.allocationType === 'NEW_REF' && allocation.dueDate
-            ? allocation.dueDate
-            : undefined,
+          dueDate:
+            allocation.allocationType === 'NEW_REF' && allocation.dueDate
+              ? allocation.dueDate
+              : undefined,
         }));
 
       return {
@@ -306,7 +306,9 @@ export function CreateVoucherForm({
 
             <EntryExtras
               entryAmount={Number(row.debit) || Number(row.credit) || 0}
-              billwise={billWiseEnabled && Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)}
+              billwise={
+                billWiseEnabled && Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
+              }
               allocations={row.allocations}
               onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
               onAddAllocation={() =>

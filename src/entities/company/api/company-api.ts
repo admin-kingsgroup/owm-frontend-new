@@ -1,12 +1,7 @@
 import { apiClient, endpoints } from '@/shared/api';
 import type { ApiSuccessResponse } from '@/shared/types';
 
-import type {
-  Company,
-  CreateCompanyInput,
-  SeedPreview,
-  UpdateCompanyInput,
-} from '../model/types';
+import type { Company, CreateCompanyInput, SeedPreview, UpdateCompanyInput } from '../model/types';
 
 export async function listCompanies(): Promise<Company[]> {
   const { data } = await apiClient.get<ApiSuccessResponse<Company[]>>(endpoints.companies.list());

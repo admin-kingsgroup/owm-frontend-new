@@ -139,9 +139,9 @@ export function EditVoucherTypeForm({
 
         {!numberingEditable && (
           <p className={styles.lockNote}>
-            This voucher type has already issued numbers, so its format is fixed. Changing the
-            width or prefix now would break a sequence already printed on documents — create
-            another voucher type if you need a different format.
+            This voucher type has already issued numbers, so its format is fixed. Changing the width
+            or prefix now would break a sequence already printed on documents — create another
+            voucher type if you need a different format.
           </p>
         )}
 

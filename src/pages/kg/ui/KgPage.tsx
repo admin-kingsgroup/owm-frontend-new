@@ -98,9 +98,8 @@ export function KgPage() {
             <Badge variant="neutral">Portfolio analytics</Badge>
           </div>
           <p className={styles.subtitle}>
-            {businesses.length} business{businesses.length === 1 ? '' : 'es'} ·{' '}
-            {partners.length} partner{partners.length === 1 ? '' : 's'} · reported in{' '}
-            {company.baseCurrency}
+            {businesses.length} business{businesses.length === 1 ? '' : 'es'} · {partners.length}{' '}
+            partner{partners.length === 1 ? '' : 's'} · reported in {company.baseCurrency}
           </p>
         </div>
         <Link to={`/companies/${companyId}`} className={styles.backLink}>
@@ -128,7 +127,11 @@ export function KgPage() {
       </div>
 
       {tab === 'portfolio' && (
-        <PortfolioPanel companyId={companyId} partners={partners} businessCount={businesses.length} />
+        <PortfolioPanel
+          companyId={companyId}
+          partners={partners}
+          businessCount={businesses.length}
+        />
       )}
 
       {tab === 'businesses' && (

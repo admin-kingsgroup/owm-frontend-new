@@ -89,7 +89,9 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
         symbol,
         name: currencyName,
       });
-      setCurrencies((current) => [...current, created].sort((a, b) => a.code.localeCompare(b.code)));
+      setCurrencies((current) =>
+        [...current, created].sort((a, b) => a.code.localeCompare(b.code)),
+      );
       setRateCurrency((current) => current || created.code);
       setCode('');
       setSymbol('');

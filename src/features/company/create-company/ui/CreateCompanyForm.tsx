@@ -297,7 +297,8 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
                 <ul className={styles.previewList}>
                   {preview.ledgers.map((ledger) => (
                     <li key={ledger.code}>
-                      {ledger.name} <span className={styles.previewMuted}>({ledger.groupCode})</span>
+                      {ledger.name}{' '}
+                      <span className={styles.previewMuted}>({ledger.groupCode})</span>
                     </li>
                   ))}
                 </ul>

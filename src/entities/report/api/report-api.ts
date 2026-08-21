@@ -46,10 +46,7 @@ export const getGroupOverview = () =>
   fetchReport<GroupOverview>(endpoints.reports.groupOverview(), {});
 
 export const getReceiptsAndPayments = (companyId: string, params: ReportParams = {}) =>
-  fetchReport<ReceiptsAndPaymentsReport>(
-    endpoints.reports.receiptsAndPayments(companyId),
-    params,
-  );
+  fetchReport<ReceiptsAndPaymentsReport>(endpoints.reports.receiptsAndPayments(companyId), params);
 
 export const getCashFlow = (companyId: string, params: ReportParams = {}) =>
   fetchReport<CashFlowReport>(endpoints.reports.cashFlow(companyId), params);

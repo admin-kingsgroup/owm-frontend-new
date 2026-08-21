@@ -180,7 +180,6 @@ export function CreateLedgerForm({
         </div>
       </div>
 
-
       {currencies.length > 0 && (
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ledger-currency">

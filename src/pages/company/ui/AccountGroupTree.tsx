@@ -68,9 +68,7 @@ function TreeItem({
           <span className={styles.itemName} title={group.name}>
             {group.name}
           </span>
-          {group.isSystem && (
-            <Lock size={12} className={styles.lock} aria-label="Standard group" />
-          )}
+          {group.isSystem && <Lock size={12} className={styles.lock} aria-label="Standard group" />}
           <span className={styles.itemCode}>{group.code}</span>
         </button>
         <button

@@ -87,8 +87,8 @@ export function EditCompanyForm({ company, onSaved, onCancel }: EditCompanyFormP
       </div>
 
       <p className={styles.note}>
-        Financial years are managed separately, so a year can be closed or a new one opened
-        without touching the company. This company&rsquo;s first year runs{' '}
+        Financial years are managed separately, so a year can be closed or a new one opened without
+        touching the company. This company&rsquo;s first year runs{' '}
         {company.financialYearStart.slice(0, 10)} to {company.financialYearEnd.slice(0, 10)}.
       </p>
 

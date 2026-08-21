@@ -9,8 +9,7 @@ export const endpoints = {
     list: (companyId: string) => `/companies/${companyId}/financial-years`,
     create: (companyId: string) => `/companies/${companyId}/financial-years`,
     byId: (companyId: string, id: string) => `/companies/${companyId}/financial-years/${id}`,
-    close: (companyId: string, id: string) =>
-      `/companies/${companyId}/financial-years/${id}/close`,
+    close: (companyId: string, id: string) => `/companies/${companyId}/financial-years/${id}/close`,
     reopen: (companyId: string, id: string) =>
       `/companies/${companyId}/financial-years/${id}/reopen`,
   },

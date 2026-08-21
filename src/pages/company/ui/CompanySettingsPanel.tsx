@@ -100,11 +100,7 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
               key={feature.key}
               id={`feature-${feature.key}`}
               label={feature.label}
-              hint={
-                available
-                  ? feature.hint
-                  : (feature.unavailableHint?.(company) ?? feature.hint)
-              }
+              hint={available ? feature.hint : (feature.unavailableHint?.(company) ?? feature.hint)}
               checked={company.features[feature.key]}
               disabled={!available || saving !== null}
               onChange={(event) => toggle(feature.key, event.target.checked)}

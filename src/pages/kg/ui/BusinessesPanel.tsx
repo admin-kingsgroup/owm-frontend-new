@@ -254,70 +254,70 @@ export function BusinessesPanel({
           <tbody>
             {businesses.map((business) => (
               <Fragment key={business.id}>
-              <tr>
-                <td>
-                  <button
-                    type="button"
-                    className={styles.iconAction}
-                    onClick={() => setOpenId(openId === business.id ? null : business.id)}
-                    aria-expanded={openId === business.id}
-                    aria-label={`Open ${business.name}`}
-                    title="Import a month, place ledgers, lock"
-                  >
-                    {openId === business.id ? (
-                      <ChevronDown size={14} />
-                    ) : (
-                      <ChevronRight size={14} />
-                    )}
-                  </button>
-                </td>
-                <td className={styles.mono}>{business.code}</td>
-                <td>{business.name}</td>
-                <td className={styles.mono}>{business.reportingCurrency}</td>
-                <td>
-                  {business.partners.length === 0 ? (
-                    <span className={styles.hint}>Wholly owned</span>
-                  ) : (
-                    business.partners
-                      .map((share) => `${share.partnerName} ${Number(share.profitSharePercent)}%`)
-                      .join(' · ')
-                  )}
-                </td>
-                <td>{!business.isActive && <Badge variant="neutral">Inactive</Badge>}</td>
-                <td>
-                  <div className={styles.rowActions}>
-                    <button
-                      type="button"
-                      className={styles.iconAction}
-                      onClick={() => handleTemplate(business)}
-                      aria-label={`Download statement template for ${business.name}`}
-                      title="Download the statement template"
-                    >
-                      <Download size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.iconAction}
-                      onClick={() => handleDelete(business)}
-                      aria-label={`Remove ${business.name}`}
-                      title="Remove"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              {openId === business.id && (
                 <tr>
-                  <td colSpan={7}>
-                    <BusinessWorkspace
-                      companyId={companyId}
-                      business={business}
-                      partners={partners}
-                    />
+                  <td>
+                    <button
+                      type="button"
+                      className={styles.iconAction}
+                      onClick={() => setOpenId(openId === business.id ? null : business.id)}
+                      aria-expanded={openId === business.id}
+                      aria-label={`Open ${business.name}`}
+                      title="Import a month, place ledgers, lock"
+                    >
+                      {openId === business.id ? (
+                        <ChevronDown size={14} />
+                      ) : (
+                        <ChevronRight size={14} />
+                      )}
+                    </button>
+                  </td>
+                  <td className={styles.mono}>{business.code}</td>
+                  <td>{business.name}</td>
+                  <td className={styles.mono}>{business.reportingCurrency}</td>
+                  <td>
+                    {business.partners.length === 0 ? (
+                      <span className={styles.hint}>Wholly owned</span>
+                    ) : (
+                      business.partners
+                        .map((share) => `${share.partnerName} ${Number(share.profitSharePercent)}%`)
+                        .join(' · ')
+                    )}
+                  </td>
+                  <td>{!business.isActive && <Badge variant="neutral">Inactive</Badge>}</td>
+                  <td>
+                    <div className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={styles.iconAction}
+                        onClick={() => handleTemplate(business)}
+                        aria-label={`Download statement template for ${business.name}`}
+                        title="Download the statement template"
+                      >
+                        <Download size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconAction}
+                        onClick={() => handleDelete(business)}
+                        aria-label={`Remove ${business.name}`}
+                        title="Remove"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              )}
+                {openId === business.id && (
+                  <tr>
+                    <td colSpan={7}>
+                      <BusinessWorkspace
+                        companyId={companyId}
+                        business={business}
+                        partners={partners}
+                      />
+                    </td>
+                  </tr>
+                )}
               </Fragment>
             ))}
           </tbody>

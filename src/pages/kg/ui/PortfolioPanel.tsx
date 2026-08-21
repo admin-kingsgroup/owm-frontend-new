@@ -150,9 +150,7 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
                       <td className={styles.mono}>
                         {row.netMarginPercent ? `${row.netMarginPercent}%` : '—'}
                       </td>
-                      <td className={styles.mono}>
-                        {row.roiPercent ? `${row.roiPercent}%` : '—'}
-                      </td>
+                      <td className={styles.mono}>{row.roiPercent ? `${row.roiPercent}%` : '—'}</td>
                       <td>{target(row.meetsMarginTarget)}</td>
                       <td>{target(row.meetsRoiTarget)}</td>
                       <td className={styles.mono}>{row.score}</td>
@@ -188,8 +186,8 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
 
           {view.businessesWithoutLockedSnapshot.length > 0 && (
             <p className={styles.warn}>
-              Still to report for this month:{' '}
-              {view.businessesWithoutLockedSnapshot.join(', ')}. The totals above are short of them.
+              Still to report for this month: {view.businessesWithoutLockedSnapshot.join(', ')}. The
+              totals above are short of them.
             </p>
           )}
         </>
@@ -220,8 +218,8 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
             <>
               <p className={styles.hint}>
                 {statement.partnerName} · {statement.periodYear}-
-                {String(statement.periodMonth).padStart(2, '0')} · {statement.currency}. This is what
-                gets sent, so it shows their figures only.
+                {String(statement.periodMonth).padStart(2, '0')} · {statement.currency}. This is
+                what gets sent, so it shows their figures only.
               </p>
               <table className={styles.table}>
                 <thead>

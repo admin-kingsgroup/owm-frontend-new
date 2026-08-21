@@ -39,9 +39,7 @@ export async function deleteLedger(companyId: string, id: string): Promise<void>
   await apiClient.delete(endpoints.ledgers.byId(companyId, id));
 }
 
-export async function getOpeningBalanceSummary(
-  companyId: string,
-): Promise<OpeningBalanceSummary> {
+export async function getOpeningBalanceSummary(companyId: string): Promise<OpeningBalanceSummary> {
   const { data } = await apiClient.get<ApiSuccessResponse<OpeningBalanceSummary>>(
     endpoints.ledgers.openingBalanceSummary(companyId),
   );
