@@ -265,7 +265,7 @@ export function VouchersPage() {
                   <td className={styles.mono} title={voucher.id}>
                     {voucher.voucherNumber}
                   </td>
-                  <td>{formatCalendarDay(voucher.voucherDate)}</td>
+                  <td>{formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}</td>
                   <td>{typeName(voucher.voucherTypeId)}</td>
                   <td className={styles.narration}>{voucher.narration ?? '—'}</td>
                   <td>
@@ -332,7 +332,9 @@ export function VouchersPage() {
               <Badge variant={voucherStatusVariant(selectedVoucher.status)}>
                 {selectedVoucher.status}
               </Badge>
-              <span>{formatCalendarDay(selectedVoucher.voucherDate)}</span>
+              <span>
+                {formatCalendarDay(selectedVoucher.voucherDate, loaded?.company?.country)}
+              </span>
               {selectedVoucher.referenceNumber && (
                 <span>Ref: {selectedVoucher.referenceNumber}</span>
               )}

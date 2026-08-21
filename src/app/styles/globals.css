@@ -374,6 +374,14 @@ textarea:focus-visible {
     --shadow-1: none;
     --shadow-2: none;
     --shadow-3: none;
+
+    /* The chart palette needs resetting too. Without it a sparkline printed from a dark OS keeps
+       its dark-theme colours — light teal on white paper, barely a line. These are the light
+       values, which are what the rest of this block assumes. */
+    --data-1: #2f7a72;
+    --data-2: #b0663a;
+    --data-3: #4b5a8f;
+    --data-4: #9a7b28;
   }
 
   body {
