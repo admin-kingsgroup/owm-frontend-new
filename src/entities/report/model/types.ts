@@ -308,3 +308,83 @@ export interface CashFlowReport {
     priorNetChange?: string;
   };
 }
+
+/** One line the books carry that the bank statement has not shown yet. */
+export interface BankReconciliationRow {
+  /** The line, which is what gets ticked off — a voucher can hold more than one bank line. */
+  entryId: string;
+  voucherId: string;
+  voucherNumber: string;
+  voucherDate: string;
+  voucherTypeId: string;
+  voucherTypeCode: string;
+  narration?: string;
+  instrumentNumber?: string;
+  instrumentDate?: string;
+  debit: string;
+  credit: string;
+}
+
+/**
+ * Why the bank and the books disagree, line by line. The bank's balance is derived from the set
+ * below rather than typed in, so a figure that still does not match the statement in hand means
+ * something is genuinely missing rather than merely late.
+ */
+export interface BankReconciliationReport {
+  period: ReportPeriod;
+  ledger: { id: string; code: string; name: string };
+  asOf: string;
+  balanceAsPerBooks: string;
+  balanceAsPerBooksSide: BalanceSide;
+  unreconciled: BankReconciliationRow[];
+  totals: {
+    unreconciledDebits: string;
+    unreconciledCredits: string;
+    balanceAsPerBank: string;
+    balanceAsPerBankSide: BalanceSide;
+  };
+}
+
+export interface MonthlySummaryMonth {
+  /** First day of the month, "YYYY-MM-DD". */
+  month: string;
+  debit: string;
+  credit: string;
+  closing: string;
+  closingSide: BalanceSide;
+}
+
+/** A ledger or a group month by month — every month of the year, including the quiet ones. */
+export interface MonthlySummaryReport {
+  period: ReportPeriod;
+  subject: { kind: 'ledger' | 'group'; id: string; code: string; name: string };
+  opening: string;
+  openingSide: BalanceSide;
+  months: MonthlySummaryMonth[];
+  totals: { debit: string; credit: string; closing: string; closingSide: BalanceSide };
+}
+
+export type AuditEntity =
+  'VOUCHER' | 'LEDGER' | 'ACCOUNT_GROUP' | 'VOUCHER_TYPE' | 'FINANCIAL_YEAR';
+
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'POST' | 'CANCEL' | 'RECONCILE';
+
+export interface AuditEntry {
+  id: string;
+  entity: AuditEntity;
+  entityId: string;
+  action: AuditAction;
+  /** Null where nothing was signed in — seeding, a migration. Never a fabricated id. */
+  userId: string | null;
+  at: string;
+  summary: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+}
+
+export interface AuditList {
+  rows: AuditEntry[];
+  total: number;
+  page: number;
+  limit: number;
+}

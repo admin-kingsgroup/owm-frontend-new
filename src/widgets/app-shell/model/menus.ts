@@ -110,9 +110,19 @@ export function buildMenus(
       id: 'masters',
       label: 'Masters',
       mnemonic: 'M',
+      /*
+        All five master screens, including the two that also appear under Company. A menu bar is
+        allowed to offer a second way to the same place, and Masters is where somebody looking for
+        financial years or exchange rates goes first — under Company they were findable only by
+        someone who already knew where they were.
+      */
       items: [
         { label: 'Chart of accounts & ledgers', to: `${base}?tab=accounts` },
         { label: 'Voucher types & numbering', to: `${base}?tab=voucher-types` },
+        { label: 'Financial years', to: `${base}?tab=financial-years` },
+        ...(features?.multiCurrency
+          ? [{ label: 'Currencies & rates', to: `${base}?tab=currencies` }]
+          : []),
       ],
     },
     {
@@ -132,6 +142,10 @@ export function buildMenus(
             { label: 'Payment', to: `${base}/vouchers?new=PAYMENT`, hint: 'F5' },
             { label: 'Receipt', to: `${base}/vouchers?new=RECEIPT`, hint: 'F6' },
             { label: 'Journal', to: `${base}/vouchers?new=JOURNAL`, hint: 'F7' },
+            { label: 'Sales', to: `${base}/vouchers?new=SALES`, hint: 'F8' },
+            { label: 'Purchase', to: `${base}/vouchers?new=PURCHASE`, hint: 'F9' },
+            { label: 'Credit Note', to: `${base}/vouchers?new=CREDIT_NOTE`, hint: 'Ctrl+F8' },
+            { label: 'Debit Note', to: `${base}/vouchers?new=DEBIT_NOTE`, hint: 'Ctrl+F9' },
           ],
     },
     {
@@ -161,9 +175,22 @@ export function buildMenus(
           hint: 'Alt+D',
           section: 'Books & registers',
         },
+        /*
+          One entry rather than one per voucher type. The shell does not hold the company's voucher
+          types, and a fixed list of eight would offer some a company has deleted and miss any it
+          has added — so the screen names them, from the company's own list.
+        */
+        { label: 'Registers — by voucher type', to: `${base}/reports?report=register${period}` },
+        { label: 'Ledger — account statement', to: `${base}/reports?report=ledger${period}` },
         { label: 'Cash Book', to: `${base}/reports?report=cash-book${period}` },
         { label: 'Bank Book', to: `${base}/reports?report=bank-book${period}` },
         { label: 'Group Summary', to: `${base}/reports?report=group-summary${period}` },
+        { label: 'Monthly Summary', to: `${base}/reports?report=monthly-summary${period}` },
+        {
+          label: 'Bank Reconciliation',
+          to: `${base}/reports?report=bank-reconciliation${period}`,
+          section: 'Reconcile',
+        },
         ...(features?.billWiseDetails
           ? [
               {
@@ -205,8 +232,7 @@ export function buildMenus(
         The maintenance jobs, gathered under the word people look for them under. Each is a real
         screen that already exists elsewhere in the tree — a menu bar is allowed to offer a second
         way to the same place, and this is the way someone thinking "I need to check the books"
-        looks. What is deliberately absent is import/export and an audit trail: neither exists yet,
-        and a menu that lists what the product cannot do teaches you not to trust the menu.
+        looks.
       */
       items: [
         {
@@ -214,7 +240,13 @@ export function buildMenus(
           to: `${base}/reports?report=trial-balance${period}`,
         },
         { label: 'Opening balances', to: `${base}?tab=accounts` },
+        { label: 'Import & export masters', to: `${base}?tab=import-export` },
         { label: 'Close or reopen a financial year', to: `${base}?tab=financial-years` },
+        {
+          label: 'Audit trail — who changed what',
+          to: `${base}/reports?report=audit${period}`,
+          section: 'Records',
+        },
       ],
     },
     {

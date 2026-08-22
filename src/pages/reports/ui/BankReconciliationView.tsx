@@ -1,0 +1,135 @@
+import type { BankReconciliationReport } from '@/entities/report';
+import { cn, toCalendarDay } from '@/shared/lib';
+
+import styles from './ReportsPage.module.css';
+
+interface BankReconciliationViewProps {
+  report: BankReconciliationReport;
+  /** Formats an amount the way the company writes money. */
+  money: (value: string) => string;
+  /**
+   * Ticks a line off against the statement, or clears the mark when the date is emptied.
+   *
+   * The date is the day the bank showed it, not the day somebody sat down to reconcile: a
+   * statement run for last month must not be told about a line cleared this month, or the figure
+   * it derives cannot be checked against the paper it came from.
+   */
+  onReconcile: (voucherId: string, entryId: string, bankDate: string | null) => void;
+  /** True while a mark is being saved, so the row cannot be ticked twice. */
+  saving: boolean;
+}
+
+/**
+ * Why the bank and the books disagree, and what the bank should therefore be showing.
+ *
+ * The two figures are set at either end with the reasons between them, because that is the shape
+ * of the question: the difference is never a mystery, it is exactly these lines. The bank's
+ * balance is derived rather than entered, so a reader can hold it against the statement in hand —
+ * and if it still does not match, something is genuinely missing rather than merely late.
+ */
+export function BankReconciliationView({
+  report,
+  money,
+  onReconcile,
+  saving,
+}: BankReconciliationViewProps) {
+  const side = (value: 'DEBIT' | 'CREDIT') => (value === 'DEBIT' ? 'Dr' : 'Cr');
+
+  return (
+    <section className={styles.panel}>
+      <div className={styles.buckets}>
+        <div className={styles.bucket}>
+          <span className={styles.bucketLabel}>Balance as per books</span>
+          <span className={styles.bucketAmount}>
+            {money(report.balanceAsPerBooks)}
+            <span className={styles.priorSide}>{side(report.balanceAsPerBooksSide)}</span>
+          </span>
+        </div>
+        <div className={styles.bucket}>
+          <span className={styles.bucketLabel}>Deposits not yet credited</span>
+          <span className={styles.bucketAmount}>{money(report.totals.unreconciledDebits)}</span>
+          <span className={styles.bucketPrior}>lowers the bank&rsquo;s figure</span>
+        </div>
+        <div className={styles.bucket}>
+          <span className={styles.bucketLabel}>Cheques not yet presented</span>
+          <span className={styles.bucketAmount}>{money(report.totals.unreconciledCredits)}</span>
+          <span className={styles.bucketPrior}>raises the bank&rsquo;s figure</span>
+        </div>
+        <div className={cn(styles.bucket, styles.bucketTotal)}>
+          <span className={styles.bucketLabel}>Balance as per bank</span>
+          <span className={styles.bucketAmount}>
+            {money(report.totals.balanceAsPerBank)}
+            <span className={styles.priorSide}>{side(report.totals.balanceAsPerBankSide)}</span>
+          </span>
+        </div>
+      </div>
+
+      <p className={styles.hint}>
+        Put the date the bank showed a line against it and the line leaves this list. Hold the last
+        figure against the statement the bank sent. If the two agree, everything still listed is
+        simply in transit. If they do not, something is missing from one side or the other.
+      </p>
+
+      <h2 className={styles.panelTitle}>
+        Not yet on the statement
+        <span className={styles.panelTotal}>
+          {report.unreconciled.length} line{report.unreconciled.length === 1 ? '' : 's'}
+        </span>
+      </h2>
+
+      <div className={styles.tableWrap}>
+        <table className={styles.table} data-stack>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Number</th>
+              <th>Type</th>
+              <th>Instrument</th>
+              <th>Narration</th>
+              <th className={styles.num}>Debit</th>
+              <th className={styles.num}>Credit</th>
+              <th>Bank date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.unreconciled.map((row) => (
+              <tr key={`${row.voucherId}-${row.instrumentNumber ?? ''}-${row.debit}${row.credit}`}>
+                <td>{toCalendarDay(row.voucherDate)}</td>
+                <td>{row.voucherNumber}</td>
+                <td>{row.voucherTypeCode}</td>
+                {/* An em dash, not a blank: a line with no instrument is a fact, not a gap. */}
+                <td>{row.instrumentNumber ?? '—'}</td>
+                <td>{row.narration ?? '—'}</td>
+                <td className={styles.num}>{money(row.debit)}</td>
+                <td className={styles.num}>{money(row.credit)}</td>
+                <td>
+                  {/*
+                    Typing the day the bank showed it is the whole of reconciling, exactly as it is
+                    on paper: the line leaves this list the moment it has a date.
+                  */}
+                  <input
+                    type="date"
+                    className={styles.select}
+                    aria-label={`Bank date for ${row.voucherNumber}`}
+                    disabled={saving}
+                    defaultValue=""
+                    onChange={(event) =>
+                      onReconcile(row.voucherId, row.entryId, event.target.value || null)
+                    }
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {report.unreconciled.length === 0 && (
+        <p className={styles.empty}>
+          Everything posted to this account up to {toCalendarDay(report.asOf)} has been shown by the
+          bank. The two balances agree.
+        </p>
+      )}
+    </section>
+  );
+}

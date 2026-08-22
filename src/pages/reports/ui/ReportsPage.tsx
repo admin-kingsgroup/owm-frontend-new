@@ -9,6 +9,10 @@ import {
   getBalanceSheet,
   getDayBook,
   getLedgerStatement,
+  getRegister,
+  getBankReconciliation,
+  getMonthlySummary,
+  getAuditTrail,
   getProfitAndLoss,
   getTrialBalance,
   getReceiptsAndPayments,
@@ -26,10 +30,18 @@ import type {
   TrialBalanceReport,
   ReceiptsAndPaymentsReport,
   CashFlowReport,
+  BankReconciliationReport,
+  MonthlySummaryReport,
+  AuditList,
 } from '@/entities/report';
 import { getPayables, getReceivables } from '@/entities/outstanding';
 import type { CashMovementRow } from '@/entities/report';
+import { listVoucherTypes } from '@/entities/voucher-type';
+import type { VoucherType } from '@/entities/voucher-type';
+import { listLedgers } from '@/entities/ledger';
+import type { Ledger } from '@/entities/ledger';
 import type { OutstandingsReport } from '@/entities/outstanding';
+import { reconcileEntry } from '@/entities/voucher';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Loading, Modal, ColumnChart } from '@/shared/ui';
@@ -38,6 +50,10 @@ import { useButtonBar } from '@/widgets/app-shell';
 
 import { ReportTree } from './ReportTree';
 import { LedgerStatement } from './LedgerStatement';
+import { SubjectPicker } from './SubjectPicker';
+import { BankReconciliationView } from './BankReconciliationView';
+import { MonthlySummaryView } from './MonthlySummaryView';
+import { AuditTrailView } from './AuditTrailView';
 import { TrialBalanceView } from './TrialBalanceView';
 import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
 import { MonthlyFigures } from './MonthlyFigures';
@@ -66,6 +82,16 @@ const TAB_IDS = [
   'receivables',
   'payables',
   'forex',
+  /*
+    The five that are about one thing rather than about the whole company. Each names its subject
+    in the address — ?report=register&type=SALES, ?report=ledger&ledgerId=… — so a particular
+    register or a particular account's statement is as bookmarkable as any other report.
+  */
+  'register',
+  'ledger',
+  'bank-reconciliation',
+  'monthly-summary',
+  'audit',
 ] as const;
 
 type Tab = (typeof TAB_IDS)[number];
@@ -76,6 +102,11 @@ function isTab(value: string | null): value is Tab {
 
 /** Named once, for the heading of whichever report is open. The menu carries the same names. */
 const TAB_LABELS: Record<Tab, string> = {
+  register: 'Register',
+  ledger: 'Ledger',
+  'bank-reconciliation': 'Bank Reconciliation',
+  'monthly-summary': 'Monthly Summary',
+  audit: 'Audit Trail',
   'balance-sheet': 'Balance Sheet',
   'profit-loss': 'Profit & Loss',
   'trial-balance': 'Trial Balance',
@@ -99,6 +130,17 @@ const TAB_LABELS: Record<Tab, string> = {
  * company no longer keeps. A company still loading is given the benefit of the doubt — bouncing off
  * a report that turns out to be perfectly valid is worse than a moment's wait.
  */
+/**
+ * The liabilities side in full: the groups plus the period's profit, which is earned and not yet
+ * drawn and so belongs here even though it arrives from the Profit & Loss rather than from a group.
+ *
+ * Added as numbers because both are already rounded to the penny by the server. The figure that has
+ * to tie exactly is `totals.difference`, which the server computes and this never touches.
+ */
+function sideTotal(liabilities: string, profit: string | undefined): string {
+  return (Number(liabilities) + Number(profit ?? 0)).toFixed(2);
+}
+
 function isAvailable(tab: Tab, company: Company | null): boolean {
   if (!company) return true;
   if (tab === 'receivables' || tab === 'payables') return company.features.billWiseDetails;
@@ -157,6 +199,29 @@ export function ReportsPage() {
   const appliedCompare = searchParams.get('compare') === 'true';
 
   /**
+   * What the report on screen is about, where it is about one thing.
+   *
+   * Beside the period rather than in component state, for the same reason: a ledger's statement is
+   * exactly the sort of thing somebody sends to their accountant, and a link that opens on the
+   * wrong account is worse than no link.
+   */
+  const subjectType = searchParams.get('type') ?? '';
+  const subjectLedgerId = searchParams.get('ledgerId') ?? '';
+  const subjectGroupId = searchParams.get('groupId') ?? '';
+
+  /** Writes one subject key into the address, dropping the others so two cannot both apply. */
+  function chooseSubject(key: 'type' | 'ledgerId' | 'groupId', value: string) {
+    const params = new URLSearchParams(searchParams);
+    for (const other of ['type', 'ledgerId', 'groupId'] as const) {
+      if (other !== key) params.delete(other);
+    }
+    if (value) params.set(key, value);
+    else params.delete(key);
+
+    setSearchParams(params, { replace: true });
+  }
+
+  /**
    * Applying replaces rather than pushes: refining a period is an adjustment to the report you are
    * already reading, and pushing would make Back walk through every date you tried instead of
    * returning you to the screen you came from. Only what differs from the default is written, so an
@@ -195,6 +260,23 @@ export function ReportsPage() {
   const [cashBook, setCashBook] = useState<LedgerStatementReport[] | null>(null);
   const [bankBook, setBankBook] = useState<LedgerStatementReport[] | null>(null);
   const [groupSummary, setGroupSummary] = useState<ReportNode[] | null>(null);
+
+  /*
+    The five subject reports are fetched on their own, by the effect below, rather than joining the
+    twelve that load with the screen: each needs a subject chosen first, and asking the server for
+    a ledger statement nobody has picked a ledger for is a request with no answer.
+  */
+  const [register, setRegister] = useState<DayBookReport | null>(null);
+  const [ledgerReport, setLedgerReport] = useState<LedgerStatementReport | null>(null);
+  const [reconciliation, setReconciliation] = useState<BankReconciliationReport | null>(null);
+  const [monthly, setMonthly] = useState<MonthlySummaryReport | null>(null);
+  const [audit, setAudit] = useState<AuditList | null>(null);
+  const [subjectLoading, setSubjectLoading] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
+
+  /** For the pickers. Small, unchanging within a session, and needed by four of the tabs. */
+  const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
+  const [ledgers, setLedgers] = useState<Ledger[]>([]);
 
   const [statement, setStatement] = useState<LedgerStatementReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -264,9 +346,108 @@ export function ReportsPage() {
     };
   }, [companyId, appliedFrom, appliedTo, appliedCompare]);
 
+  /* The pickers' contents. Read once per company: neither list changes while a screen is open. */
+  useEffect(() => {
+    if (!companyId) return;
+    const id = companyId;
+    let cancelled = false;
+
+    void Promise.all([listVoucherTypes(id), listLedgers(id)])
+      .then(([types, accounts]) => {
+        if (cancelled) return;
+        setVoucherTypes(types.filter((type) => type.isActive));
+        setLedgers(accounts.filter((ledger) => ledger.isActive));
+      })
+      // A picker that cannot be filled is a degraded screen, not a broken one — the report the
+      // reader is already looking at is unaffected, so this must not replace the page.
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
+
+  /**
+   * The report that is about one subject, fetched only when its tab is open and a subject chosen.
+   *
+   * Kept apart from the load above deliberately. That one asks for twelve reports at once because
+   * every one of them is reachable from the tab strip without another request; these five each
+   * need a ledger or a voucher type picked first, and folding them in would mean asking for five
+   * more reports on every period change whether or not anyone is looking at them.
+   */
+  useEffect(() => {
+    if (!companyId) return;
+    const id = companyId;
+    let cancelled = false;
+
+    const params = {
+      from: appliedFrom || undefined,
+      to: appliedTo || undefined,
+    };
+
+    async function loadSubject() {
+      setSubjectLoading(true);
+      try {
+        if (tab === 'register' && subjectType) {
+          setRegister(await getRegister(id, { ...params, voucherTypeCodes: [subjectType] }));
+        } else if (tab === 'ledger' && subjectLedgerId) {
+          setLedgerReport(await getLedgerStatement(id, subjectLedgerId, params));
+        } else if (tab === 'bank-reconciliation' && subjectLedgerId) {
+          setReconciliation(await getBankReconciliation(id, subjectLedgerId, params));
+        } else if (tab === 'monthly-summary' && (subjectLedgerId || subjectGroupId)) {
+          setMonthly(
+            await getMonthlySummary(
+              id,
+              subjectLedgerId ? { ledgerId: subjectLedgerId } : { groupId: subjectGroupId },
+              params,
+            ),
+          );
+        } else if (tab === 'audit') {
+          setAudit(await getAuditTrail(id, { ...params, limit: 200 }));
+        }
+      } catch (err) {
+        if (!cancelled) setError(getErrorMessage(err, 'Could not load this report'));
+      } finally {
+        if (!cancelled) setSubjectLoading(false);
+      }
+    }
+
+    void loadSubject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, tab, subjectType, subjectLedgerId, subjectGroupId, appliedFrom, appliedTo]);
+
   /* Not memoized: every tree this is handed to is a plain component, so a stable identity saved
      no render, while the compiler could not preserve the wrapper across the await and gave up on
      optimizing the whole page because of it. */
+  /**
+   * Marks a bank line as shown by the statement, then re-reads the report.
+   *
+   * Re-read rather than removed from the list here: the two balances at the top move with it, and
+   * a screen that dropped the row while leaving the figures alone would be showing a
+   * reconciliation that no longer adds up.
+   */
+  async function markReconciled(voucherId: string, entryId: string, bankDate: string | null) {
+    if (!companyId || !subjectLedgerId) return;
+    setReconciling(true);
+    setError(null);
+    try {
+      await reconcileEntry(companyId, voucherId, entryId, bankDate);
+      setReconciliation(
+        await getBankReconciliation(companyId, subjectLedgerId, {
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not reconcile this line'));
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   async function openLedger(node: ReportNode) {
     if (!companyId) return;
     try {
@@ -668,6 +849,45 @@ export function ReportsPage() {
           Back, Forward, a link carrying no period — reseeds the boxes. Boxes that go on showing
           dates the statement below is not using are worse than no boxes at all.
         */}
+        {/*
+          Which subject the report is about, for the reports that are about one. Sits before the
+          period because it is the first choice a reader makes: a ledger statement with no ledger
+          is not a statement waiting for a date, it is nothing at all.
+        */}
+        {tab === 'register' && (
+          <SubjectPicker
+            id="report-type"
+            label="Voucher type"
+            placeholder="Choose a voucher type…"
+            value={subjectType}
+            onChange={(value) => chooseSubject('type', value)}
+            options={voucherTypes.map((type) => ({ value: type.code, label: type.name }))}
+          />
+        )}
+        {(tab === 'ledger' || tab === 'monthly-summary') && (
+          <SubjectPicker
+            id="report-ledger"
+            label="Ledger"
+            placeholder="Choose an account…"
+            value={subjectLedgerId}
+            onChange={(value) => chooseSubject('ledgerId', value)}
+            options={ledgers.map((ledger) => ({ value: ledger.id, label: ledger.name }))}
+          />
+        )}
+        {tab === 'bank-reconciliation' && (
+          <SubjectPicker
+            id="report-bank"
+            label="Account"
+            placeholder="Choose a cash or bank account…"
+            value={subjectLedgerId}
+            onChange={(value) => chooseSubject('ledgerId', value)}
+            /* Only the accounts that have a statement to be reconciled against. */
+            options={ledgers
+              .filter((ledger) => ledger.ledgerType === 'CASH' || ledger.ledgerType === 'BANK')
+              .map((ledger) => ({ value: ledger.id, label: ledger.name }))}
+          />
+        )}
+
         <PeriodControls
           key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
           applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
@@ -714,14 +934,34 @@ export function ReportsPage() {
             />
           </section>
           <section className={styles.panel}>
+            {/*
+              The heading totals the whole side, the period profit included.
+
+              Profit belongs to this side — it is what the owner has earned and not yet drawn — but
+              it sits in its own row below because it comes from the Profit & Loss rather than from
+              a group. Totalling only the groups printed "Liabilities ₹0.00" beside "Assets
+              ₹4,53,600.00" on books that balance perfectly, which reads as an error and is not one.
+            */}
             <h2 className={styles.panelTitle}>
               Liabilities{' '}
               {balanceSheet.totals.priorLiabilities !== undefined && (
                 <span className={styles.panelPrior}>
-                  {money(balanceSheet.totals.priorLiabilities)}
+                  {money(
+                    sideTotal(
+                      balanceSheet.totals.priorLiabilities,
+                      balanceSheet.totals.priorCurrentPeriodProfit,
+                    ),
+                  )}
                 </span>
               )}
-              <span className={styles.panelTotal}>{money(balanceSheet.totals.liabilities)}</span>
+              <span className={styles.panelTotal}>
+                {money(
+                  sideTotal(
+                    balanceSheet.totals.liabilities,
+                    balanceSheet.totals.currentPeriodProfit,
+                  ),
+                )}
+              </span>
             </h2>
             <ReportTree
               formatAmount={money}
@@ -914,6 +1154,84 @@ export function ReportsPage() {
           )}
         </section>
       )}
+
+      {/*
+        Each waits for its subject rather than showing an empty frame: a table of nothing looks
+        like an account with no movement, which is a different and much more alarming statement.
+      */}
+      {tab === 'register' && !subjectType && (
+        <p className={styles.empty}>Choose a voucher type to see its register.</p>
+      )}
+      {tab === 'register' && subjectType && register && (
+        <section className={styles.panel}>
+          <h2 className={styles.panelTitle}>
+            {voucherTypes.find((type) => type.code === subjectType)?.name ?? subjectType}
+            <span className={styles.panelTotal}>{money(register.total)}</span>
+          </h2>
+          <div className={styles.tableWrap}>
+            <table className={styles.table} data-stack>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Number</th>
+                  <th>Narration</th>
+                  <th>Status</th>
+                  <th className={styles.num}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {register.rows.map((row) => (
+                  <tr key={row.voucherId}>
+                    <td>{toCalendarDay(row.voucherDate)}</td>
+                    <td>{row.voucherNumber}</td>
+                    <td>{row.narration ?? '—'}</td>
+                    <td>{row.status}</td>
+                    <td className={styles.num}>{money(row.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {register.rows.length === 0 && (
+            <p className={styles.empty}>Nothing of this type in the period.</p>
+          )}
+        </section>
+      )}
+
+      {tab === 'ledger' && !subjectLedgerId && (
+        <p className={styles.empty}>Choose an account to see its statement.</p>
+      )}
+      {tab === 'ledger' && subjectLedgerId && ledgerReport && (
+        <LedgerStatement statement={ledgerReport} money={money} />
+      )}
+
+      {tab === 'bank-reconciliation' && !subjectLedgerId && (
+        <p className={styles.empty}>Choose a cash or bank account to reconcile.</p>
+      )}
+      {tab === 'bank-reconciliation' && subjectLedgerId && reconciliation && (
+        <BankReconciliationView
+          report={reconciliation}
+          money={money}
+          saving={reconciling}
+          onReconcile={markReconciled}
+        />
+      )}
+
+      {tab === 'monthly-summary' && !subjectLedgerId && !subjectGroupId && (
+        <p className={styles.empty}>Choose an account to see it month by month.</p>
+      )}
+      {tab === 'monthly-summary' && (subjectLedgerId || subjectGroupId) && monthly && (
+        <MonthlySummaryView report={monthly} money={money} monthLabel={monthLabel} />
+      )}
+
+      {tab === 'audit' && audit && <AuditTrailView trail={audit} />}
+
+      {subjectLoading &&
+        (tab === 'register' ||
+          tab === 'ledger' ||
+          tab === 'bank-reconciliation' ||
+          tab === 'monthly-summary' ||
+          tab === 'audit') && <Loading label="Loading…" />}
 
       {tab === 'day-book' && dayBook && (
         <section className={styles.panel}>

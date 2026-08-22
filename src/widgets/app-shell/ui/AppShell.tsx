@@ -33,11 +33,21 @@ import styles from './AppShell.module.css';
  * else. The label is the conventional name for the key; the vouchers screen shows the company's
  * own name for the type once the form opens.
  */
+/**
+ * Tally's keys, unchanged, because anyone who has used it already has them in their fingers.
+ *
+ * All eight seeded voucher types, not the four that happen to be the commonest: a product that can
+ * post a sale but offers no way to reach the form is a product that looks broken.
+ */
 const VOUCHER_KEYS = [
   { key: 'F4', code: 'CONTRA', label: 'Contra' },
   { key: 'F5', code: 'PAYMENT', label: 'Payment' },
   { key: 'F6', code: 'RECEIPT', label: 'Receipt' },
   { key: 'F7', code: 'JOURNAL', label: 'Journal' },
+  { key: 'F8', code: 'SALES', label: 'Sales' },
+  { key: 'F9', code: 'PURCHASE', label: 'Purchase' },
+  { key: 'Ctrl+F8', code: 'CREDIT_NOTE', label: 'Credit Note' },
+  { key: 'Ctrl+F9', code: 'DEBIT_NOTE', label: 'Debit Note' },
 ] as const;
 
 export function AppShell() {

@@ -23,6 +23,12 @@ type FeatureKey = keyof CompanyFeatures;
  * law, so it is offered to Indian companies and to nobody else. The server enforces the same rule;
  * this is here so the switch explains itself rather than failing on save.
  */
+/*
+  Cost centres and inventory are not listed. They are flags on the company that nothing reads, so
+  each showed a disabled row saying "Not built yet" — the menu-bar rule broken in another place: a
+  settings screen listing what the product cannot do teaches you not to trust the switches it can.
+  They come back the day something behind them does.
+*/
 const FEATURES: Array<{
   key: FeatureKey;
   label: string;
@@ -42,13 +48,6 @@ const FEATURES: Array<{
     hint: 'Record vouchers in other currencies at a dated exchange rate. Reports still total in the base currency.',
     available: () => true,
   },
-  {
-    key: 'costCentres',
-    label: 'Cost centres',
-    hint: 'Not built yet.',
-    available: () => false,
-  },
-  { key: 'inventory', label: 'Inventory', hint: 'Not built yet.', available: () => false },
   {
     key: 'gst',
     label: 'GST',

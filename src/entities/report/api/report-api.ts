@@ -12,7 +12,16 @@ import type {
   ReportNode,
   ReceiptsAndPaymentsReport,
   CashFlowReport,
+  BankReconciliationReport,
+  MonthlySummaryReport,
+  AuditList,
+  AuditEntity,
 } from '../model/types';
+
+/** Day Book narrowed to one voucher type — Tally's Sales, Purchase, Journal and other registers. */
+export interface RegisterParams extends ReportParams {
+  voucherTypeCodes?: string[];
+}
 
 export interface ReportParams {
   financialYearId?: string;
@@ -69,3 +78,33 @@ export const getReceiptsAndPayments = (companyId: string, params: ReportParams =
 
 export const getCashFlow = (companyId: string, params: ReportParams = {}) =>
   fetchReport<CashFlowReport>(endpoints.reports.cashFlow(companyId), params);
+
+/** The Day Book, narrowed to one voucher type. Passing none of them is the Day Book itself. */
+export const getRegister = (companyId: string, params: RegisterParams = {}) =>
+  fetchReport<DayBookReport>(endpoints.reports.dayBook(companyId), params as ReportParams);
+
+export const getBankReconciliation = (
+  companyId: string,
+  ledgerId: string,
+  params: ReportParams = {},
+) =>
+  fetchReport<BankReconciliationReport>(
+    endpoints.reports.bankReconciliation(companyId, ledgerId),
+    params,
+  );
+
+export const getMonthlySummary = (
+  companyId: string,
+  target: { ledgerId?: string; groupId?: string },
+  params: ReportParams = {},
+) =>
+  fetchReport<MonthlySummaryReport>(endpoints.reports.monthlySummary(companyId), {
+    ...params,
+    ...target,
+  } as ReportParams);
+
+/** The record of who changed what. Read-only: there is no endpoint that writes or edits one. */
+export const getAuditTrail = (
+  companyId: string,
+  params: { entity?: AuditEntity; entityId?: string; from?: string; to?: string; limit?: number },
+) => fetchReport<AuditList>(endpoints.audit(companyId), params as ReportParams);

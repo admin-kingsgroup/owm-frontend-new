@@ -75,6 +75,11 @@ export const endpoints = {
   clientErrors: {
     list: () => '/client-errors',
   },
+  audit: (companyId: string) => `/companies/${companyId}/audit`,
+  reconcileEntry: (companyId: string, voucherId: string, entryId: string) =>
+    `/companies/${companyId}/vouchers/${voucherId}/entries/${entryId}/reconcile`,
+  openingBills: (companyId: string, ledgerId: string) =>
+    `/companies/${companyId}/ledgers/${ledgerId}/opening-bills`,
   reports: {
     /** Spans companies, so it is not nested under /companies/:companyId. */
     groupOverview: () => '/reports/group-overview',
@@ -92,6 +97,9 @@ export const endpoints = {
     cashFlow: (companyId: string) => `/companies/${companyId}/reports/cash-flow`,
     ledger: (companyId: string, ledgerId: string) =>
       `/companies/${companyId}/reports/ledgers/${ledgerId}`,
+    bankReconciliation: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/reports/bank-reconciliation/${ledgerId}`,
+    monthlySummary: (companyId: string) => `/companies/${companyId}/reports/monthly-summary`,
   },
   vouchers: {
     list: (companyId: string) => `/companies/${companyId}/vouchers`,

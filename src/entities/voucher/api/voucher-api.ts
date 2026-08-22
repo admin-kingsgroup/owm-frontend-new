@@ -50,3 +50,18 @@ export async function cancelVoucher(companyId: string, id: string): Promise<Vouc
   );
   return data.data;
 }
+
+/**
+ * Ticks one cash or bank line off against a statement, or takes the mark off with `null`.
+ *
+ * On the voucher rather than on the report, because that is what it changes — the reconciliation
+ * report is a reading of these marks, not their owner.
+ */
+export async function reconcileEntry(
+  companyId: string,
+  voucherId: string,
+  entryId: string,
+  reconciledOn: string | null,
+): Promise<void> {
+  await apiClient.post(endpoints.reconcileEntry(companyId, voucherId, entryId), { reconciledOn });
+}

@@ -21,5 +21,13 @@ export type {
   CompanyTrendPoint,
   GroupOverviewTotalsByCurrency,
   GroupOverview,
+  BankReconciliationRow,
+  BankReconciliationReport,
+  MonthlySummaryMonth,
+  MonthlySummaryReport,
+  AuditEntity,
+  AuditAction,
+  AuditEntry,
+  AuditList,
 } from './model/types';
 export * from './api/report-api';
