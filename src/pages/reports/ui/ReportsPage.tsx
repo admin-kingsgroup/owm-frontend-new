@@ -36,7 +36,7 @@ import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
 
 /**
- * The reports, in the order the menu and the tab strip list them.
+ * Every report this screen can show.
  *
  * One list rather than a union plus a separate array: the menu bar links straight at a report by
  * id, so an id that exists in one place and not the other is a link that lands on the wrong
@@ -60,7 +60,7 @@ function isTab(value: string | null): value is Tab {
   return value !== null && (TAB_IDS as readonly string[]).includes(value);
 }
 
-/** Named once, for the tab strip and for the heading of whichever report is open. */
+/** Named once, for the heading of whichever report is open. The menu carries the same names. */
 const TAB_LABELS: Record<Tab, string> = {
   'balance-sheet': 'Balance Sheet',
   'profit-loss': 'Profit & Loss',
@@ -108,18 +108,8 @@ export function ReportsPage() {
    * likely to be bookmarked, reloaded or sent to someone — all of which used to land on the Balance
    * Sheet whatever had been open. An unknown or missing id falls back rather than blanking the page.
    */
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const requested = searchParams.get('report');
-
-  const setTab = useCallback(
-    (next: Tab) => {
-      // Merged rather than replaced: the period a report is being read for is in here too.
-      const params = new URLSearchParams(searchParams);
-      params.set('report', next);
-      setSearchParams(params);
-    },
-    [searchParams, setSearchParams],
-  );
 
   // Empty means "the whole financial year", which is what the server defaults to.
   const [from, setFrom] = useState('');
@@ -433,14 +423,6 @@ export function ReportsPage() {
 
   const period = balanceSheet?.period;
 
-  // One source of truth with the fallback above: the strip offers exactly the reports a request
-  // for one would be honoured for.
-  const TABS = TAB_IDS.map((id) => ({
-    id,
-    label: TAB_LABELS[id],
-    show: isAvailable(id, company),
-  }));
-
   const outstandings = tab === 'receivables' ? receivables : payables;
 
   return (
@@ -518,18 +500,11 @@ export function ReportsPage() {
         </p>
       )}
 
-      <div className={styles.tabs}>
-        {TABS.filter((entry) => entry.show).map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            className={cn(styles.tab, tab === entry.id && styles.tabActive)}
-            onClick={() => setTab(entry.id)}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+      {/*
+        No tab strip. Nine of them across the top was the thing that made this screen unreadable,
+        and the menu bar now lists every report under a heading, with Alt+B, Alt+P and Alt+D for the
+        three reached most often. The heading above says which one is open.
+      */}
 
       {tab === 'balance-sheet' && balanceSheet && (
         <div className={styles.twoColumn}>

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
-import { calendarYear, cn, formatCalendarDay } from '@/shared/lib';
+import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary } from '@/shared/ui';
 
@@ -15,19 +15,29 @@ import {
   matchesBinding,
 } from '../model/button-bar';
 import type { ButtonBarAction } from '../model/button-bar';
+import { useCompanyContext } from '../model/use-company-context';
 import { ButtonBar } from './ButtonBar';
 import { buildMenus } from '../model/menus';
 import { MenuBar } from './MenuBar';
+import { ShortcutSheet } from './ShortcutSheet';
 import { CompanySwitcher } from './CompanySwitcher';
 import { UserMenu } from './UserMenu';
 import styles from './AppShell.module.css';
 
-/** "2026–27" from the year's own start and end, rather than a label stored anywhere. */
-function financialYearLabel(start: string, end: string): string {
-  const from = calendarYear(start);
-  const to = calendarYear(end);
-  return from === to ? String(from) : `${from}–${String(to).slice(-2)}`;
-}
+/**
+ * Tally's voucher keys, against the codes the server seeds a company with.
+ *
+ * Named by code rather than by position: voucher types are the user's own masters and can be
+ * renamed or reordered, and binding F5 to "whatever is third" would quietly point it somewhere
+ * else. The label is the conventional name for the key; the vouchers screen shows the company's
+ * own name for the type once the form opens.
+ */
+const VOUCHER_KEYS = [
+  { key: 'F4', code: 'CONTRA', label: 'Contra' },
+  { key: 'F5', code: 'PAYMENT', label: 'Payment' },
+  { key: 'F6', code: 'RECEIPT', label: 'Receipt' },
+  { key: 'F7', code: 'JOURNAL', label: 'Journal' },
+] as const;
 
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
@@ -75,7 +85,25 @@ export function AppShell() {
     [companies, companyId],
   );
 
-  const menus = useMemo(() => buildMenus(companyId, company), [companyId, company]);
+  const here = `${location.pathname}${location.search}`;
+
+  /*
+    The shortcut sheet is a parameter on whatever screen is open, so Help can be reached from any
+    of them without navigating away, and Back closes it.
+  */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const helpOpen = searchParams.get('help') === 'shortcuts';
+
+  const closeHelp = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('help');
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+  const menus = useMemo(() => buildMenus(companyId, company, here), [companyId, company, here]);
+
+  /** The year actually being posted into, and whether the books balance. See useCompanyContext. */
+  const { financialYear, difference } = useCompanyContext(companyId);
+  const balanced = difference !== null && Number(difference) === 0;
 
   /** What the open screen contributes to the button bar. See useButtonBar. */
   const [pageActions, setPageActions] = useState<ButtonBarAction[]>([]);
@@ -97,8 +125,32 @@ export function AppShell() {
     if (!companyId) return [];
     const base = `/companies/${companyId}`;
     const go = (to: string) => () => navigate(to);
+    const posts = company?.type !== 'ANALYTICS';
 
     return [
+      { group: 'Context', key: 'F1', label: 'Company', onSelect: go('/companies') },
+      {
+        group: 'Context',
+        key: 'F3',
+        label: 'Fin. year',
+        onSelect: go(`${base}?tab=financial-years`),
+      },
+
+      /*
+        Raising a voucher from wherever you are, which is the point of the function keys. The shell
+        does not hold the company's voucher types, so it names the code and lets the vouchers screen
+        resolve it — a company whose masters do not include that code opens the form on its own
+        first active type instead. An analytics workspace posts nothing, so it gets none of these.
+      */
+      ...(posts
+        ? VOUCHER_KEYS.map(({ key, code, label }) => ({
+            group: 'Create',
+            key,
+            label,
+            onSelect: go(`${base}/vouchers?new=${code}`),
+          }))
+        : []),
+
       { group: 'Go to', key: 'Alt+O', label: 'Overview', onSelect: go(base) },
       ...(company?.type === 'ANALYTICS'
         ? [{ group: 'Go to', key: 'Alt+V', label: 'Portfolio', onSelect: go(`${base}/kg`) }]
@@ -226,23 +278,42 @@ export function AppShell() {
           <span className={styles.contextItem}>
             Company <b>{company.name}</b>
           </span>
-          <span className={styles.contextItem}>
-            Financial year{' '}
-            <b>{financialYearLabel(company.financialYearStart, company.financialYearEnd)}</b>{' '}
-            {/*
-              The year's own span, not "the period these figures cover" — a report can be narrowed
-              to a month from its own toolbar, and a strip claiming the whole year over a
-              first-quarter balance sheet is worse than saying nothing. Each report prints the
-              period it was actually run for beneath its own title.
-            */}
-            <span className={styles.contextRange}>
-              {formatCalendarDay(company.financialYearStart, company.country)} –{' '}
-              {formatCalendarDay(company.financialYearEnd, company.country)}
+          {/*
+            The year the company is posting into, read from its financial years rather than from
+            the company record — `financialYearStart` there is the first year it was ever given, and
+            reading it put "2019" above a 2026 balance sheet. See currentFinancialYear, which
+            mirrors the rule the reports API applies.
+
+            The span is the year's own, not "the period these figures cover": a report can be
+            narrowed from its own toolbar, and each one prints the period it was actually run for
+            beneath its title.
+          */}
+          {financialYear && (
+            <span className={styles.contextItem}>
+              Financial year <b>{financialYear.label}</b>{' '}
+              <span className={styles.contextRange}>
+                {formatCalendarDay(financialYear.startDate, company.country)} –{' '}
+                {formatCalendarDay(financialYear.endDate, company.country)}
+              </span>
+              {financialYear.status === 'CLOSED' && (
+                <span className={styles.contextClosed}> · closed</span>
+              )}
             </span>
-          </span>
+          )}
           <span className={styles.contextItem}>
             Base currency <b>{company.baseCurrency}</b>
           </span>
+          {/*
+            Whether debits equal credits, as at the moment this company was opened. Null until the
+            trial balance has been read; never drawn as balanced on an assumption.
+          */}
+          {difference !== null && (
+            <span className={styles.contextItem}>
+              <span className={balanced ? styles.balanced : styles.unbalanced}>
+                {balanced ? 'Books balanced' : `Difference ${difference}`}
+              </span>
+            </span>
+          )}
         </div>
       )}
 
@@ -261,6 +332,8 @@ export function AppShell() {
 
         <ButtonBar actions={actions} />
       </div>
+
+      <ShortcutSheet open={helpOpen} onClose={closeHelp} actions={actions} menus={menus} />
 
       {/* Application chrome — see the print block in globals.css, which drops it from paper. */}
       <div className={styles.status} data-print="hide">

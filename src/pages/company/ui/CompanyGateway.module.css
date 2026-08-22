@@ -1,0 +1,169 @@
+.gateway {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background-color: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: var(--text-base);
+}
+
+/*
+  The menu on the left, the position on the right — the two questions the first screen of the day
+  answers. One column below 60rem, where they simply stack.
+*/
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.card {
+  background-color: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0.5625rem 0.875rem;
+  background-color: var(--paper-sunken);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.asOn {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 500;
+}
+
+/* A whole row is the target, the way a menu line is in Tally — not just the words in it. */
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.4375rem 0.875rem;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background-color: var(--hover-tint);
+}
+
+.count,
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.figures {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.figures td {
+  padding: 0.3125rem 0.875rem;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+}
+
+.figures tr:last-child td {
+  border-bottom: none;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.total td {
+  background-color: var(--paper-sunken);
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.pending,
+.clear {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  font-size: var(--text-base);
+  color: var(--ink-faint);
+}
+
+.warn {
+  color: var(--warning-fg);
+  font-weight: 500;
+}
+
+.bad {
+  color: var(--danger-fg);
+  font-weight: 500;
+}
+
+@media (max-width: 60rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A row is a tap target on a phone, not a line of text. */
+  .item {
+    min-height: 2.75rem;
+  }
+}

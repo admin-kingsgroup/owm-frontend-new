@@ -25,7 +25,12 @@ export interface Menu {
  * depend on a company feature are dropped when the feature is off, exactly as the screens behind
  * them already do.
  */
-export function buildMenus(companyId: string | undefined, company: Company | null): Menu[] {
+export function buildMenus(
+  companyId: string | undefined,
+  company: Company | null,
+  /** Where the app is now, as "/path?query" — the Help sheet opens over it rather than replacing it. */
+  here: string,
+): Menu[] {
   if (!companyId) {
     return [
       {
@@ -33,6 +38,12 @@ export function buildMenus(companyId: string | undefined, company: Company | nul
         label: 'Company',
         mnemonic: 'C',
         items: [{ label: 'All companies', to: '/companies' }],
+      },
+      {
+        id: 'help',
+        label: 'Help',
+        mnemonic: 'H',
+        items: [{ label: 'Keyboard shortcuts', to: withHelp(here) }],
       },
     ];
   }
@@ -113,5 +124,33 @@ export function buildMenus(companyId: string | undefined, company: Company | nul
           : []),
       ],
     },
+    {
+      id: 'analysis',
+      label: 'Analysis',
+      mnemonic: 'A',
+      items: [
+        ...(isPortfolio ? [{ label: 'Portfolio valuation', to: `${base}/kg` }] : []),
+        // Every company the signed-in user can reach, with its cash, profit and draft backlog —
+        // the one view in the product that looks across the whole group rather than into one set
+        // of books.
+        { label: 'Group overview — all companies', to: '/companies' },
+      ],
+    },
+    {
+      id: 'help',
+      label: 'Help',
+      mnemonic: 'H',
+      // Opened over whatever is on screen rather than navigating away from it: a shortcut list is
+      // most useful while you are looking at the screen you wanted the shortcut for.
+      items: [{ label: 'Keyboard shortcuts', to: withHelp(here) }],
+    },
   ];
+}
+
+/** The current location with the shortcut sheet asked for, keeping every other parameter. */
+function withHelp(here: string): string {
+  const [path, query = ''] = here.split('?');
+  const params = new URLSearchParams(query);
+  params.set('help', 'shortcuts');
+  return `${path}?${params.toString()}`;
 }

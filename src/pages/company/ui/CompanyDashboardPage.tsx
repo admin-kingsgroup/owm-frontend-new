@@ -24,6 +24,7 @@ import { AccountGroupTree } from './AccountGroupTree';
 import { FinancialYearsPanel } from './FinancialYearsPanel';
 import { CompanySettingsPanel } from './CompanySettingsPanel';
 import { CurrenciesPanel } from './CurrenciesPanel';
+import { CompanyGateway } from './CompanyGateway';
 import styles from './CompanyDashboardPage.module.css';
 
 /** Plain words for the stored company type — the enum value is not what a person should read. */
@@ -161,6 +162,15 @@ export function CompanyDashboardPage() {
 
   if (error || !company) {
     return <p className={styles.error}>{error ?? 'Company not found'}</p>;
+  }
+
+  /*
+    With no panel asked for, this screen is the company's front door rather than its settings: the
+    menu written out, beside what the books say and what is unfinished. Every panel below is still
+    one ?tab= away, and that is what the Company and Masters menus link at.
+  */
+  if (requestedTab === null) {
+    return <CompanyGateway company={company} voucherTypes={voucherTypes} />;
   }
 
   const visibleLedgers = selectedGroupId

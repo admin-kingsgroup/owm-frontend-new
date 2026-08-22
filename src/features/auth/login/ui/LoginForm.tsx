@@ -23,9 +23,17 @@ export function LoginForm() {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
+      {/*
+        Named as well as placeheld. A placeholder is not an accessible name — a screen reader
+        announces these as an unnamed edit box, and the placeholder disappears the moment anyone
+        starts typing, so it is not much of a visual label either. aria-label rather than a visible
+        <label> keeps the design exactly as it is; this is the way into the application, so it is
+        the last screen that should be unreadable.
+      */}
       <Input
         type="email"
         placeholder="Email"
+        aria-label="Email"
         autoComplete="email"
         value={email}
         onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
@@ -34,6 +42,7 @@ export function LoginForm() {
       <Input
         type="password"
         placeholder="Password"
+        aria-label="Password"
         autoComplete="current-password"
         value={password}
         onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}

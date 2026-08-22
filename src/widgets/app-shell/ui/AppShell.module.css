@@ -110,6 +110,26 @@
   color: var(--ink-faint);
 }
 
+.contextClosed {
+  color: var(--warning-fg);
+  font-weight: 600;
+}
+
+/*
+  Whether debits equal credits. Carried by a word as well as a colour — a difference is the one
+  thing on this strip that has to be noticed by someone who cannot tell the two apart.
+*/
+.balanced {
+  color: var(--success-fg);
+  font-weight: 600;
+}
+
+.unbalanced {
+  color: var(--danger-fg);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
 .body {
   display: flex;
   flex: 1;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
@@ -17,27 +17,11 @@ import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
 import { getErrorMessage, formatCalendarDay, formatMoney, formatMoneyWithSide } from '@/shared/lib';
-import { useButtonBar } from '@/widgets/app-shell';
 
 import styles from './VouchersPage.module.css';
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
-
-/**
- * Tally's voucher keys, against the codes the server seeds a company with.
- *
- * Matched on code rather than position, because voucher types are the user's own masters and can be
- * renamed, reordered or deactivated — binding F5 to "whatever is third in the list" would quietly
- * point it at something else. A company that does not have one of these codes simply does not get
- * that key; nothing is created to satisfy the map.
- */
-const VOUCHER_TYPE_KEYS = [
-  { key: 'F4', code: 'CONTRA' },
-  { key: 'F5', code: 'PAYMENT' },
-  { key: 'F6', code: 'RECEIPT' },
-  { key: 'F7', code: 'JOURNAL' },
-] as const;
 
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -62,13 +46,29 @@ export function VouchersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  /** Which voucher type the form opens on, or null to let it choose the first active one. */
-  const [createType, setCreateType] = useState<string | null>(null);
+  /**
+   * The create form is opened by the URL rather than by local state.
+   *
+   * The shell's F4 to F7 are available on every screen, and they reach this one by navigating to
+   * ?new=PAYMENT — which only works if arriving with the parameter set is the same thing as having
+   * pressed New voucher here. It also means the form survives a reload and closes on Back.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedType = searchParams.get('new');
+  const createModalOpen = requestedType !== null;
+  const createType = requestedType || null;
 
   function openCreate(voucherTypeCode: string | null) {
-    setCreateType(voucherTypeCode);
-    setCreateModalOpen(true);
+    const params = new URLSearchParams(searchParams);
+    params.set('new', voucherTypeCode ?? '');
+    setSearchParams(params);
+  }
+
+  function closeCreate() {
+    const params = new URLSearchParams(searchParams);
+    params.delete('new');
+    // Replaced, so Back leaves the vouchers list rather than reopening the form just closed.
+    setSearchParams(params, { replace: true });
   }
 
   /**
@@ -243,29 +243,6 @@ export function VouchersPage() {
   const listedCompany = listLoaded ? companies?.find((entry) => entry.id === companyId) : undefined;
   const company = loaded?.company ?? listedCompany;
 
-  /*
-    The four function keys, offered only for the voucher types this company actually has active.
-    Nothing is invented: the label is the type's own name, and a company whose masters do not
-    include one of these codes simply does not get that key. Declared before the early returns
-    below, because a hook cannot be called conditionally.
-  */
-  useButtonBar(
-    VOUCHER_TYPE_KEYS.flatMap(({ key, code }) => {
-      const type = voucherTypes.find((entry) => entry.code === code && entry.isActive);
-      if (!type) return [];
-
-      return [
-        {
-          group: 'Create',
-          key,
-          label: type.name,
-          onSelect: () => openCreate(type.code),
-          disabled: setupIncomplete,
-        },
-      ];
-    }),
-  );
-
   if (!companyId) return null;
 
   /*
@@ -437,12 +414,7 @@ export function VouchersPage() {
         </>
       )}
 
-      <Modal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        title="New voucher"
-        size="wide"
-      >
+      <Modal open={createModalOpen} onClose={() => closeCreate()} title="New voucher" size="wide">
         <CreateVoucherForm
           companyId={companyId}
           voucherTypes={voucherTypes}
@@ -456,10 +428,10 @@ export function VouchersPage() {
             ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
           }
           onCreated={() => {
-            setCreateModalOpen(false);
+            closeCreate();
             setRefreshKey((key) => key + 1);
           }}
-          onCancel={() => setCreateModalOpen(false)}
+          onCancel={() => closeCreate()}
         />
       </Modal>
 

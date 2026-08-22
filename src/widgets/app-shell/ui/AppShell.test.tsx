@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -8,6 +8,35 @@ import type { Company, CompanyType } from '@/entities/company';
 
 import { useButtonBar } from '../model/button-bar';
 import { AppShell } from './AppShell';
+
+/**
+ * The context strip reads its year and its difference from the server, not from the company record
+ * — `financialYearStart` there is the first year the company was ever given, not the one it is
+ * posting into. So the strip renders nothing until those calls resolve, and a test that stubs
+ * neither asserts against an empty strip.
+ *
+ * Only the two network calls are stubbed. `currentFinancialYear` stays real, because which year it
+ * picks out of the list is the logic worth exercising here rather than replacing.
+ */
+vi.mock('@/entities/financial-year', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/financial-year')>()),
+  listFinancialYears: vi.fn(async () => [
+    {
+      id: 'fy-2026',
+      companyId: 'c1',
+      // As the server writes it. An April-to-March year straddles two, and says so.
+      label: '2026-2027',
+      startDate: '2026-04-01T00:00:00.000Z',
+      endDate: '2027-03-31T00:00:00.000Z',
+      status: 'OPEN' as const,
+    },
+  ]),
+}));
+
+vi.mock('@/entities/report', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/report')>()),
+  getTrialBalance: vi.fn(async () => ({ totals: { difference: '0.00' } })),
+}));
 
 const company = (patch: Partial<Company> = {}): Company => ({
   id: 'c1',
@@ -170,11 +199,13 @@ describe('AppShell', () => {
     expect(screen.queryByRole('menuitem', { name: 'Vouchers' })).toBeNull();
   });
 
-  it('states the company, year and currency once for the whole app', () => {
+  it('states the company, year and currency once for the whole app', async () => {
     renderShell();
 
     expect(screen.getByText('ADB - INR')).toBeTruthy();
-    expect(screen.getByText('2026–27')).toBeTruthy();
+    // The label exactly as the server wrote it: the strip prints it rather than reformatting, so
+    // what is on screen and what the reports API answers with can never drift apart.
+    expect(await screen.findByText('2026-2027')).toBeTruthy();
     expect(screen.getByText('INR')).toBeTruthy();
   });
 
