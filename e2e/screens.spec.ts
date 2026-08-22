@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { seed } from './seed';
+import { seed, seedFeatured } from './seed';
 
 let companyId: string;
 let token: string;
+/** A company with bill-wise and multi-currency on — see seedFeatured. */
+let featuredId: string;
 
 test.beforeAll(async () => {
   ({ companyId, token } = await seed());
+  featuredId = await seedFeatured(token);
 });
 
 /**
@@ -41,6 +44,18 @@ const SCREENS = [
   { name: 'voucher-entry', path: () => `/companies/${companyId}/vouchers?new=CONTRA` },
   { name: 'masters', path: () => `/companies/${companyId}?tab=accounts` },
   { name: 'import-export', path: () => `/companies/${companyId}?tab=import-export` },
+
+  /*
+    The three that only exist behind a company feature. Drawn against the company that has those
+    features on, because against the plain one the page falls back to the balance sheet and the
+    check would pass while proving nothing.
+  */
+  {
+    name: 'reports-receivables',
+    path: () => `/companies/${featuredId}/reports?report=receivables`,
+  },
+  { name: 'reports-payables', path: () => `/companies/${featuredId}/reports?report=payables` },
+  { name: 'reports-forex', path: () => `/companies/${featuredId}/reports?report=forex` },
   { name: 'shortcuts', path: () => `/companies/${companyId}?help=shortcuts` },
 ];
 

@@ -32,12 +32,12 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
         {Object.entries(outstandings.totals.byBucket).map(([bucket, amount]) => (
           <div key={bucket} className={styles.bucket}>
             <span className={styles.bucketLabel}>{BUCKET_LABELS[bucket] ?? bucket}</span>
-            <span className={styles.bucketAmount}>{amount}</span>
+            <span className={styles.bucketAmount}>{money(amount)}</span>
           </div>
         ))}
         <div className={cn(styles.bucket, styles.bucketTotal)}>
           <span className={styles.bucketLabel}>Total</span>
-          <span className={styles.bucketAmount}>{outstandings.totals.outstanding}</span>
+          <span className={styles.bucketAmount}>{money(outstandings.totals.outstanding)}</span>
         </div>
       </div>
 
@@ -61,8 +61,8 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
                 <td>{bill.reference}</td>
                 <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : toCalendarDay(bill.billDate)}</td>
                 <td className={styles.num}>{money(bill.amount)}</td>
-                <td className={styles.num}>{bill.settled}</td>
-                <td className={styles.num}>{bill.outstanding}</td>
+                <td className={styles.num}>{money(bill.settled)}</td>
+                <td className={styles.num}>{money(bill.outstanding)}</td>
                 <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
                   {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
                 </td>

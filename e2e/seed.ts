@@ -141,7 +141,11 @@ export async function seed(): Promise<SeededCompany> {
       token,
       body: { voucherTypeCode, voucherDate: `${year}-06-15`, narration, entries },
     });
-    if (post && raised.body?.data?.id) {
+    // Refusals surface here rather than leaving a company that looks seeded and is not.
+    if (!raised.body?.data?.id) {
+      throw new Error(`Could not raise "${narration}": ${JSON.stringify(raised.body)}`);
+    }
+    if (post) {
       await call(`/companies/${companyId}/vouchers/${raised.body.data.id}/post`, {
         method: 'POST',
         token,
@@ -174,4 +178,236 @@ export async function seed(): Promise<SeededCompany> {
   );
 
   return { token, companyId };
+}
+
+/**
+ * A second company with bill-wise detail and multi-currency switched on.
+ *
+ * Receivables, Payables and Forex Gain/Loss only exist when those two features are, and the plain
+ * company above has neither — so those three screens had never been drawn by any check, only
+ * typechecked. ADB runs with both on, which makes them the screens most likely to break unseen.
+ *
+ * The books here are deliberately awkward in the ways those reports care about: a bill raised and
+ * left unpaid, one part-settled, one already overdue, and a receivable held in a currency that is
+ * not the company's own with the rate moved under it afterwards.
+ */
+export async function seedFeatured(token: string): Promise<string> {
+  const existing = await call('/companies', { token });
+  const already = existing.body?.data?.find(
+    (company: { code: string }) => company.code === 'SHOT02',
+  );
+  if (already) return already.id as string;
+
+  const year = new Date().getUTCFullYear();
+  const created = await call('/companies', {
+    method: 'POST',
+    token,
+    body: {
+      name: 'ADB - Multi',
+      code: 'SHOT02',
+      type: 'PERSONAL',
+      financialYearStart: `${year}-01-01`,
+      financialYearEnd: `${year}-12-31`,
+      baseCurrency: 'INR',
+      country: 'IN',
+      timezone: 'Asia/Kolkata',
+    },
+  });
+  if (created.status !== 201) {
+    throw new Error(`Could not create the featured company: ${JSON.stringify(created.body)}`);
+  }
+
+  const companyId = created.body.data.id as string;
+
+  // Both features on, which is what puts the three reports on the menu at all.
+  await call(`/companies/${companyId}`, {
+    method: 'PATCH',
+    token,
+    body: { features: { billWiseDetails: true, multiCurrency: true } },
+  });
+
+  await call(`/companies/${companyId}/currencies`, {
+    method: 'POST',
+    token,
+    body: { code: 'USD', symbol: '$', name: 'US Dollar' },
+  });
+  // Two rates, so the second revalues the first and there is a gain to report.
+  await call(`/companies/${companyId}/currencies/rates`, {
+    method: 'POST',
+    token,
+    body: { currencyCode: 'USD', effectiveFrom: `${year}-01-01`, rate: 82 },
+  });
+  await call(`/companies/${companyId}/currencies/rates`, {
+    method: 'POST',
+    token,
+    body: { currencyCode: 'USD', effectiveFrom: `${year}-07-01`, rate: 86 },
+  });
+
+  const groups = await call(`/companies/${companyId}/account-groups`, { token });
+  const groupCode = (...fragments: string[]) =>
+    groups.body.data.find((group: { code: string }) =>
+      fragments.some((fragment) => group.code.includes(fragment)),
+    )?.code as string | undefined;
+
+  const ledger = async (body: Record<string, unknown>) => {
+    const made = await call(`/companies/${companyId}/ledgers`, { method: 'POST', token, body });
+    if (made.status !== 201) {
+      throw new Error(`Could not create ${body.code}: ${JSON.stringify(made.body)}`);
+    }
+  };
+
+  await ledger({
+    code: 'HDFC_BANK',
+    name: 'HDFC Bank — 4021',
+    accountGroupCode: groupCode('BANK_ACCOUNTS'),
+    ledgerType: 'BANK',
+  });
+  // Tracked bill by bill, which is what puts a party into Receivables and Payables at all.
+  await ledger({
+    code: 'TENANT',
+    name: 'Tenant — Bandra flat',
+    accountGroupCode: groupCode('LOANS_ADVANCES_ASSET', 'CURRENT_ASSETS'),
+    maintainBillwise: true,
+  });
+  await ledger({
+    code: 'CONSULTING_CLIENT',
+    name: 'Consulting client — New York',
+    accountGroupCode: groupCode('LOANS_ADVANCES_ASSET', 'CURRENT_ASSETS'),
+    maintainBillwise: true,
+    currencyCode: 'USD',
+  });
+  await ledger({
+    code: 'BUILDER',
+    name: 'Builder — renovation',
+    accountGroupCode: groupCode('CURRENT_LIABILITIES'),
+    maintainBillwise: true,
+  });
+  await ledger({
+    code: 'RENT_INCOME',
+    name: 'Rent Received',
+    accountGroupCode: groupCode('DIRECT_INCOME', 'INCOME'),
+  });
+  await ledger({
+    code: 'RENOVATION',
+    name: 'Renovation',
+    accountGroupCode: groupCode('INDIRECT_EXPENSES', 'EXPENSES'),
+  });
+
+  const voucher = async (
+    voucherTypeCode: string,
+    voucherDate: string,
+    narration: string,
+    entries: Array<Record<string, unknown>>,
+  ) => {
+    const raised = await call(`/companies/${companyId}/vouchers`, {
+      method: 'POST',
+      token,
+      body: { voucherTypeCode, voucherDate, narration, entries },
+    });
+
+    /*
+      Loudly, because a silent one is worse than none. This helper used to shrug a refusal off and
+      carry on, and the whole company came out empty — every screen still drew, every check still
+      passed, and Receivables reported "nothing outstanding" over books that had never been
+      written. A seed that half works is a harness that lies.
+    */
+    if (!raised.body?.data?.id) {
+      throw new Error(`Could not raise "${narration}": ${JSON.stringify(raised.body)}`);
+    }
+
+    const posted = await call(`/companies/${companyId}/vouchers/${raised.body.data.id}/post`, {
+      method: 'POST',
+      token,
+    });
+    if (posted.status !== 200) {
+      throw new Error(`Could not post "${narration}": ${JSON.stringify(posted.body)}`);
+    }
+
+    return raised;
+  };
+
+  // A bill raised and never paid, dated early enough to be well overdue.
+  await voucher('JOURNAL', `${year}-02-10`, 'Rent invoiced — February', [
+    {
+      ledgerCode: 'TENANT',
+      debit: 120000,
+      credit: 0,
+      billAllocations: [
+        {
+          allocationType: 'NEW_REF',
+          reference: 'RENT/FEB',
+          amount: 120000,
+          dueDate: `${year}-03-10`,
+        },
+      ],
+    },
+    { ledgerCode: 'RENT_INCOME', debit: 0, credit: 120000 },
+  ]);
+
+  // Raised, then part-settled — so one bill sits partly outstanding rather than all or nothing.
+  await voucher('JOURNAL', `${year}-05-05`, 'Rent invoiced — May', [
+    {
+      ledgerCode: 'TENANT',
+      debit: 120000,
+      credit: 0,
+      billAllocations: [
+        {
+          allocationType: 'NEW_REF',
+          reference: 'RENT/MAY',
+          amount: 120000,
+          dueDate: `${year}-06-05`,
+        },
+      ],
+    },
+    { ledgerCode: 'RENT_INCOME', debit: 0, credit: 120000 },
+  ]);
+  await voucher('RECEIPT', `${year}-06-20`, 'Part payment against May rent', [
+    { ledgerCode: 'HDFC_BANK', debit: 70000, credit: 0 },
+    {
+      ledgerCode: 'TENANT',
+      debit: 0,
+      credit: 70000,
+      billAllocations: [{ allocationType: 'AGAINST_REF', reference: 'RENT/MAY', amount: 70000 }],
+    },
+  ]);
+
+  // A receivable in a currency the company does not keep its books in, raised at the old rate.
+  await voucher('JOURNAL', `${year}-03-15`, 'Consulting invoiced in USD', [
+    {
+      ledgerCode: 'CONSULTING_CLIENT',
+      debit: 5000,
+      credit: 0,
+      currencyCode: 'USD',
+      exchangeRate: 82,
+      billAllocations: [
+        {
+          allocationType: 'NEW_REF',
+          reference: 'CONS/0031',
+          amount: 5000,
+          dueDate: `${year}-04-15`,
+        },
+      ],
+    },
+    { ledgerCode: 'RENT_INCOME', debit: 0, credit: 410000 },
+  ]);
+
+  // Something owed the other way, so Payables is not an empty screen.
+  await voucher('JOURNAL', `${year}-04-02`, 'Renovation billed', [
+    { ledgerCode: 'RENOVATION', debit: 64000, credit: 0 },
+    {
+      ledgerCode: 'BUILDER',
+      debit: 0,
+      credit: 64000,
+      billAllocations: [
+        {
+          allocationType: 'NEW_REF',
+          reference: 'RENO/07',
+          amount: 64000,
+          dueDate: `${year}-05-02`,
+        },
+      ],
+    },
+  ]);
+
+  return companyId;
 }
