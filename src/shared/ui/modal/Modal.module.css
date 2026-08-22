@@ -17,6 +17,15 @@
   box-shadow: var(--shadow-3);
 }
 
+/*
+  For a dialog whose content is a table rather than a column of fields. Wide enough for voucher
+  entry — account, current balance, debit and credit — without any column being squeezed out of
+  legibility, and still short of the full window so it reads as a dialog.
+*/
+.wide {
+  max-width: 62rem;
+}
+
 .header {
   display: flex;
   align-items: center;

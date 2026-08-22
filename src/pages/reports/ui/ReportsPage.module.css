@@ -441,3 +441,19 @@
     white-space: nowrap;
   }
 }
+
+/* The chart sits above the statement it summarises, in the same card language as the panels. */
+.chartPanel {
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-card);
+}
+
+.chartTitle {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-serif);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}

@@ -1,0 +1,124 @@
+/*
+  The button bar sits on the same recessed surface as the menu bar, so the two read as one frame
+  around the screen rather than as two unrelated panels.
+*/
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  width: 13.25rem;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  background-color: var(--paper-sunken);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.groupName {
+  padding: var(--space-3) var(--space-2) var(--space-1);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The first heading would otherwise start with a gap the panel edge already provides. */
+.group:first-child .groupName {
+  padding-top: var(--space-1);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.3125rem var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--paper-card);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.action:hover:not(:disabled) {
+  background-color: var(--hover-tint);
+  border-color: var(--accent);
+}
+
+.action:disabled {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+  /* Not opacity: dimming the whole row takes the key out of AA along with the label. */
+  background-color: transparent;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.action:disabled .key {
+  color: var(--ink-faint);
+}
+
+/*
+  Below 60rem the bar lies flat above the content: a fixed 13rem column beside a phone-width screen
+  leaves nothing for the screen itself. The keys stay printed on it — a Bluetooth keyboard is not
+  unheard of — but the layout stops assuming they are the point.
+*/
+@media (max-width: 60rem) {
+  .bar {
+    /* Above the content, not below it: at the foot of a long statement the actions for that
+       statement are a full scroll away, which is the same as not having them. */
+    order: -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    width: auto;
+    border-left: none;
+    /* It sits above the content now, so the rule that separates them belongs underneath it. */
+    border-bottom: 1px solid var(--border);
+    overflow-y: visible;
+  }
+
+  .group {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .groupName {
+    padding: 0 var(--space-1);
+  }
+
+  .group:first-child .groupName {
+    padding-top: 0;
+  }
+
+  .action {
+    min-height: 2.25rem;
+  }
+}

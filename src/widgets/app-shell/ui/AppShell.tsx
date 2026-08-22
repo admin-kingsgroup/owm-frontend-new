@@ -1,46 +1,63 @@
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
-import { Building2, LayoutGrid, Receipt, BarChart3, PieChart, Menu, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
-import { cn } from '@/shared/lib';
+import { calendarYear, cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary } from '@/shared/ui';
 
+import {
+  ButtonBarContext,
+  hasOpenDialog,
+  isLetterBinding,
+  isTypingTarget,
+  matchesBinding,
+} from '../model/button-bar';
+import type { ButtonBarAction } from '../model/button-bar';
+import { ButtonBar } from './ButtonBar';
+import { buildMenus } from '../model/menus';
+import { MenuBar } from './MenuBar';
 import { CompanySwitcher } from './CompanySwitcher';
 import { UserMenu } from './UserMenu';
 import styles from './AppShell.module.css';
 
+/** "2026–27" from the year's own start and end, rather than a label stored anywhere. */
+function financialYearLabel(start: string, end: string): string {
+  const from = calendarYear(start);
+  const to = calendarYear(end);
+  return from === to ? String(from) : `${from}–${String(to).slice(-2)}`;
+}
+
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
   const location = useLocation();
-  const navRef = useRef<HTMLElement>(null);
-  const sidebarRef = useRef<HTMLElement>(null);
+  const navigate = useNavigate();
+  const navPanelRef = useRef<HTMLElement>(null);
 
   /**
-   * Only ever true below 60rem, where the rail is an overlay rather than part of the page. Above
-   * it the sidebar is always there and this is inert.
+   * Only ever true below 60rem, where the menu bar is an overlay rather than part of the page.
+   * Above it the bar is always there and this is inert.
    */
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Focus stays in the drawer while it is open, page scroll is locked behind it, and focus returns
   // to the button that opened it. Shared with the modal — see useFocusTrap.
-  useFocusTrap(menuOpen, sidebarRef);
+  useFocusTrap(menuOpen, navPanelRef);
   const inCompany = Boolean(companyId);
 
   /**
-   * The company list, read on entering a company and shared by the switcher and the sidebar. The
-   * sidebar needs it because an analytics workspace posts nothing and so gets Portfolio where the
-   * others get Vouchers — the same either/or the company overview draws — and that turns on the
-   * company's type. Keyed on `inCompany` rather than `companyId`, so switching company reuses the
-   * list it just read instead of fetching it again.
+   * The company list, read on entering a company and shared by the switcher, the menus and the
+   * context strip. The menus need it because a company's features decide which reports exist and an
+   * analytics workspace posts nothing, so it gets Portfolio where the others get Vouchers. Keyed on
+   * `inCompany` rather than `companyId`, so switching company reuses the list it just read instead
+   * of fetching it again.
    */
   // The same list the companies page holds, rather than a second copy. Sharing it means entering
   // a company costs no extra request, and a company created or renamed on that page reaches the
-  // switcher without a reload. A failed load leaves it null, which the section link below and the
-  // switcher each already handle: chrome, not content.
+  // switcher without a reload. A failed load leaves it null, which the menus and the switcher each
+  // already handle: chrome, not content.
   const companies = useCompanyStore((state) => state.companies);
-  const listLoaded = useCompanyStore((state) => state.loaded);
   const loadCompanies = useCompanyStore((state) => state.load);
 
   useEffect(() => {
@@ -49,50 +66,94 @@ export function AppShell() {
   }, [inCompany, loadCompanies]);
 
   /**
-   * `null` only while the list is still in flight. Vouchers and Portfolio are mutually exclusive,
-   * so the slot stays empty until the answer is known — showing one and then swapping it for the
-   * other would offer a link that is about to disappear.
-   *
-   * Keyed on the store's `loaded` rather than on `companies === null`, because those are not the
-   * same thing: a failed load settles with no data, and reading it as "still loading" would leave
-   * a company with no section link at all until the page was reloaded. Settled-but-empty falls
-   * through to Vouchers, which is what two of the three company types want.
+   * `null` until the list arrives, and after a load that failed. Everything drawn from it — the
+   * feature-dependent menu items, the context strip — is chrome, so it simply renders less until
+   * the answer is known rather than holding the screen back for it.
    */
-  const section =
-    !companyId || !listLoaded
-      ? null
-      : companies?.find((company) => company.id === companyId)?.type === 'ANALYTICS'
-        ? 'portfolio'
-        : 'vouchers';
+  const company = useMemo(
+    () => (companyId ? (companies?.find((entry) => entry.id === companyId) ?? null) : null),
+    [companies, companyId],
+  );
+
+  const menus = useMemo(() => buildMenus(companyId, company), [companyId, company]);
+
+  /** What the open screen contributes to the button bar. See useButtonBar. */
+  const [pageActions, setPageActions] = useState<ButtonBarAction[]>([]);
+
+  const publish = useCallback((actions: ButtonBarAction[]) => {
+    setPageActions(actions);
+    // Guarded so a screen unmounting *after* the next one has published does not blank the bar the
+    // new screen just filled — which is the order React tears down and mounts routes in.
+    return () => setPageActions((current) => (current === actions ? [] : current));
+  }, []);
+
+  const buttonBarContext = useMemo(() => ({ publish }), [publish]);
 
   /**
-   * Below 60rem the nav is a strip that scrolls sideways, and the item you are on can sit past its
-   * right edge — leaving the one cue that says which section you are in off screen. It depends on
-   * `section` as well as the path because the strip only becomes wider than the screen once the
-   * reserved slot has resolved into a real link. `nearest` everywhere means this does nothing at
-   * all on the vertical rail, where every item always fits.
+   * The destinations the shell can reach on its own, so every screen has a way out of it without
+   * each one having to say so. Pages publish theirs first; these always sit at the bottom.
+   */
+  const shellActions = useMemo<ButtonBarAction[]>(() => {
+    if (!companyId) return [];
+    const base = `/companies/${companyId}`;
+    const go = (to: string) => () => navigate(to);
+
+    return [
+      { group: 'Go to', key: 'Alt+O', label: 'Overview', onSelect: go(base) },
+      ...(company?.type === 'ANALYTICS'
+        ? [{ group: 'Go to', key: 'Alt+V', label: 'Portfolio', onSelect: go(`${base}/kg`) }]
+        : [{ group: 'Go to', key: 'Alt+V', label: 'Vouchers', onSelect: go(`${base}/vouchers`) }]),
+      {
+        group: 'Go to',
+        key: 'Alt+B',
+        label: 'Balance Sheet',
+        onSelect: go(`${base}/reports?report=balance-sheet`),
+      },
+      {
+        group: 'Go to',
+        key: 'Alt+P',
+        label: 'Profit & Loss',
+        onSelect: go(`${base}/reports?report=profit-loss`),
+      },
+      {
+        group: 'Go to',
+        key: 'Alt+D',
+        label: 'Day Book',
+        onSelect: go(`${base}/reports?report=day-book`),
+      },
+    ];
+  }, [companyId, company, navigate]);
+
+  const actions = useMemo(() => [...pageActions, ...shellActions], [pageActions, shellActions]);
+
+  /**
+   * The bar's shortcuts, bound once for all of them.
+   *
+   * A binding that ends in a letter stands aside while someone is typing: Ctrl+A must still select
+   * the narration it is pressed in. Function keys and Ctrl+Enter type nothing, so they fire
+   * wherever focus happens to be — which is what makes a voucher acceptable without leaving the
+   * last field.
    */
   useEffect(() => {
-    let cancelled = false;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.repeat) return;
+      // A dialog owns the keyboard while it is open — see hasOpenDialog.
+      if (hasOpenDialog()) return;
 
-    function reveal() {
-      if (cancelled) return;
-      const active = navRef.current?.querySelector(`.${styles.navLinkActive}`);
-      active?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      for (const action of actions) {
+        if (action.disabled) continue;
+        if (!matchesBinding(action.key, event)) continue;
+        if (isLetterBinding(action.key) && isTypingTarget(event.target)) return;
+
+        event.preventDefault();
+        action.onSelect();
+        return;
+      }
     }
 
-    reveal();
-    /*
-      Again once the webfonts land. The strip is first laid out in the fallback face, and when
-      Inter swaps in every item changes width — enough to slide the item just revealed back off
-      the edge. Already-resolved after the first navigation, so this costs a microtask.
-    */
-    document.fonts?.ready.then(reveal);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [location.pathname, section]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [actions]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -107,24 +168,35 @@ export function AppShell() {
 
   return (
     <div className={styles.shell}>
-      {/* Only ever visible below 60rem, where the sidebar covers the page rather than sitting beside it. */}
+      {/* Only ever visible below 60rem, where the menus cover the page rather than sitting on it. */}
       {menuOpen && (
         <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />
       )}
 
-      <aside
-        id="app-navigation"
-        ref={sidebarRef}
-        className={cn(styles.sidebar, menuOpen && styles.sidebarOpen)}
-        // Announced as a dialog only when it is one; above 60rem it is simply part of the page.
-        {...(menuOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } : {})}
-      >
+      <header className={styles.topbar}>
+        <button
+          type="button"
+          className={styles.menuButton}
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={menuOpen}
+          aria-controls="app-navigation"
+        >
+          <Menu size={20} />
+        </button>
+
         <div className={styles.brand}>
           <span className={styles.brandMark}>K</span>
-          <div>
-            <div className={styles.brandName}>KBiz360 OWM</div>
-            <div className={styles.brandSub}>Owner Wealth &amp; Oversight</div>
-          </div>
+          <span className={styles.brandName}>KBiz360 OWM</span>
+        </div>
+
+        <nav
+          id="app-navigation"
+          ref={navPanelRef}
+          className={cn(styles.navPanel, menuOpen && styles.navPanelOpen)}
+          // Announced as a dialog only when it is one; above 60rem it is simply part of the page.
+          {...(menuOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } : {})}
+        >
           <button
             type="button"
             className={styles.drawerClose}
@@ -133,108 +205,69 @@ export function AppShell() {
           >
             <X size={18} />
           </button>
-        </div>
-
-        {/*
-          Following a link is the whole point of the drawer, so it closes itself rather than
-          sitting over the screen it was just used to reach. Delegated to the container: one
-          handler covers every destination, including the ones added later, and it is the click
-          that closes the drawer rather than an effect watching the URL for a change it caused.
-        */}
-        <nav className={styles.nav} ref={navRef} onClick={() => setMenuOpen(false)}>
-          <NavLink
-            to="/companies"
-            end
-            className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
-          >
-            <Building2 size={16} />
-            Companies
-          </NavLink>
-
-          {companyId && (
-            <>
-              <NavLink
-                to={`/companies/${companyId}`}
-                end
-                className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
-              >
-                <LayoutGrid size={16} />
-                Overview
-              </NavLink>
-              {/*
-                Holds the row until the answer arrives. Rendering nothing would let Reports sit one
-                row higher for as long as the company list takes, then jump — a shift on the one
-                control someone is most likely to be reaching for.
-              */}
-              {section === null && (
-                <span className={cn(styles.navLink, styles.navPlaceholder)} aria-hidden="true">
-                  {/* An icon-sized box and a text line, so the row measures exactly like a real
-                      one without a hardcoded height to drift from it. */}
-                  <span className={styles.navPlaceholderIcon} />
-                  &nbsp;
-                </span>
-              )}
-              {section === 'portfolio' && (
-                <NavLink
-                  to={`/companies/${companyId}/kg`}
-                  className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
-                >
-                  <PieChart size={16} />
-                  Portfolio
-                </NavLink>
-              )}
-              {section === 'vouchers' && (
-                <NavLink
-                  to={`/companies/${companyId}/vouchers`}
-                  className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
-                >
-                  <Receipt size={16} />
-                  Vouchers
-                </NavLink>
-              )}
-              <NavLink
-                to={`/companies/${companyId}/reports`}
-                className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
-              >
-                <BarChart3 size={16} />
-                Reports
-              </NavLink>
-            </>
-          )}
+          <MenuBar menus={menus} onNavigate={() => setMenuOpen(false)} />
         </nav>
-      </aside>
 
-      <div className={styles.main}>
-        <header className={styles.topbar}>
-          {/* Always present, even when the switcher renders nothing: the topbar is
-              space-between, so dropping this element would slide the user menu to the left
-              while the company list is still loading. */}
-          <button
-            type="button"
-            className={styles.menuButton}
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={menuOpen}
-            aria-controls="app-navigation"
-          >
-            <Menu size={20} />
-          </button>
-
-          <div className={styles.topbarLead}>
-            {companyId && <CompanySwitcher companyId={companyId} companies={companies} />}
-          </div>
+        {/* Always present, even when the switcher renders nothing: the topbar pushes this group to
+            the end, so dropping it would slide the user menu left while the list is still loading. */}
+        <div className={styles.topbarEnd}>
+          {companyId && <CompanySwitcher companyId={companyId} companies={companies} />}
           <UserMenu />
-        </header>
+        </div>
+      </header>
 
+      {/*
+        The context strip. Which company, which year, which period and which currency every figure
+        below is in — stated once for the whole application, because a statement read against the
+        wrong year is not a mistake anyone catches by looking at the figures.
+      */}
+      {company && (
+        <div className={styles.context}>
+          <span className={styles.contextItem}>
+            Company <b>{company.name}</b>
+          </span>
+          <span className={styles.contextItem}>
+            Financial year{' '}
+            <b>{financialYearLabel(company.financialYearStart, company.financialYearEnd)}</b>{' '}
+            {/*
+              The year's own span, not "the period these figures cover" — a report can be narrowed
+              to a month from its own toolbar, and a strip claiming the whole year over a
+              first-quarter balance sheet is worse than saying nothing. Each report prints the
+              period it was actually run for beneath its own title.
+            */}
+            <span className={styles.contextRange}>
+              {formatCalendarDay(company.financialYearStart, company.country)} –{' '}
+              {formatCalendarDay(company.financialYearEnd, company.country)}
+            </span>
+          </span>
+          <span className={styles.contextItem}>
+            Base currency <b>{company.baseCurrency}</b>
+          </span>
+        </div>
+      )}
+
+      <div className={styles.body}>
         <main className={styles.content}>
           {/*
             Keyed on the path so navigating away clears a caught error. React boundaries do not
             reset themselves, and without the key one broken screen would follow you around the app.
           */}
           <ErrorBoundary key={location.pathname}>
-            <Outlet />
+            <ButtonBarContext.Provider value={buttonBarContext}>
+              <Outlet />
+            </ButtonBarContext.Provider>
           </ErrorBoundary>
         </main>
+
+        <ButtonBar actions={actions} />
+      </div>
+
+      {/* Application chrome — see the print block in globals.css, which drops it from paper. */}
+      <div className={styles.status} data-print="hide">
+        <span>{company ? `${company.name} · ${company.code}` : 'No company open'}</span>
+        <span className={styles.statusEnd}>
+          {company ? `Figures in ${company.baseCurrency}` : 'Choose a company to open its books'}
+        </span>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
 import type { Voucher, VoucherSummary, VoucherStatus } from '@/entities/voucher';
 import { listVoucherTypes } from '@/entities/voucher-type';
+import { getTrialBalance } from '@/entities/report';
 import type { VoucherType } from '@/entities/voucher-type';
 import { listLedgers } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
@@ -15,12 +16,28 @@ import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
-import { getErrorMessage, formatCalendarDay, formatMoney } from '@/shared/lib';
+import { getErrorMessage, formatCalendarDay, formatMoney, formatMoneyWithSide } from '@/shared/lib';
+import { useButtonBar } from '@/widgets/app-shell';
 
 import styles from './VouchersPage.module.css';
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
+
+/**
+ * Tally's voucher keys, against the codes the server seeds a company with.
+ *
+ * Matched on code rather than position, because voucher types are the user's own masters and can be
+ * renamed, reordered or deactivated — binding F5 to "whatever is third in the list" would quietly
+ * point it at something else. A company that does not have one of these codes simply does not get
+ * that key; nothing is created to satisfy the map.
+ */
+const VOUCHER_TYPE_KEYS = [
+  { key: 'F4', code: 'CONTRA' },
+  { key: 'F5', code: 'PAYMENT' },
+  { key: 'F6', code: 'RECEIPT' },
+  { key: 'F7', code: 'JOURNAL' },
+] as const;
 
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -46,6 +63,25 @@ export function VouchersPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  /** Which voucher type the form opens on, or null to let it choose the first active one. */
+  const [createType, setCreateType] = useState<string | null>(null);
+
+  function openCreate(voucherTypeCode: string | null) {
+    setCreateType(voucherTypeCode);
+    setCreateModalOpen(true);
+  }
+
+  /**
+   * What every account stands at, for the current-balance column of the voucher form. Tagged with
+   * the company it was read for, so switching company cannot show the previous set. Read when the
+   * form is first opened rather than with the list — someone who came here to look at vouchers
+   * should not pay for a trial balance they never see. Null while it is in flight or if it failed;
+   * the form shows a dash for accounts it has no figure for and is otherwise unaffected.
+   */
+  const [ledgerBalances, setLedgerBalances] = useState<{
+    companyId: string;
+    balances: ReadonlyMap<string, string>;
+  } | null>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -137,6 +173,47 @@ export function VouchersPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  /**
+   * The balances behind the voucher form's current-balance column.
+   *
+   * Keyed on `refreshKey` as well as the modal, so a voucher posted and then followed by another
+   * is entered against what the books say now rather than what they said before it. Formatted here
+   * because this is where the company's currency and country are known.
+   */
+  useEffect(() => {
+    if (!createModalOpen || !companyId) return;
+    const id = companyId;
+    const company = setup?.companyId === id ? setup.company : null;
+    if (!company) return;
+
+    let cancelled = false;
+
+    getTrialBalance(id)
+      .then((report) => {
+        if (cancelled) return;
+        setLedgerBalances({
+          companyId: id,
+          balances: new Map(
+            report.rows.map((row) => [
+              row.code,
+              formatMoneyWithSide(Number(row.closingDebit) - Number(row.closingCredit), {
+                currency: company.baseCurrency,
+                country: company.country,
+              }),
+            ]),
+          ),
+        });
+      })
+      .catch(() => {
+        // Context, not content. The form is perfectly usable without it, and an error banner over
+        // a voucher someone is trying to key would cost more than the column is worth.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [createModalOpen, companyId, setup, refreshKey]);
+
   // Companies start with an empty chart of accounts, so a voucher cannot be raised until the
   // masters it references exist. Empty arrays only mean that once they came back from a
   // succeeded lookup for THIS company — a failed request, or one still in flight after a company
@@ -165,6 +242,29 @@ export function VouchersPage() {
   */
   const listedCompany = listLoaded ? companies?.find((entry) => entry.id === companyId) : undefined;
   const company = loaded?.company ?? listedCompany;
+
+  /*
+    The four function keys, offered only for the voucher types this company actually has active.
+    Nothing is invented: the label is the type's own name, and a company whose masters do not
+    include one of these codes simply does not get that key. Declared before the early returns
+    below, because a hook cannot be called conditionally.
+  */
+  useButtonBar(
+    VOUCHER_TYPE_KEYS.flatMap(({ key, code }) => {
+      const type = voucherTypes.find((entry) => entry.code === code && entry.isActive);
+      if (!type) return [];
+
+      return [
+        {
+          group: 'Create',
+          key,
+          label: type.name,
+          onSelect: () => openCreate(type.code),
+          disabled: setupIncomplete,
+        },
+      ];
+    }),
+  );
 
   if (!companyId) return null;
 
@@ -217,7 +317,7 @@ export function VouchersPage() {
         <Button
           type="button"
           variant="primary"
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => openCreate(null)}
           /*
             Also while the setup is still in flight. `setupMissing` is empty until it lands, so
             this read as "nothing missing" and let the form open on no ledgers and no voucher
@@ -337,7 +437,12 @@ export function VouchersPage() {
         </>
       )}
 
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="New voucher">
+      <Modal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title="New voucher"
+        size="wide"
+      >
         <CreateVoucherForm
           companyId={companyId}
           voucherTypes={voucherTypes}
@@ -346,6 +451,10 @@ export function VouchersPage() {
           multiCurrencyEnabled={Boolean(loaded?.company.features.multiCurrency)}
           currencies={loaded?.currencies ?? []}
           baseCurrency={loaded?.company.baseCurrency ?? ''}
+          initialVoucherTypeCode={createType ?? undefined}
+          ledgerBalances={
+            ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
+          }
           onCreated={() => {
             setCreateModalOpen(false);
             setRefreshKey((key) => key + 1);

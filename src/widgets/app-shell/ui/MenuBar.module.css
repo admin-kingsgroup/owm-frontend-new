@@ -1,0 +1,155 @@
+/*
+  The menu bar. A recessed strip so it reads as chrome rather than as content, with hairline
+  dividers between the menus the way a desktop menu bar has always drawn them.
+*/
+.bar {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border: none;
+  border-right: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.trigger:hover {
+  background-color: var(--hover-tint);
+}
+
+/*
+  The open menu is attached to its trigger, so the trigger takes the menu's surface and the border
+  between them is painted over. Without that they read as two separate objects that happen to touch.
+*/
+.triggerOpen,
+.triggerOpen:hover {
+  background-color: var(--paper-card);
+  box-shadow: inset 0 -1px 0 var(--paper-card);
+}
+
+.mnemonic {
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.15em;
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: var(--z-dropdown);
+  min-width: 16rem;
+  padding: var(--space-2) 0;
+  background-color: var(--paper-card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.section {
+  display: block;
+  padding: var(--space-3) 0.875rem var(--space-1);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* First section in a menu would otherwise open with more space above it than the plain items do. */
+.menu > div:first-child .section {
+  padding-top: var(--space-1);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: 0.3125rem 0.875rem;
+  color: var(--ink);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+
+.item:hover {
+  background-color: var(--hover-tint);
+}
+
+.itemActive {
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.itemLabel {
+  white-space: nowrap;
+}
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/*
+  Inside the drawer the bar is the whole navigation, not a strip along the top: menus stack, and an
+  open one expands in place rather than floating over the drawer it lives in.
+*/
+@media (max-width: 60rem) {
+  .bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trigger {
+    justify-content: flex-start;
+    min-height: 2.75rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: var(--text-md);
+  }
+
+  .triggerOpen,
+  .triggerOpen:hover {
+    background-color: var(--hover-tint);
+    box-shadow: none;
+  }
+
+  .slot {
+    flex-direction: column;
+  }
+
+  .menu {
+    position: static;
+    min-width: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+    box-shadow: none;
+    background-color: var(--paper);
+  }
+
+  .item {
+    min-height: 2.5rem;
+    padding-left: 1.5rem;
+    font-size: var(--text-md);
+  }
+}

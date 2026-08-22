@@ -27,8 +27,8 @@ import { getPayables, getReceivables } from '@/entities/outstanding';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
-import { Button, Input, Loading, Modal, Checkbox } from '@/shared/ui';
-import { cn, getErrorMessage, formatMoney } from '@/shared/lib';
+import { Button, Input, Loading, Modal, Checkbox, ColumnChart } from '@/shared/ui';
+import { cn, getErrorMessage, formatMoney, localeFor } from '@/shared/lib';
 
 import { ReportTree } from './ReportTree';
 import { downloadCsv, flattenNodes } from './export-csv';
@@ -296,6 +296,19 @@ export function ReportsPage() {
   }
 
   /**
+   * "Apr", "May" — short enough that twelve fit across a chart, and in the reader's own language.
+   * The day is fixed at the first of the month, which is what the API sends.
+   */
+  const monthLabel = useCallback(
+    (iso: string) =>
+      new Date(iso).toLocaleDateString(localeFor(company?.country), {
+        month: 'short',
+        timeZone: 'UTC',
+      }),
+    [company],
+  );
+
+  /**
    * Every figure on this screen goes through here.
    *
    * The overview cards were formatting amounts and these tables were not, so the same balance read
@@ -307,7 +320,8 @@ export function ReportsPage() {
    * grouped, symbol-prefixed string imports as text.
    */
   const money = useCallback(
-    (value: string) =>
+    // string from the API, number from the chart — formatMoney takes either.
+    (value: string | number) =>
       formatMoney(value, { currency: company?.baseCurrency, country: company?.country }),
     [company],
   );
@@ -481,6 +495,29 @@ export function ReportsPage() {
             )}
           </section>
         </div>
+      )}
+
+      {tab === 'profit-loss' && profitLoss && profitLoss.monthly.length > 0 && (
+        <section className={styles.chartPanel}>
+          <h2 className={styles.chartTitle}>Month by month</h2>
+          <ColumnChart
+            labels={profitLoss.monthly.map((month) => monthLabel(month.month))}
+            formatValue={money}
+            caption="Income and expenses for each month of the period"
+            series={[
+              {
+                label: 'Income',
+                color: 'var(--data-1)',
+                values: profitLoss.monthly.map((month) => Number(month.income)),
+              },
+              {
+                label: 'Expenses',
+                color: 'var(--data-2)',
+                values: profitLoss.monthly.map((month) => Number(month.expenses)),
+              },
+            ]}
+          />
+        </section>
       )}
 
       {tab === 'profit-loss' && profitLoss && (
@@ -708,6 +745,34 @@ export function ReportsPage() {
               {money(receiptsPayments.totals.difference)}.
             </p>
           )}
+        </section>
+      )}
+
+      {tab === 'cash-flow' && cashFlow && cashFlow.monthly.length > 0 && (
+        <section className={styles.chartPanel}>
+          <h2 className={styles.chartTitle}>Month by month</h2>
+          <ColumnChart
+            labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
+            formatValue={money}
+            caption="Cash in and cash out for each month of the period"
+            series={[
+              {
+                label: 'Cash in',
+                color: 'var(--data-1)',
+                values: cashFlow.monthly.map((month) => Number(month.inflow)),
+              },
+              {
+                label: 'Cash out',
+                color: 'var(--data-2)',
+                values: cashFlow.monthly.map((month) => Number(month.outflow)),
+              },
+              {
+                label: 'Net',
+                color: 'var(--data-3)',
+                values: cashFlow.monthly.map((month) => Number(month.netChange)),
+              },
+            ]}
+          />
         </section>
       )}
 

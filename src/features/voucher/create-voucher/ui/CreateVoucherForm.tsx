@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 import { Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { createVoucher } from '@/entities/voucher';
@@ -24,6 +24,21 @@ export interface CreateVoucherFormProps {
   multiCurrencyEnabled: boolean;
   currencies: Currency[];
   baseCurrency: string;
+  /**
+   * Ledger code to what that account stands at right now, already written the way the company
+   * writes money — "12,84,320 Dr".
+   *
+   * Tally shows this beside every line for a reason: it is the difference between keying a payment
+   * and knowing what the payment leaves behind. Optional and formatted by the caller, because the
+   * page is what knows the company's currency and country; a code that is missing from the map
+   * simply shows a dash, so a slow or failed balance read never holds up voucher entry.
+   */
+  ledgerBalances?: ReadonlyMap<string, string>;
+  /**
+   * The voucher type to open on, for the function keys that raise a particular one. Ignored if the
+   * company has no active type with that code, which leaves the first active type as before.
+   */
+  initialVoucherTypeCode?: string;
   onCreated: (voucher: Voucher) => void;
   onCancel: () => void;
 }
@@ -37,6 +52,9 @@ interface EntryRow {
   exchangeRate: string;
   allocations: AllocationRow[];
 }
+
+/** Tag names whose own Ctrl+A must be left alone. */
+const EDITABLE = ['INPUT', 'TEXTAREA', 'SELECT'];
 
 let rowCounter = 0;
 function newRow(defaultLedgerCode: string): EntryRow {
@@ -72,13 +90,21 @@ export function CreateVoucherForm({
   multiCurrencyEnabled,
   currencies,
   baseCurrency,
+  ledgerBalances,
+  initialVoucherTypeCode,
   onCreated,
   onCancel,
 }: CreateVoucherFormProps) {
   const activeVoucherTypes = voucherTypes.filter((type) => type.isActive);
   const defaultLedgerCode = ledgers[0]?.code ?? '';
 
-  const [voucherTypeCode, setVoucherTypeCode] = useState(activeVoucherTypes[0]?.code ?? '');
+  // The dialog unmounts when it closes, so this is re-read every time it is opened — which is what
+  // lets F5 and F6 open the same form on different voucher types.
+  const [voucherTypeCode, setVoucherTypeCode] = useState(() =>
+    activeVoucherTypes.some((type) => type.code === initialVoucherTypeCode)
+      ? (initialVoucherTypeCode as string)
+      : (activeVoucherTypes[0]?.code ?? ''),
+  );
   const [voucherDate, setVoucherDate] = useState(todayAsDateInput);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [narration, setNarration] = useState('');
@@ -185,8 +211,28 @@ export function CreateVoucherForm({
     );
   }
 
+  /**
+   * Accept from wherever the cursor happens to be, rather than tabbing to the button.
+   *
+   * Ctrl+Enter types nothing, so it works in every field. Ctrl+A is Tally's own accept key and is
+   * honoured too, but only outside a text field — inside one it must go on selecting that field's
+   * text, which is what everyone else's Ctrl+A does.
+   */
+  function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    const withCtrl = event.ctrlKey || event.metaKey;
+    if (!withCtrl || event.altKey || event.shiftKey) return;
+
+    const typing = event.target instanceof HTMLElement && EDITABLE.includes(event.target.tagName);
+    const accept = event.key === 'Enter' || (event.code === 'KeyA' && !typing);
+    if (!accept) return;
+
+    event.preventDefault();
+    // requestSubmit rather than handleSubmit, so the browser's own validation still runs first.
+    event.currentTarget.requestSubmit();
+  }
+
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form className={styles.form} onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
       <div className={styles.row}>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="voucher-type">
@@ -251,7 +297,8 @@ export function CreateVoucherForm({
 
       <div className={styles.entriesTable}>
         <div className={cn(styles.entriesRow, styles.entriesRowHead)}>
-          <span>Ledger</span>
+          <span>Particulars</span>
+          <span className={styles.balanceHead}>Current balance</span>
           <span>Debit</span>
           <span>Credit</span>
           <span />
@@ -278,6 +325,9 @@ export function CreateVoucherForm({
                 </option>
               ))}
             </Select>
+            {/* Read-only context, not a field: what this account stands at before the line is
+                posted. A dash while the balances are still being read, or if they could not be. */}
+            <span className={styles.balanceCell}>{ledgerBalances?.get(row.ledgerCode) ?? '—'}</span>
             <Input
               type="number"
               min={0}
@@ -326,25 +376,41 @@ export function CreateVoucherForm({
         ))}
       </div>
 
+      {/*
+        The totals sit on the same grid as the rows above, so each one lands under the column it
+        totals — which is how a voucher is checked: read down the debits, read down the credits,
+        and look at the one figure that has to be zero.
+      */}
       <div className={cn(styles.balanceBar, isBalanced ? styles.balanceOk : styles.balanceOff)}>
-        {isBalanced ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-        <span>
-          {awaitingRate ? (
-            // Naming the real problem: a line with no rate cannot be weighed, so reporting a
-            // difference here would send the user looking at their amounts instead of the rate.
-            <>Enter an exchange rate for every foreign line to check the balance</>
-          ) : (
-            <>
-              Debit {totalDebit.toFixed(2)} · Credit {totalCredit.toFixed(2)}
-              {!isBalanced && ` · Difference ${Math.abs(totalDebit - totalCredit).toFixed(2)}`}
-            </>
-          )}
+        <span className={styles.balanceLead}>
+          {isBalanced ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          {awaitingRate ? 'Rate needed' : 'Total'}
         </span>
+
+        {awaitingRate ? (
+          // Naming the real problem: a line with no rate cannot be weighed, so reporting a
+          // difference here would send the user looking at their amounts instead of the rate.
+          <span className={styles.balanceNote}>
+            Enter an exchange rate for every foreign line to check the balance
+          </span>
+        ) : (
+          <>
+            <span className={styles.balanceDifference}>
+              Difference {Math.abs(totalDebit - totalCredit).toFixed(2)}
+            </span>
+            <span className={styles.balanceTotal}>{totalDebit.toFixed(2)}</span>
+            <span className={styles.balanceTotal}>{totalCredit.toFixed(2)}</span>
+            <span />
+          </>
+        )}
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.actions}>
+        <span className={styles.acceptHint}>
+          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> accepts
+        </span>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
@@ -353,7 +419,7 @@ export function CreateVoucherForm({
           variant="primary"
           disabled={submitting || !isBalanced || !voucherTypeCode}
         >
-          {submitting ? 'Saving…' : 'Save voucher'}
+          {submitting ? 'Saving…' : 'Accept voucher'}
         </Button>
       </div>
     </form>

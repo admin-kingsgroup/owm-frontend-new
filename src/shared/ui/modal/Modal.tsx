@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
+import { cn } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 
 import styles from './Modal.module.css';
@@ -10,10 +11,17 @@ export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  /**
+   * How much room the dialog needs. 'default' is a form of stacked fields; 'wide' is for a dialog
+   * holding a table — voucher entry is a grid of ledger, balance, debit and credit, and squeezing
+   * those into a 28rem box leaves every column too narrow to read. Sizing is ignored below 40rem,
+   * where every dialog is already a full-width sheet.
+   */
+  size?: 'default' | 'wide';
   children: ReactNode;
 }
 
-export function Modal({ open, onClose, title, children }: ModalProps) {
+export function Modal({ open, onClose, title, size = 'default', children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -42,7 +50,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     <div className={styles.overlay} onClick={onClose}>
       <div
         ref={dialogRef}
-        className={styles.modal}
+        className={cn(styles.modal, size === 'wide' && styles.wide)}
         role="dialog"
         aria-modal="true"
         /*

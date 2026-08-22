@@ -1,109 +1,75 @@
+/*
+  The shell is a frame: menu bar and context strip above, button bar down the right, status strip
+  below, and one scrolling pane in the middle. The chrome never moves, so the keys printed on it are
+  always where they were the last time you looked — which is the whole argument for a button bar.
+*/
 .shell {
   display: flex;
-  min-height: 100vh;
+  flex-direction: column;
+  /* Fixed rather than minimum: the frame stays put and only the content pane scrolls. */
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--paper);
 }
 
-.sidebar {
+.topbar {
   display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  width: 16.5rem;
+  align-items: stretch;
   flex-shrink: 0;
-  padding: 1.5rem 1rem;
-  background-color: var(--sidebar);
-  border-right: 1px solid var(--sidebar-border);
+  background-color: var(--paper-sunken);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0 0.5rem;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border-right: 1px solid var(--border-soft);
 }
 
 .brandMark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.5625rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
   background: var(--brand-gradient);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   color: var(--on-accent);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.75rem;
 }
 
 .brandName {
   font-family: var(--font-serif);
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 600;
-  color: var(--sidebar-text);
+  color: var(--ink);
 }
 
-.brandSub {
-  font-size: 0.53125rem;
-  font-weight: 600;
-  color: var(--sidebar-dim);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  margin-top: 0.125rem;
-}
-
-.nav {
+.navPanel {
   display: flex;
-  flex-direction: column;
-  gap: 0.1875rem;
+  min-width: 0;
+  /* The menus need to be able to hang below the bar. */
+  overflow: visible;
 }
 
-.navLink {
+.topbarEnd {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5625rem 0.75rem;
-  border-radius: 0.4375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--sidebar-dim);
-  text-decoration: none;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.navLink:hover {
-  background-color: var(--sidebar-hover);
-  color: var(--sidebar-text);
-}
-
-.navLinkActive {
-  background-color: var(--sidebar-hover);
-  color: var(--sidebar-text);
-  box-shadow: inset 3px 0 0 var(--accent-2);
+  gap: var(--space-2);
+  /* Pushes the switcher and the account to the end whatever the menu bar's width. */
+  margin-left: auto;
+  padding: 0.25rem 0.75rem 0.25rem var(--space-4);
+  /* Lets a long company name ellipsis instead of forcing the topbar wider. */
+  min-width: 0;
 }
 
 /*
-  An empty stand-in for the Vouchers/Portfolio row while the company list decides which of the two
-  belongs here. Explicit height rather than inherited padding, because it holds no content of its
-  own. Hidden from assistive tech — there is nothing yet to announce.
-*/
-.navPlaceholder {
-  /* In layout, out of sight and out of the accessibility tree — it holds a row, not a control. */
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.navPlaceholderIcon {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-}
-
-/*
-  Both belong to the drawer, which only exists below 60rem. Hidden rather than absent so the
-  markup is the same at every width and the aria wiring has something to point at.
+  Both belong to the drawer, which only exists below 60rem. Hidden rather than absent so the markup
+  is the same at every width and the aria wiring has something to point at.
 */
 .menuButton,
 .drawerClose {
@@ -117,62 +83,95 @@
   z-index: calc(var(--z-modal) - 1);
 }
 
-.main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.topbar {
+.context {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 4rem;
+  flex-wrap: wrap;
   flex-shrink: 0;
-  padding: 0 1.75rem;
   background-color: var(--paper-card);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
 }
 
-.topbarLead {
+.contextItem {
+  padding: 0.375rem 0.875rem;
+  border-right: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.contextItem b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The financial year's own span, sitting quietly beside its label. */
+.contextRange {
+  color: var(--ink-faint);
+}
+
+.body {
   display: flex;
-  align-items: center;
-  /* Lets a long company name ellipsis instead of forcing the topbar wider. */
-  min-width: 0;
+  flex: 1;
+  /* Without this the pane refuses to shrink and the status strip is pushed off the screen. */
+  min-height: 0;
 }
 
 .content {
   flex: 1;
-  padding: 2.375rem 2.75rem;
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
   overflow-y: auto;
 }
 
-/*
-  Below this width the fixed 16.5rem rail plus the content padding is wider than the viewport, so
-  the whole page scrolled sideways and the user menu fell off the right edge. The shell stacks
-  instead: the rail becomes a bar across the top whose nav scrolls on its own, and the content
-  takes the full width.
-*/
-/*
-  Below this width the fixed 16.5rem rail plus the content padding is wider than the viewport, so
-  the whole page scrolled sideways and the user menu fell off the right edge.
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+  padding: 0.3125rem 0.875rem;
+  background-color: var(--paper-sunken);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
 
-  The rail becomes a drawer rather than a strip across the top. A strip fits, but it puts every
-  destination behind a sideways scroll and spends a row of a short screen doing it; a drawer keeps
-  the full list one tap away and gives the content the whole width the rest of the time.
+.statusEnd {
+  margin-left: auto;
+}
+
+/*
+  Below this width the menu bar, the button bar and the content cannot all sit beside each other.
+  The menus become a drawer — the full list one tap away rather than behind a sideways scroll — the
+  button bar lies flat above the content, and the page scrolls as a page.
 */
 @media (max-width: 60rem) {
   .shell {
+    height: auto;
     min-height: 100dvh;
+    overflow: visible;
   }
 
-  .sidebar {
+  .topbar {
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0.375rem 0.5rem;
+  }
+
+  .brand {
+    border-right: none;
+    padding: 0;
+  }
+
+  .navPanel {
     position: fixed;
     inset: 0 auto 0 0;
     z-index: var(--z-modal);
+    flex-direction: column;
     width: min(17rem, 82vw);
-    gap: 1.25rem;
+    padding-top: var(--space-6);
+    background-color: var(--paper-card);
+    border-right: 1px solid var(--border);
     /* Off-canvas rather than display:none, so opening it animates and it keeps its own scroll. */
     transform: translateX(-100%);
     transition: transform 0.2s ease;
@@ -180,34 +179,23 @@
     box-shadow: var(--shadow-3);
   }
 
-  .sidebarOpen {
+  .navPanelOpen {
     transform: translateX(0);
   }
 
-  .brand {
-    /* Makes room for the close control at the end of the row. */
-    justify-content: space-between;
-    padding-right: 0;
-  }
-
-  /* Wraps to two cramped lines beside the close control, and the wordmark already says it. */
-  .brandSub {
-    display: none;
-  }
-
   .drawerClose {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /* Without this the brand beside it compresses the button to 39px and it stops being a target. */
-    flex-shrink: 0;
     width: 2.75rem;
     height: 2.75rem;
-    margin-left: auto;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     background: transparent;
-    color: var(--sidebar-dim);
+    color: var(--ink-faint);
     cursor: pointer;
   }
 
@@ -219,7 +207,7 @@
     height: 2.75rem;
     flex-shrink: 0;
     border: 1px solid var(--border);
-    border-radius: 0.625rem;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--ink);
     cursor: pointer;
@@ -229,29 +217,31 @@
     background-color: var(--hover-tint);
   }
 
-  /* Full-width targets in a drawer: the row is the button, not the words in it. */
-  .navLink {
-    min-height: 2.75rem;
-    font-size: 0.9375rem;
+  .topbarEnd {
+    padding: 0;
   }
 
-  .navPlaceholder {
-    min-height: 2.75rem;
+  .context {
+    font-size: 0.6875rem;
   }
 
-  .topbar {
-    gap: 0.625rem;
-    padding: 0.5rem 0.875rem;
+  .contextItem {
+    padding: 0.25rem 0.625rem;
+  }
+
+  .body {
+    flex-direction: column;
   }
 
   .content {
-    padding: 1.25rem 0.875rem;
+    padding: var(--space-4) 0.875rem;
+    overflow-y: visible;
   }
 }
 
 /* No animation for anyone who has asked for none — it still opens, just immediately. */
 @media (max-width: 60rem) and (prefers-reduced-motion: reduce) {
-  .sidebar {
+  .navPanel {
     transition: none;
   }
 }

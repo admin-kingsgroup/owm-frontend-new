@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2, BarChart3 } from 'lucide-react';
 
 import { getCompany, companyStatusVariant, useCompanyStore } from '@/entities/company';
@@ -33,7 +33,25 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
   ANALYTICS: 'Portfolio analytics',
 };
 
-type Tab = 'accounts' | 'voucher-types' | 'financial-years' | 'currencies' | 'settings';
+const TAB_IDS = ['accounts', 'voucher-types', 'financial-years', 'currencies', 'settings'] as const;
+
+type Tab = (typeof TAB_IDS)[number];
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (TAB_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * Whether this company has the panel at all. Currencies exists only behind multi-currency, and now
+ * that the open panel comes from the URL a bookmark kept after the feature was switched off would
+ * otherwise land on a tab strip with nothing selected and an empty page under it. A company still
+ * loading is given the benefit of the doubt.
+ */
+function isAvailable(tab: Tab, company: Company | null): boolean {
+  if (!company) return true;
+  if (tab === 'currencies') return company.features.multiCurrency;
+  return true;
+}
 
 export function CompanyDashboardPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -47,7 +65,22 @@ export function CompanyDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<Tab>('accounts');
+  /**
+   * Which panel is open lives in the URL: the Company and Masters menus link straight at one, and
+   * reloading a page you were sent to should land where the link pointed rather than back on the
+   * chart of accounts. An unknown id falls back to the first panel rather than showing nothing.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const tab: Tab =
+    isTab(requestedTab) && isAvailable(requestedTab, company) ? requestedTab : 'accounts';
+
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', next);
+    setSearchParams(params);
+  };
+
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
