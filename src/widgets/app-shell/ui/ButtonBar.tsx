@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import type { ButtonBarAction } from '../model/button-bar';
 import styles from './ButtonBar.module.css';
 
@@ -13,6 +15,8 @@ interface ButtonBarProps {
  * which lets a page order its own bar without having to declare the groups up front.
  */
 export function ButtonBar({ actions }: ButtonBarProps) {
+  const idPrefix = useId();
+
   if (actions.length === 0) return null;
 
   const groups: Array<{ name: string; actions: ButtonBarAction[] }> = [];
@@ -24,9 +28,21 @@ export function ButtonBar({ actions }: ButtonBarProps) {
 
   return (
     <aside className={styles.bar} aria-label="Actions for this screen">
-      {groups.map((group) => (
-        <div className={styles.group} key={group.name}>
-          <span className={styles.groupName}>{group.name}</span>
+      {groups.map((group, index) => (
+        /*
+          A labelled group rather than a heading floating above some buttons: without the
+          association, a screen reader reads eleven unrelated buttons instead of "Create: Payment,
+          F5". The index keys the label because a group name is free text from the page.
+        */
+        <div
+          className={styles.group}
+          key={group.name}
+          role="group"
+          aria-labelledby={`${idPrefix}-${index}`}
+        >
+          <span className={styles.groupName} id={`${idPrefix}-${index}`}>
+            {group.name}
+          </span>
           {group.actions.map((action) => (
             <button
               type="button"

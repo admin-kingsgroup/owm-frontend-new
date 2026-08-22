@@ -63,7 +63,15 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape' && openId !== null) {
+        /*
+          Focus goes back to the trigger, not to nowhere. Closing the menu takes the focused item
+          out of the DOM, and focus then falls to <body> — leaving anyone on the keyboard at the
+          top of the page with no idea where they were. Read before the state change, while the
+          open trigger still carries the attribute.
+        */
+        const trigger = barRef.current?.querySelector<HTMLElement>('[aria-expanded="true"]');
         setOpenId(null);
+        trigger?.focus();
         return;
       }
 

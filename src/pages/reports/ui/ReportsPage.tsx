@@ -29,6 +29,7 @@ import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Button, Input, Loading, Modal, Checkbox, ColumnChart } from '@/shared/ui';
 import { cn, getErrorMessage, formatMoney, localeFor } from '@/shared/lib';
+import { useButtonBar } from '@/widgets/app-shell';
 
 import { ReportTree } from './ReportTree';
 import { downloadCsv, flattenNodes } from './export-csv';
@@ -128,9 +129,11 @@ export function ReportsPage() {
 
   const [company, setCompany] = useState<Company | null>(null);
 
-  /* Derived here rather than beside , because whether a report is available at all
-     depends on the company's features — see isAvailable. */
-  const tab: Tab = isTab(requested) && isAvailable(requested, company) ? requested : 'balance-sheet';
+  /* Derived here rather than beside the raw search param, because whether a report is available
+     at all depends on the company's features — see isAvailable. */
+  const tab: Tab =
+    isTab(requested) && isAvailable(requested, company) ? requested : 'balance-sheet';
+
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
@@ -391,23 +394,52 @@ export function ReportsPage() {
     [company],
   );
 
+  /*
+    What this screen can do, printed down the right-hand side with the key that does it. Declared
+    before the early returns below, because a hook cannot be called conditionally — the bar simply
+    shows the same actions while the reports are still arriving, and they are inert until they do.
+  */
+  useButtonBar([
+    {
+      group: 'This report',
+      key: 'Ctrl+E',
+      label: 'Export CSV',
+      onSelect: exportCurrentTab,
+      disabled: loading,
+    },
+    {
+      group: 'This report',
+      key: 'Ctrl+P',
+      label: 'Print',
+      onSelect: () => window.print(),
+      disabled: loading,
+    },
+    {
+      group: 'This report',
+      key: 'Alt+Y',
+      label: 'Whole year',
+      onSelect: () => {
+        setFrom('');
+        setTo('');
+        setApplied({ from: '', to: '', compare });
+      },
+      disabled: !applied.from && !applied.to,
+    },
+  ]);
+
   if (!companyId) return null;
   if (loading) return <Loading label="Loading reports…" />;
   if (loadError) return <p className={styles.error}>{loadError}</p>;
 
   const period = balanceSheet?.period;
 
-  const TABS: Array<{ id: Tab; label: string; show: boolean }> = [
-    { id: 'balance-sheet', label: 'Balance Sheet', show: true },
-    { id: 'profit-loss', label: 'Profit & Loss', show: true },
-    { id: 'trial-balance', label: 'Trial Balance', show: true },
-    { id: 'day-book', label: 'Day Book', show: true },
-    { id: 'receipts-payments', label: 'Receipts & Payments', show: true },
-    { id: 'cash-flow', label: 'Cash Flow', show: true },
-    { id: 'receivables', label: 'Receivables', show: Boolean(company?.features.billWiseDetails) },
-    { id: 'payables', label: 'Payables', show: Boolean(company?.features.billWiseDetails) },
-    { id: 'forex', label: 'Forex Gain/Loss', show: Boolean(company?.features.multiCurrency) },
-  ];
+  // One source of truth with the fallback above: the strip offers exactly the reports a request
+  // for one would be honoured for.
+  const TABS = TAB_IDS.map((id) => ({
+    id,
+    label: TAB_LABELS[id],
+    show: isAvailable(id, company),
+  }));
 
   const outstandings = tab === 'receivables' ? receivables : payables;
 
@@ -415,7 +447,10 @@ export function ReportsPage() {
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Reports</h1>
+          {/* The report itself, not the word "Reports" — the shell's context strip already says
+              which company and year these figures belong to, and this is the line that gets
+              printed at the top of the page. */}
+          <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
           {period && (
             <p className={styles.subtitle}>
               FY {period.financialYearLabel} · {asDay(period.from)} to {asDay(period.to)}
@@ -461,24 +496,11 @@ export function ReportsPage() {
           <Button variant="secondary" onClick={() => setApplied({ from, to, compare })}>
             Apply
           </Button>
-          {(applied.from || applied.to) && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setFrom('');
-                setTo('');
-                setApplied({ from: '', to: '', compare });
-              }}
-            >
-              Whole year
-            </Button>
-          )}
-          <Button variant="ghost" onClick={exportCurrentTab} title="Download this report as CSV">
-            <Download size={14} /> CSV
-          </Button>
-          <Button variant="ghost" onClick={() => window.print()} title="Print this report">
-            <Printer size={14} /> Print
-          </Button>
+          {/*
+            Whole year, CSV and Print are not repeated here: they are on the shell's button bar,
+            which is on screen at every width and carries the key for each of them. Two buttons for
+            one action is how a toolbar starts disagreeing with itself.
+          */}
         </div>
       </div>
 

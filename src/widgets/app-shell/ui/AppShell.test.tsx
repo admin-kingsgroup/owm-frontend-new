@@ -103,6 +103,15 @@ describe('AppShell', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menu')).toBeNull();
+    // Focus goes back to the menu it came from, not to the top of the page.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reports' }));
+  });
+
+  it('labels each group in the button bar, so its actions are read together', () => {
+    renderShell();
+
+    const group = screen.getByRole('group', { name: 'Go to' });
+    expect(group.querySelectorAll('button').length).toBeGreaterThan(1);
   });
 
   it('links each report at its own address, not just at the reports page', () => {
