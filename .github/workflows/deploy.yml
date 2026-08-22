@@ -41,6 +41,77 @@ jobs:
           npm run build
           test -f dist/index.html
 
+      - name: Unit tests
+        run: npm test
+
+      # ---------- browser checks, which need the backend beside this repo ----------
+      #
+      # These are the only checks that see a drawn page: an overflowing statement, a strip off the
+      # edge, a screen that throws once it has real data. Everything above them passes on a build
+      # that renders nothing. They run before the deploy steps so a failure stops the release.
+      - name: Check browser-check prerequisites
+        id: e2e
+        env:
+          T: ${{ secrets.BACKEND_REPO_TOKEN }}
+        run: |
+          if [ -n "$T" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::BACKEND_REPO_TOKEN not set - browser checks skipped, deploy continues."
+          fi
+
+      - name: Check out the backend
+        if: steps.e2e.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          # Same owner, but GITHUB_TOKEN is scoped to this repository alone, so a token with read
+          # access to the backend is what makes this possible at all.
+          repository: ${{ vars.BACKEND_REPO || 'admin-kingsgroup/owm-backend-new' }}
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          # checkout may only write inside the workspace; the step below moves it where the
+          # harness resolves it from — `../OWM-ADB Backend`, as playwright.config.ts expects.
+          path: .backend
+
+      - name: Put the backend where the harness looks for it
+        if: steps.e2e.outputs.ready == 'true'
+        run: |
+          rm -rf "../OWM-ADB Backend"
+          mv .backend "../OWM-ADB Backend"
+          cd "../OWM-ADB Backend"
+          npm ci
+
+      # The harness gives the API an in-memory replica set, and mongodb-memory-server downloads a
+      # mongod the first time it does. Same cache as the backend's own workflow.
+      - name: Cache the mongod the harness downloads
+        if: steps.e2e.outputs.ready == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongod-${{ runner.os }}
+
+      - name: Install Chromium
+        if: steps.e2e.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser checks
+        if: steps.e2e.outputs.ready == 'true'
+        # The harness starts both servers itself and gives the API a throwaway in-memory replica
+        # set, so there is no database or credential for CI to hold.
+        run: npm run e2e
+
+      - name: Keep what the browser checks saw
+        # `always()`, because the screenshots and traces are worth most on the run that failed.
+        if: always() && steps.e2e.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-checks
+          path: |
+            e2e/screenshots/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
       # ---------- everything below only runs once EC2 secrets exist ----------
       - name: Check deploy secrets
         id: cfg

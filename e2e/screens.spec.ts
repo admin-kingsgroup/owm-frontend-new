@@ -120,20 +120,40 @@ test.describe('the frame', () => {
 
     await page.getByRole('button', { name: 'Reports' }).click();
     const items = await page.getByRole('menuitem').all();
-    const reports: Array<{ label: string; href: string }> = [];
+    const reports: Array<{ id: string; href: string }> = [];
     for (const item of items) {
       const href = (await item.getAttribute('href')) ?? '';
-      if (!href.includes('report=')) continue;
-      // The first span is the name; the second, when present, is the shortcut hint.
-      const label = (await item.locator('span').first().textContent()) ?? '';
-      reports.push({ label, href });
+      const id = /[?&]report=([^&]+)/.exec(href)?.[1];
+      if (!id) continue;
+      reports.push({ id, href });
     }
     expect(reports.length, 'the Reports menu is empty').toBeGreaterThan(8);
 
+    /*
+      Against the id in the link, not the menu's wording. A menu entry is allowed to phrase the job
+      — "Verify books — trial balance" — while the page names the artefact it produced, "Trial
+      Balance"; asserting those two are the same string was asserting something the product never
+      claimed, and it failed on the first entry written that way.
+
+      What must hold is what this was written for: every link opens the report it points at. A page
+      that quietly falls back to whichever report it had open shows up here as one heading serving
+      several ids, and as an id that does not survive the navigation.
+    */
+    const headings = new Map<string, string>();
     for (const report of reports) {
       await page.goto(report.href);
-      // The heading is the report's own name, so a silent fallback shows up as the wrong one.
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(report.label.trim());
+      const heading = (await page.getByRole('heading', { level: 1 }).textContent())?.trim() ?? '';
+
+      expect(heading, `${report.id} opened with no heading`).not.toBe('');
+      expect(page.url(), `${report.id} did not survive the navigation`).toContain(
+        `report=${report.id}`,
+      );
+      expect(
+        headings.get(heading),
+        `${report.id} and ${headings.get(heading)} both opened "${heading}" — one of them fell back`,
+      ).toBeUndefined();
+
+      headings.set(heading, report.id);
     }
   });
 
