@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 
+import { useCompanyStore } from '@/entities/company';
 import { listClientErrors } from '@/entities/client-error';
 import type { ClientError, ClientErrorKind } from '@/entities/client-error';
 import { useStackedTables } from '@/shared/hooks';
@@ -44,6 +45,14 @@ export function ReportedErrorsPage() {
   const kind = (isKind(searchParams.get('kind')) ? searchParams.get('kind') : '') as
     ClientErrorKind | '';
   const page = Math.max(1, Number(searchParams.get('page') ?? 1) || 1);
+  const companyId = searchParams.get('company') ?? '';
+
+  /*
+    The list the shell already holds, so the filter can name companies rather than ask for an id.
+    A report can be filed before any company is open, so this is loaded here rather than assumed.
+  */
+  const companies = useCompanyStore((state) => state.companies);
+  const loadCompanies = useCompanyStore((state) => state.load);
 
   const [errors, setErrors] = useState<ClientError[]>([]);
   const [total, setTotal] = useState(0);
@@ -74,6 +83,10 @@ export function ReportedErrorsPage() {
   );
 
   useEffect(() => {
+    void loadCompanies();
+  }, [loadCompanies]);
+
+  useEffect(() => {
     let cancelled = false;
 
     // Inside the async function rather than the effect body: a synchronous setState in an effect
@@ -82,7 +95,12 @@ export function ReportedErrorsPage() {
       setLoading(true);
 
       try {
-        const result = await listClientErrors({ page, limit: PAGE_SIZE, kind: kind || undefined });
+        const result = await listClientErrors({
+          page,
+          limit: PAGE_SIZE,
+          kind: kind || undefined,
+          companyId: companyId || undefined,
+        });
         if (cancelled) return;
         setErrors(result.items);
         setTotal(result.total);
@@ -99,7 +117,7 @@ export function ReportedErrorsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, kind, refreshKey]);
+  }, [page, kind, companyId, refreshKey]);
 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -118,11 +136,33 @@ export function ReportedErrorsPage() {
     {
       group: 'This list',
       key: 'Alt+A',
-      label: 'All kinds',
-      onSelect: () => setParam({ kind: '', page: '' }),
-      disabled: loading || kind === '',
+      label: 'Clear filters',
+      onSelect: () => setParam({ kind: '', company: '', page: '' }),
+      disabled: loading || (kind === '' && companyId === ''),
     },
   ]);
+
+  /*
+    A refusal stands alone rather than under this screen's own heading. Showing "Reported errors —
+    faults the app reported from someone's browser" above "only an administrator may read these"
+    reads like something broke, when in fact the door is simply closed.
+  */
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <EmptyState
+          icon={<AlertTriangle size={32} />}
+          title="These are not yours to read"
+          description={error}
+          action={
+            <Link to="/companies">
+              <Button variant="primary">Back to the companies</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page} ref={pageRef}>
@@ -148,13 +188,20 @@ export function ReportedErrorsPage() {
             </option>
           ))}
         </Select>
-      </div>
 
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+        <Select
+          value={companyId}
+          aria-label="Filter by company"
+          onChange={(event) => setParam({ company: event.target.value, page: '' })}
+        >
+          <option value="">All companies</option>
+          {(companies ?? []).map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+            </option>
+          ))}
+        </Select>
+      </div>
 
       {loading ? (
         <Loading label="Loading reported errors…" />

@@ -28,12 +28,33 @@ const LIMITS = { message: 1_000, stack: 8_000, componentStack: 8_000, url: 500 }
 /**
  * A render loop can throw many times a second. The endpoint is rate limited anyway, but a browser
  * firing hundreds of requests at a screen that is already broken helps nobody.
+ *
+ * An allowance rather than a total, because a total is a cliff: a tab left open all day used to go
+ * silent after its tenth distinct fault and stay silent until somebody reloaded it, which is
+ * exactly the tab whose eleventh fault is worth hearing about. Ten to spend at once, and one back
+ * every two minutes, so a storm is still capped but an ordinary day never runs out.
  */
-const MAX_REPORTS_PER_SESSION = 10;
+const BURST = 10;
+const REFILL_INTERVAL_MS = 2 * 60_000;
 const DUPLICATE_WINDOW_MS = 10_000;
 
-let reportsSent = 0;
+let allowance = BURST;
+let lastRefillAt = 0;
 const recentlySeen = new Map<string, number>();
+
+/** Tops the allowance back up for the time that has passed, never above the burst. */
+function refill(now: number): void {
+  if (lastRefillAt === 0) {
+    lastRefillAt = now;
+    return;
+  }
+
+  const earned = Math.floor((now - lastRefillAt) / REFILL_INTERVAL_MS);
+  if (earned <= 0) return;
+
+  allowance = Math.min(BURST, allowance + earned);
+  lastRefillAt += earned * REFILL_INTERVAL_MS;
+}
 
 function uuid(): string {
   // Available in every secure context, which the app always is — the fallback is only so that a
@@ -92,11 +113,20 @@ export function reportClientError({ kind, error, componentStack }: ClientErrorRe
   const signature = `${kind}:${message}`;
   const lastSeen = recentlySeen.get(signature);
 
-  if (reportsSent >= MAX_REPORTS_PER_SESSION) return reference;
+  refill(now);
+
+  if (allowance <= 0) return reference;
   if (lastSeen !== undefined && now - lastSeen < DUPLICATE_WINDOW_MS) return reference;
 
   recentlySeen.set(signature, now);
-  reportsSent += 1;
+  allowance -= 1;
+
+  // Bounded by the burst: what is remembered is only what has been spent, and spending is capped.
+  if (recentlySeen.size > BURST * 4) {
+    for (const [seen, at] of recentlySeen) {
+      if (now - at >= DUPLICATE_WINDOW_MS) recentlySeen.delete(seen);
+    }
+  }
 
   const token = getAuthToken();
 

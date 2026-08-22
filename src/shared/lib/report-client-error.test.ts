@@ -135,7 +135,7 @@ describe('client error reporting', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('stops after ten distinct faults in a session', async () => {
+  it('spends its whole allowance on a storm and then stops', async () => {
     const { reportClientError } = await freshReporter();
 
     for (let i = 0; i < 25; i += 1) {
@@ -145,6 +145,49 @@ describe('client error reporting', () => {
     // A render loop can throw many times a second; the endpoint is rate limited anyway, but a
     // browser firing hundreds of requests at a screen that is already broken helps nobody.
     expect(fetchMock).toHaveBeenCalledTimes(10);
+  });
+
+  it('earns the allowance back, so a long-lived tab does not go silent for good', async () => {
+    vi.useFakeTimers();
+    try {
+      const { reportClientError } = await freshReporter();
+
+      for (let i = 0; i < 12; i += 1) {
+        reportClientError({ kind: 'RENDER', error: new Error(`storm ${i}`) });
+      }
+      expect(fetchMock).toHaveBeenCalledTimes(10);
+
+      // Nothing yet: not enough time has passed to have earned one back.
+      vi.advanceTimersByTime(60_000);
+      reportClientError({ kind: 'RENDER', error: new Error('too soon') });
+      expect(fetchMock).toHaveBeenCalledTimes(10);
+
+      // Two minutes buys exactly one.
+      vi.advanceTimersByTime(60_000);
+      reportClientError({ kind: 'RENDER', error: new Error('earned one') });
+      expect(fetchMock).toHaveBeenCalledTimes(11);
+
+      reportClientError({ kind: 'RENDER', error: new Error('and no more') });
+      expect(fetchMock).toHaveBeenCalledTimes(11);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never banks more than one burst, however long the tab sits idle', async () => {
+    vi.useFakeTimers();
+    try {
+      const { reportClientError } = await freshReporter();
+
+      vi.advanceTimersByTime(24 * 60 * 60_000);
+      for (let i = 0; i < 25; i += 1) {
+        reportClientError({ kind: 'RENDER', error: new Error(`after a day ${i}`) });
+      }
+
+      expect(fetchMock).toHaveBeenCalledTimes(10);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('trims what it sends to the caps the server enforces', async () => {
