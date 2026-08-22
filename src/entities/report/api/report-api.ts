@@ -8,6 +8,8 @@ import type {
   LedgerStatementReport,
   ProfitAndLossReport,
   TrialBalanceReport,
+  CompanyContext,
+  ReportNode,
   ReceiptsAndPaymentsReport,
   CashFlowReport,
 } from '../model/types';
@@ -24,6 +26,21 @@ async function fetchReport<T>(url: string, params: ReportParams): Promise<T> {
   const { data } = await apiClient.get<ApiSuccessResponse<T>>(url, { params });
   return data.data;
 }
+
+/** Every cash account's statement, one after another — Tally's Cash Book. */
+export const getCashBook = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<LedgerStatementReport[]>(endpoints.reports.cashBook(companyId), params);
+
+/** The same for bank accounts. */
+export const getBankBook = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<LedgerStatementReport[]>(endpoints.reports.bankBook(companyId), params);
+
+/** Every account group with its closing position, as a tree. */
+export const getGroupSummary = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<ReportNode[]>(endpoints.reports.groupSummary(companyId), params);
+
+export const getCompanyContext = (companyId: string) =>
+  fetchReport<CompanyContext>(endpoints.reports.context(companyId), {});
 
 export const getTrialBalance = (companyId: string, params: ReportParams = {}) =>
   fetchReport<TrialBalanceReport>(endpoints.reports.trialBalance(companyId), params);

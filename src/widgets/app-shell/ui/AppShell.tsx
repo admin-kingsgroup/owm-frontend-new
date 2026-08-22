@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
+import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary } from '@/shared/ui';
@@ -15,7 +16,7 @@ import {
   matchesBinding,
 } from '../model/button-bar';
 import type { ButtonBarAction } from '../model/button-bar';
-import { useCompanyContext } from '../model/use-company-context';
+import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-company-context';
 import { ButtonBar } from './ButtonBar';
 import { buildMenus } from '../model/menus';
 import { MenuBar } from './MenuBar';
@@ -99,10 +100,25 @@ export function AppShell() {
     params.delete('help');
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
-  const menus = useMemo(() => buildMenus(companyId, company, here), [companyId, company, here]);
+  // Checked against the Role union, so a typo is a compile error rather than a menu that is
+  // silently never offered.
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const menus = useMemo(
+    () => buildMenus(companyId, company, here, isAdmin),
+    [companyId, company, here, isAdmin],
+  );
 
-  /** The year actually being posted into, and whether the books balance. See useCompanyContext. */
-  const { financialYear, difference } = useCompanyContext(companyId);
+  /**
+   * The year actually being posted into, whether the books balance, and the draft backlog — one
+   * call, shared with every screen under it. See useCompanyReadout.
+   */
+  const readout = useCompanyReadoutState(companyId);
+
+  /* For the status strip. Read here rather than in a child so the strip is one element. */
+  const user = useAuthStore((state) => state.user);
+  const today = formatCalendarDay(new Date(), company?.country);
+  const period = readout.context?.period ?? null;
+  const difference = readout.context?.difference ?? null;
   const balanced = difference !== null && Number(difference) === 0;
 
   /** What the open screen contributes to the button bar. See useButtonBar. */
@@ -288,14 +304,14 @@ export function AppShell() {
             narrowed from its own toolbar, and each one prints the period it was actually run for
             beneath its title.
           */}
-          {financialYear && (
+          {period && (
             <span className={styles.contextItem}>
-              Financial year <b>{financialYear.label}</b>{' '}
+              Financial year <b>{period.financialYearLabel}</b>{' '}
               <span className={styles.contextRange}>
-                {formatCalendarDay(financialYear.startDate, company.country)} –{' '}
-                {formatCalendarDay(financialYear.endDate, company.country)}
+                {formatCalendarDay(period.from, company.country)} –{' '}
+                {formatCalendarDay(period.to, company.country)}
               </span>
-              {financialYear.status === 'CLOSED' && (
+              {period.financialYearStatus === 'CLOSED' && (
                 <span className={styles.contextClosed}> · closed</span>
               )}
             </span>
@@ -324,9 +340,11 @@ export function AppShell() {
             reset themselves, and without the key one broken screen would follow you around the app.
           */}
           <ErrorBoundary key={location.pathname}>
-            <ButtonBarContext.Provider value={buttonBarContext}>
-              <Outlet />
-            </ButtonBarContext.Provider>
+            <CompanyReadoutProvider value={readout}>
+              <ButtonBarContext.Provider value={buttonBarContext}>
+                <Outlet />
+              </ButtonBarContext.Provider>
+            </CompanyReadoutProvider>
           </ErrorBoundary>
         </main>
 
@@ -336,11 +354,25 @@ export function AppShell() {
       <ShortcutSheet open={helpOpen} onClose={closeHelp} actions={actions} menus={menus} />
 
       {/* Application chrome — see the print block in globals.css, which drops it from paper. */}
+      {/*
+        The status strip. Which set of books, how much is unfinished, who is signed in and what day
+        it is — the things worth being able to glance at without them ever asking for attention.
+      */}
       <div className={styles.status} data-print="hide">
         <span>{company ? `${company.name} · ${company.code}` : 'No company open'}</span>
+        {period && <span>FY {period.financialYearLabel}</span>}
+        {readout.context !== null && (
+          <span>
+            {readout.context.draftVouchers === 0
+              ? 'No drafts'
+              : `${readout.context.draftVouchers} draft${readout.context.draftVouchers === 1 ? '' : 's'}`}
+          </span>
+        )}
         <span className={styles.statusEnd}>
           {company ? `Figures in ${company.baseCurrency}` : 'Choose a company to open its books'}
         </span>
+        {user && <span>{user.name}</span>}
+        <span className={styles.mono}>{today}</span>
       </div>
     </div>
   );

@@ -96,11 +96,24 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
       setOpenId(menus[(index + step) % menus.length].id);
     }
 
+    /*
+      Firefox opens its own menu bar on the Alt *keyup*, not the keydown — so suppressing Alt+R on
+      keydown still left the browser's File/Edit/View strip dropping over the app a moment later.
+      Swallowing the matching keyup is what stops that, and it is scoped to the combinations the
+      product actually claims: a plain Alt press is left alone.
+    */
+    function handleKeyUp(event: KeyboardEvent) {
+      if (!event.altKey && event.key !== 'Alt') return;
+      if (menus.some((menu) => event.code === `Key${menu.mnemonic}`)) event.preventDefault();
+    }
+
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
   }, [menus, openId, setOpenId]);
 

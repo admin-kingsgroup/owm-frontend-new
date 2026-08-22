@@ -3,3 +3,5 @@ export * from './ui/AppShell';
    shell's own business. */
 export { useButtonBar } from './model/button-bar';
 export type { ButtonBarAction } from './model/button-bar';
+/* What the frame already knows about the open company, so a screen need not ask again. */
+export { useCompanyReadout } from './model/use-company-context';

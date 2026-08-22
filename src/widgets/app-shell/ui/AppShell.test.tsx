@@ -35,7 +35,23 @@ vi.mock('@/entities/financial-year', async (importOriginal) => ({
 
 vi.mock('@/entities/report', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/report')>()),
-  getTrialBalance: vi.fn(async () => ({ totals: { difference: '0.00' } })),
+  /**
+   * The strip reads the company context, not a trial balance — one call that answers which year is
+   * being posted into, whether the books balance, and how many drafts are waiting. Stubbing the
+   * older call left `period` undefined and the year never appeared.
+   */
+  getCompanyContext: vi.fn(async () => ({
+    period: {
+      financialYearId: 'fy-2026',
+      // As the server writes it. An April-to-March year straddles two, and says so.
+      financialYearLabel: '2026-2027',
+      financialYearStatus: 'OPEN' as const,
+      from: '2026-04-01T00:00:00.000Z',
+      to: '2027-03-31T00:00:00.000Z',
+    },
+    difference: '0.00',
+    draftVouchers: 0,
+  })),
 }));
 
 const company = (patch: Partial<Company> = {}): Company => ({

@@ -17,6 +17,7 @@ import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
 import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
 import { getErrorMessage, formatCalendarDay, formatMoney, formatMoneyWithSide } from '@/shared/lib';
+import { useCompanyReadout } from '@/widgets/app-shell';
 
 import styles from './VouchersPage.module.css';
 
@@ -102,6 +103,19 @@ export function VouchersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  /*
+    The frame holds the only copy of the difference and the draft count, so this screen — the one
+    that changes them — has to say when they have moved. Without this the context strip would go on
+    claiming the books balance after an unbalanced voucher was posted.
+  */
+  const { refresh: refreshCompanyReadout } = useCompanyReadout();
+
+  /** Everything this screen does that changes the books goes through here. */
+  function booksChanged() {
+    setRefreshKey((key) => key + 1);
+    refreshCompanyReadout();
+  }
+
   // The list the shell already holds — see the note beside `listedCompany` below.
   const companies = useCompanyStore((state) => state.companies);
   const listLoaded = useCompanyStore((state) => state.loaded);
@@ -184,7 +198,7 @@ export function VouchersPage() {
 
   function handleVoucherChanged(voucher: Voucher) {
     setSelectedVoucher(voucher);
-    setRefreshKey((key) => key + 1);
+    booksChanged();
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -445,7 +459,7 @@ export function VouchersPage() {
           }
           onCreated={() => {
             closeCreate();
-            setRefreshKey((key) => key + 1);
+            booksChanged();
           }}
           onCancel={() => closeCreate()}
         />

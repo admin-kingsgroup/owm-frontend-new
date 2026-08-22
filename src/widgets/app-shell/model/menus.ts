@@ -30,6 +30,12 @@ export function buildMenus(
   company: Company | null,
   /** Where the app is now, as "/path?query" — the Help sheet opens over it rather than replacing it. */
   here: string,
+  /**
+   * Whether the reader administers this installation. Only two destinations turn on it, and both
+   * are refused by the server for anyone else — so listing them regardless would be a menu offering
+   * something the product will not do, which is the one thing the note above rules out.
+   */
+  isAdmin = false,
 ): Menu[] {
   if (!companyId) {
     return [
@@ -43,7 +49,12 @@ export function buildMenus(
         id: 'help',
         label: 'Help',
         mnemonic: 'H',
-        items: [{ label: 'Keyboard shortcuts', to: withHelp(here) }],
+        items: [
+          { label: 'Keyboard shortcuts', to: withHelp(here) },
+          ...(isAdmin
+            ? [{ label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' }]
+            : []),
+        ],
       },
     ];
   }
@@ -103,6 +114,9 @@ export function buildMenus(
           hint: 'Alt+D',
           section: 'Books & registers',
         },
+        { label: 'Cash Book', to: `${base}/reports?report=cash-book` },
+        { label: 'Bank Book', to: `${base}/reports?report=bank-book` },
+        { label: 'Group Summary', to: `${base}/reports?report=group-summary` },
         ...(features?.billWiseDetails
           ? [
               {
@@ -137,12 +151,34 @@ export function buildMenus(
       ],
     },
     {
+      id: 'utilities',
+      label: 'Utilities',
+      mnemonic: 'U',
+      /*
+        The maintenance jobs, gathered under the word people look for them under. Each is a real
+        screen that already exists elsewhere in the tree — a menu bar is allowed to offer a second
+        way to the same place, and this is the way someone thinking "I need to check the books"
+        looks. What is deliberately absent is import/export and an audit trail: neither exists yet,
+        and a menu that lists what the product cannot do teaches you not to trust the menu.
+      */
+      items: [
+        { label: 'Verify books — trial balance', to: `${base}/reports?report=trial-balance` },
+        { label: 'Opening balances', to: `${base}?tab=accounts` },
+        { label: 'Close or reopen a financial year', to: `${base}?tab=financial-years` },
+      ],
+    },
+    {
       id: 'help',
       label: 'Help',
       mnemonic: 'H',
       // Opened over whatever is on screen rather than navigating away from it: a shortcut list is
       // most useful while you are looking at the screen you wanted the shortcut for.
-      items: [{ label: 'Keyboard shortcuts', to: withHelp(here) }],
+      items: [
+        { label: 'Keyboard shortcuts', to: withHelp(here) },
+        ...(isAdmin
+          ? [{ label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' }]
+          : []),
+      ],
     },
   ];
 }

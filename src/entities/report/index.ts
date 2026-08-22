@@ -5,6 +5,7 @@ export type {
   BalanceSide,
   TrialBalanceRow,
   TrialBalanceReport,
+  CompanyContext,
   BalanceSheetReport,
   ProfitAndLossReport,
   ProfitAndLossMonth,

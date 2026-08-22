@@ -1,75 +1,67 @@
-import { useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
-import { listFinancialYears, currentFinancialYear } from '@/entities/financial-year';
-import type { FinancialYear } from '@/entities/financial-year';
-import { getTrialBalance } from '@/entities/report';
+import { getCompanyContext } from '@/entities/report';
+import type { CompanyContext } from '@/entities/report';
 
-interface CompanyContext {
-  /** The year the company is actually posting into, or null while unknown. */
-  financialYear: FinancialYear | null;
-  /**
-   * Trial balance difference, as the server wrote it. '0.00' means the books balance. Null while
-   * it is unknown — which is not the same as zero, and must not be drawn as if it were.
-   */
-  difference: string | null;
+interface CompanyReadout {
+  /** Null until the first read settles, and after one that failed. Never assumed. */
+  context: CompanyContext | null;
+  /** Re-reads it. Called after anything that changes the books — see useCompanyReadout. */
+  refresh: () => void;
+}
+
+const CompanyReadoutContext = createContext<CompanyReadout>({
+  context: null,
+  refresh: () => {},
+});
+
+export const CompanyReadoutProvider = CompanyReadoutContext.Provider;
+
+/**
+ * What the frame knows about the open company: the year being posted into, whether the books
+ * balance, and how many vouchers are still drafts.
+ *
+ * Read once by the shell and shared, so a screen that wants any of it — the gateway wants all three
+ * — costs no extra request. `refresh` is the other half of that bargain: because the shell holds
+ * the only copy, a screen that changes the books has to say so, and posting a voucher does.
+ */
+export function useCompanyReadout(): CompanyReadout {
+  return useContext(CompanyReadoutContext);
 }
 
 /**
- * What the context strip states: which year, and whether the books balance.
+ * The shell's own copy. One request per company, tagged with the company it describes so switching
+ * cannot leave the previous one's year on screen.
  *
- * Neither can be read off the company record. `financialYearStart` there is the *first* year the
- * company was given, not the one it is working in, and the difference is a property of the postings
- * rather than of the company. Both are fetched once on entering a company, tagged with the company
- * they belong to so switching cannot leave the previous company's year on screen.
- *
- * Everything here is chrome: a failure leaves the strip saying less, never blocks a screen, and
- * never raises an error of its own. The trial balance is the heavier of the two calls, and it is
- * the price of being able to say "balanced" honestly rather than assuming it.
+ * Everything it carries is chrome: a failure leaves the strip saying less, never blocks a screen and
+ * never raises an error of its own.
  */
-export function useCompanyContext(companyId: string | undefined): CompanyContext {
-  const [context, setContext] = useState<{ companyId: string; value: CompanyContext } | null>(null);
+export function useCompanyReadoutState(companyId: string | undefined): CompanyReadout {
+  const [state, setState] = useState<{ companyId: string; context: CompanyContext } | null>(null);
+  const [nonce, setNonce] = useState(0);
+
+  const refresh = useCallback(() => setNonce((current) => current + 1), []);
 
   useEffect(() => {
     if (!companyId) return;
     const id = companyId;
     let cancelled = false;
 
-    // Settled independently: a company with no financial year still reports its difference, and a
-    // trial balance that cannot be computed still leaves the year on screen.
-    listFinancialYears(id)
-      .then((years) => {
-        if (cancelled) return;
-        setContext((current) => ({
-          companyId: id,
-          value: {
-            difference: current?.companyId === id ? current.value.difference : null,
-            financialYear: currentFinancialYear(years),
-          },
-        }));
+    getCompanyContext(id)
+      .then((context) => {
+        if (!cancelled) setState({ companyId: id, context });
       })
-      .catch(() => {});
-
-    getTrialBalance(id)
-      .then((report) => {
-        if (cancelled) return;
-        setContext((current) => ({
-          companyId: id,
-          value: {
-            financialYear: current?.companyId === id ? current.value.financialYear : null,
-            difference: report.totals.difference,
-          },
-        }));
-      })
-      .catch(() => {});
+      .catch(() => {
+        // Chrome, not content — see above.
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [companyId, nonce]);
 
-  if (!companyId || context?.companyId !== companyId) {
-    return { financialYear: null, difference: null };
-  }
-
-  return context.value;
+  return {
+    context: state && state.companyId === companyId ? state.context : null,
+    refresh,
+  };
 }

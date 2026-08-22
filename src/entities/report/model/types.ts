@@ -32,8 +32,29 @@ export interface ReportComparison {
 export interface ReportPeriod {
   financialYearId: string;
   financialYearLabel: string;
+  /**
+   * Whether the year this period sits in is still open. The server has always sent it; the frame
+   * says so beside the year, because a figure keyed into a closed year is a different kind of
+   * mistake from one keyed into the wrong month.
+   */
+  financialYearStatus: 'OPEN' | 'CLOSED';
   from: string;
   to: string;
+}
+
+/**
+ * What the application frame states above every screen: which year is being posted into, whether
+ * the books balance, and how much is unfinished.
+ *
+ * One call rather than three, and the year comes from the server rather than being worked out here
+ * — the client used to read the company record's own start date, which is the first year it was
+ * ever given, and drew "2019" above a 2026 balance sheet.
+ */
+export interface CompanyContext {
+  period: ReportPeriod;
+  /** Closing debit less closing credit. "0.00" on a healthy set of books. */
+  difference: string;
+  draftVouchers: number;
 }
 
 export interface TrialBalanceRow {
@@ -87,6 +108,13 @@ export interface ProfitAndLossMonth {
   income: string;
   expenses: string;
   netProfit: string;
+  /**
+   * The same month of the comparison year, matched by distance from the year's start. Absent
+   * unless a comparison was asked for, and absent for a month the prior year had nothing in.
+   */
+  priorIncome?: string;
+  priorExpenses?: string;
+  priorNetProfit?: string;
 }
 
 export interface ProfitAndLossReport {

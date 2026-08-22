@@ -4,11 +4,9 @@ import { Link } from 'react-router-dom';
 import type { Company } from '@/entities/company';
 import { getBalanceSheet } from '@/entities/report';
 import type { BalanceSheetReport } from '@/entities/report';
-import { getOpeningBalanceSummary } from '@/entities/ledger';
-import type { OpeningBalanceSummary } from '@/entities/ledger';
-import { listVouchers } from '@/entities/voucher';
 import type { VoucherType } from '@/entities/voucher-type';
 import { formatMoney, formatCalendarDay, getErrorMessage } from '@/shared/lib';
+import { useCompanyReadout } from '@/widgets/app-shell';
 
 import styles from './CompanyGateway.module.css';
 
@@ -32,25 +30,21 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
   const base = `/companies/${company.id}`;
 
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
-  const [opening, setOpening] = useState<OpeningBalanceSummary | null>(null);
-  const [drafts, setDrafts] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+    The difference and the draft count come from the frame, which has already read them for the
+    context strip. Asking again would be three more round trips for figures already on screen.
+  */
+  const { context } = useCompanyReadout();
 
   useEffect(() => {
     const id = company.id;
     let cancelled = false;
 
-    Promise.all([
-      getBalanceSheet(id),
-      getOpeningBalanceSummary(id),
-      // Only the count is wanted; one row is enough to carry the total back.
-      listVouchers(id, { status: 'DRAFT', page: 1, limit: 1 }),
-    ])
-      .then(([sheet, openingResult, draftPage]) => {
-        if (cancelled) return;
-        setBalanceSheet(sheet);
-        setOpening(openingResult);
-        setDrafts(draftPage.total);
+    getBalanceSheet(id)
+      .then((sheet) => {
+        if (!cancelled) setBalanceSheet(sheet);
       })
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err, 'Could not read this company’s position'));
@@ -72,9 +66,15 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
     ? (Number(balanceSheet.totals.assets) - Number(balanceSheet.totals.liabilities)).toFixed(2)
     : null;
 
-  const openingDifference = opening && Number(opening.difference) !== 0 ? opening.difference : null;
   const activeTypes = voucherTypes.filter((type) => type.isActive);
+  const drafts = context?.draftVouchers ?? null;
 
+  /*
+    Only what is genuinely outstanding, and each fault reported once. The opening-balance difference
+    is deliberately not a separate line: every posted voucher balances, so the trial balance
+    difference *is* the opening difference. Two lines would report one fault twice, and disagree the
+    moment one of them was read at a different time.
+  */
   const attention = [
     drafts && drafts > 0
       ? {
@@ -84,20 +84,20 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           tone: styles.warn,
         }
       : null,
-    openingDifference
+    context && Number(context.difference) !== 0
       ? {
-          key: 'opening',
-          label: `Opening balances differ by ${money(openingDifference)}`,
-          to: `${base}?tab=accounts`,
+          key: 'difference',
+          label: `Books out by ${money(context.difference)} — debits do not equal credits`,
+          to: `${base}/reports?report=trial-balance`,
           tone: styles.bad,
         }
       : null,
-    balanceSheet && Number(balanceSheet.totals.difference) !== 0
+    context?.period.financialYearStatus === 'CLOSED'
       ? {
-          key: 'difference',
-          label: `Balance sheet out by ${money(balanceSheet.totals.difference)}`,
-          to: `${base}/reports?report=trial-balance`,
-          tone: styles.bad,
+          key: 'closed',
+          label: `Financial year ${context.period.financialYearLabel} is closed to new vouchers`,
+          to: `${base}?tab=financial-years`,
+          tone: styles.warn,
         }
       : null,
   ].filter((item) => item !== null);

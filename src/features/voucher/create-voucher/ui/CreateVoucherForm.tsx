@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -295,114 +295,184 @@ export function CreateVoucherForm({
         </Button>
       </div>
 
-      <div className={styles.entriesTable}>
-        <div className={cn(styles.entriesRow, styles.entriesRowHead)}>
-          <span>Particulars</span>
-          <span className={styles.balanceHead}>Current balance</span>
-          <span>Debit</span>
-          <span>Credit</span>
-          <span />
-        </div>
-        {entries.map((row) => (
-          <div key={row.key} className={styles.entriesRow}>
-            <Select
-              value={row.ledgerCode}
-              onChange={(event) => {
-                const ledgerCode = event.target.value;
-                // The rate belongs to the old account's currency, so it is cleared with it —
-                // carrying it over would silently price the new line at the wrong rate.
-                updateRow(row.key, {
-                  ledgerCode,
-                  currencyCode: currencyCodeForLedger(ledgerCode),
-                  exchangeRate: '',
-                });
-              }}
-              required
-            >
-              {ledgers.map((ledger) => (
-                <option key={ledger.id} value={ledger.code}>
-                  {ledger.name} ({ledger.code})
-                </option>
-              ))}
-            </Select>
-            {/* Read-only context, not a field: what this account stands at before the line is
-                posted. A dash while the balances are still being read, or if they could not be. */}
-            <span className={styles.balanceCell}>{ledgerBalances?.get(row.ledgerCode) ?? '—'}</span>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-              value={row.debit}
-              onChange={(event) => updateRow(row.key, { debit: event.target.value, credit: '' })}
-            />
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-              value={row.credit}
-              onChange={(event) => updateRow(row.key, { credit: event.target.value, debit: '' })}
-            />
-            <button
-              type="button"
-              className={styles.removeRow}
-              onClick={() => removeRow(row.key)}
-              disabled={entries.length <= 2}
-              aria-label="Remove entry"
-            >
-              <Trash2 size={15} />
-            </button>
-
-            <EntryExtras
-              entryAmount={Number(row.debit) || Number(row.credit) || 0}
-              billwise={
-                billWiseEnabled && Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
-              }
-              allocations={row.allocations}
-              onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
-              onAddAllocation={() =>
-                updateRow(row.key, { allocations: [...row.allocations, newAllocation()] })
-              }
-              multiCurrency={multiCurrencyEnabled}
-              currencies={currencies}
-              baseCurrency={baseCurrency}
-              currencyCode={row.currencyCode}
-              exchangeRate={row.exchangeRate}
-              onCurrencyChange={(currencyCode) => updateRow(row.key, { currencyCode })}
-              onExchangeRateChange={(exchangeRate) => updateRow(row.key, { exchangeRate })}
-            />
-          </div>
-        ))}
-      </div>
-
       {/*
+        A real table, not a grid of divs. Every cell here is an amount belonging to a named account
+        under a named column, and a screen reader can only say "Debit, HDFC Bank, 68,240" if the
+        markup says which column and which row it is in. The per-entry detail sits in a row of its
+        own spanning the width, so the columns above it stay aligned.
+      */}
+      <div className={styles.entriesFrame}>
+        <table className={styles.entriesTable}>
+          <thead>
+            <tr className={styles.entriesRowHead}>
+              <th scope="col">Particulars</th>
+              <th scope="col" className={styles.balanceHead}>
+                Current balance
+              </th>
+              <th scope="col" className={styles.amountHead}>
+                Debit
+              </th>
+              <th scope="col" className={styles.amountHead}>
+                Credit
+              </th>
+              <th scope="col">
+                <span className={styles.srOnly}>Remove</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((row) => (
+              <Fragment key={row.key}>
+                <tr className={styles.entriesRow}>
+                  <td>
+                    <Select
+                      value={row.ledgerCode}
+                      onChange={(event) => {
+                        const ledgerCode = event.target.value;
+                        // The rate belongs to the old account's currency, so it is cleared with it —
+                        // carrying it over would silently price the new line at the wrong rate.
+                        updateRow(row.key, {
+                          ledgerCode,
+                          currencyCode: currencyCodeForLedger(ledgerCode),
+                          exchangeRate: '',
+                        });
+                      }}
+                      required
+                    >
+                      {ledgers.map((ledger) => (
+                        <option key={ledger.id} value={ledger.code}>
+                          {ledger.name} ({ledger.code})
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
+                  {/* Read-only context, not a field: what this account stands at before the line is
+                    posted. A dash while the balances are still being read, or if not readable. */}
+                  <td className={styles.balanceCell}>
+                    {ledgerBalances?.get(row.ledgerCode) ?? '—'}
+                  </td>
+                  <td>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="0.00"
+                      aria-label={`Debit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
+                      value={row.debit}
+                      onChange={(event) =>
+                        updateRow(row.key, { debit: event.target.value, credit: '' })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="0.00"
+                      aria-label={`Credit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
+                      value={row.credit}
+                      onChange={(event) =>
+                        updateRow(row.key, { credit: event.target.value, debit: '' })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className={styles.removeRow}
+                      onClick={() => removeRow(row.key)}
+                      disabled={entries.length <= 2}
+                      aria-label="Remove entry"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                </tr>
+
+                {/*
+                The per-entry detail — bill allocation and the line's currency — in a row of its own
+                spanning the table, so the four columns above it stay in line. EntryExtras renders
+                nothing at all when neither feature is on, and an empty row would still take space,
+                so the row itself is conditional on the same two flags.
+              */}
+                {(billWiseEnabled || multiCurrencyEnabled) && (
+                  <tr className={styles.extrasRowHolder}>
+                    <td colSpan={5}>
+                      <EntryExtras
+                        entryAmount={Number(row.debit) || Number(row.credit) || 0}
+                        billwise={
+                          billWiseEnabled &&
+                          Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
+                        }
+                        allocations={row.allocations}
+                        onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
+                        onAddAllocation={() =>
+                          updateRow(row.key, { allocations: [...row.allocations, newAllocation()] })
+                        }
+                        multiCurrency={multiCurrencyEnabled}
+                        currencies={currencies}
+                        baseCurrency={baseCurrency}
+                        currencyCode={row.currencyCode}
+                        exchangeRate={row.exchangeRate}
+                        onCurrencyChange={(currencyCode) => updateRow(row.key, { currencyCode })}
+                        onExchangeRateChange={(exchangeRate) =>
+                          updateRow(row.key, { exchangeRate })
+                        }
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+
+          {/*
         The totals sit on the same grid as the rows above, so each one lands under the column it
         totals — which is how a voucher is checked: read down the debits, read down the credits,
         and look at the one figure that has to be zero.
       */}
-      <div className={cn(styles.balanceBar, isBalanced ? styles.balanceOk : styles.balanceOff)}>
-        <span className={styles.balanceLead}>
-          {isBalanced ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-          {awaitingRate ? 'Rate needed' : 'Total'}
-        </span>
+          {/*
+          The totals belong to the table, not beside it: each one lands under the column it totals,
+          which is how a voucher is checked — read down the debits, read down the credits, and look
+          at the one figure that has to be zero.
+        */}
+          <tfoot
+            className={cn(styles.balanceBar, isBalanced ? styles.balanceOk : styles.balanceOff)}
+          >
+            <tr>
+              {/*
+              The difference sits beside the word Total rather than in a column of its own: it is
+              the one figure that has to reach zero, and it stays on screen at every width — the
+              balance column is the one that goes when there is no room for it.
+            */}
+              <th scope="row" className={styles.balanceLead}>
+                {isBalanced ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                {awaitingRate ? 'Rate needed' : 'Total'}
+                {!awaitingRate && (
+                  <span className={styles.balanceDifference}>
+                    Difference {Math.abs(totalDebit - totalCredit).toFixed(2)}
+                  </span>
+                )}
+              </th>
 
-        {awaitingRate ? (
-          // Naming the real problem: a line with no rate cannot be weighed, so reporting a
-          // difference here would send the user looking at their amounts instead of the rate.
-          <span className={styles.balanceNote}>
-            Enter an exchange rate for every foreign line to check the balance
-          </span>
-        ) : (
-          <>
-            <span className={styles.balanceDifference}>
-              Difference {Math.abs(totalDebit - totalCredit).toFixed(2)}
-            </span>
-            <span className={styles.balanceTotal}>{totalDebit.toFixed(2)}</span>
-            <span className={styles.balanceTotal}>{totalCredit.toFixed(2)}</span>
-            <span />
-          </>
-        )}
+              {awaitingRate ? (
+                // Naming the real problem: a line with no rate cannot be weighed, so reporting a
+                // difference here would send the user looking at their amounts instead of the rate.
+                <td colSpan={4} className={styles.balanceNote}>
+                  Enter an exchange rate for every foreign line to check the balance
+                </td>
+              ) : (
+                <>
+                  <td className={styles.balanceCell} />
+                  <td className={styles.balanceTotal}>{totalDebit.toFixed(2)}</td>
+                  <td className={styles.balanceTotal}>{totalCredit.toFixed(2)}</td>
+                  <td />
+                </>
+              )}
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       {error && <p className={styles.error}>{error}</p>}

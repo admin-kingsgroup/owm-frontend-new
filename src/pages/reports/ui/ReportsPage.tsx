@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 
+import { useStackedTables } from '@/shared/hooks';
 import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import {
@@ -12,6 +13,9 @@ import {
   getTrialBalance,
   getReceiptsAndPayments,
   getCashFlow,
+  getCashBook,
+  getBankBook,
+  getGroupSummary,
 } from '@/entities/report';
 import type {
   BalanceSheetReport,
@@ -32,6 +36,10 @@ import { cn, getErrorMessage, formatMoney, localeFor } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
 import { ReportTree } from './ReportTree';
+import { LedgerStatement } from './LedgerStatement';
+import { TrialBalanceView } from './TrialBalanceView';
+import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
+import { OutstandingsView } from './OutstandingsView';
 import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
 
@@ -47,6 +55,9 @@ const TAB_IDS = [
   'profit-loss',
   'trial-balance',
   'day-book',
+  'cash-book',
+  'bank-book',
+  'group-summary',
   'receipts-payments',
   'cash-flow',
   'receivables',
@@ -66,6 +77,9 @@ const TAB_LABELS: Record<Tab, string> = {
   'profit-loss': 'Profit & Loss',
   'trial-balance': 'Trial Balance',
   'day-book': 'Day Book',
+  'cash-book': 'Cash Book',
+  'bank-book': 'Bank Book',
+  'group-summary': 'Group Summary',
   'receipts-payments': 'Receipts & Payments',
   'cash-flow': 'Cash Flow',
   receivables: 'Receivables',
@@ -89,18 +103,19 @@ function isAvailable(tab: Tab, company: Company | null): boolean {
   return true;
 }
 
-const BUCKET_LABELS: Record<string, string> = {
-  NOT_DUE: 'Not due',
-  '0_30': '1–30 days',
-  '31_60': '31–60 days',
-  '61_90': '61–90 days',
-  OVER_90: 'Over 90 days',
-};
-
 const asDay = (value: string) => value.slice(0, 10);
 
 export function ReportsPage() {
   const { companyId } = useParams<{ companyId: string }>();
+
+  /*
+    Every statement below is a row-per-record table, which is what reads well as a list of cards on
+    a phone. The labels come from each table's own header row rather than being repeated down the
+    body — see useStackedTables. Declared up here with the other hooks: this component returns
+    early in several places, and a hook after one of those does not run in the same order twice.
+  */
+  const pageRef = useRef<HTMLDivElement>(null);
+  useStackedTables(pageRef);
   /**
    * Which report is open lives in the URL, not in component state.
    *
@@ -133,6 +148,9 @@ export function ReportsPage() {
   const [receivables, setReceivables] = useState<OutstandingsReport | null>(null);
   const [payables, setPayables] = useState<OutstandingsReport | null>(null);
   const [forex, setForex] = useState<ForexGainLossReport | null>(null);
+  const [cashBook, setCashBook] = useState<LedgerStatementReport[] | null>(null);
+  const [bankBook, setBankBook] = useState<LedgerStatementReport[] | null>(null);
+  const [groupSummary, setGroupSummary] = useState<ReportNode[] | null>(null);
 
   const [statement, setStatement] = useState<LedgerStatementReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,17 +175,21 @@ export function ReportsPage() {
         // `asOf` for the ageing reports is the end of the period being looked at.
         const asOf = applied.to || undefined;
 
-        const [companyResult, bs, pl, tb, db, rp, cf, rec, pay] = await Promise.all([
-          getCompany(id),
-          getBalanceSheet(id, params),
-          getProfitAndLoss(id, params),
-          getTrialBalance(id, params),
-          getDayBook(id, params),
-          getReceiptsAndPayments(id, params),
-          getCashFlow(id, params),
-          getReceivables(id, asOf),
-          getPayables(id, asOf),
-        ]);
+        const [companyResult, bs, pl, tb, db, rp, cf, rec, pay, cash, bank, groups] =
+          await Promise.all([
+            getCompany(id),
+            getBalanceSheet(id, params),
+            getProfitAndLoss(id, params),
+            getTrialBalance(id, params),
+            getDayBook(id, params),
+            getReceiptsAndPayments(id, params),
+            getCashFlow(id, params),
+            getReceivables(id, asOf),
+            getPayables(id, asOf),
+            getCashBook(id, params),
+            getBankBook(id, params),
+            getGroupSummary(id, params),
+          ]);
         if (cancelled) return;
 
         setCompany(companyResult);
@@ -179,6 +201,9 @@ export function ReportsPage() {
         setCashFlow(cf);
         setReceivables(rec);
         setPayables(pay);
+        setCashBook(cash);
+        setBankBook(bank);
+        setGroupSummary(groups);
 
         // Only meaningful once the company transacts in more than one currency.
         setForex(companyResult.features.multiCurrency ? await getForexGainLoss(id, asOf) : null);
@@ -215,23 +240,88 @@ export function ReportsPage() {
   function exportCurrentTab() {
     const stamp = balanceSheet ? balanceSheet.period.financialYearLabel : 'report';
     const name = (label: string) => `${label}-${stamp}.csv`;
-    const treeHeaders = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
+    const base = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
+    /* The reports that do not compare keep the plain header set. */
+    const treeHeaders = base;
+    /*
+      The comparison column is added only when there is one, so a file exported without comparing
+      keeps the shape anything downstream was built against. Named for the year it holds rather
+      than "Prior", because a saved file outlives the screen that produced it.
+    */
+    const withPrior = (comparison: { financialYearLabel: string } | null) =>
+      comparison ? [...base, `Balance FY ${comparison.financialYearLabel}`] : base;
 
     if (tab === 'balance-sheet' && balanceSheet) {
-      downloadCsv(name('balance-sheet'), treeHeaders, [
-        ['ASSETS', '', '', '', '', balanceSheet.totals.assets, 'DEBIT'],
-        ...flattenNodes(balanceSheet.assets),
-        ['LIABILITIES', '', '', '', '', balanceSheet.totals.liabilities, 'CREDIT'],
-        ...flattenNodes(balanceSheet.liabilities),
-        ['Profit for the period', '', '', '', '', balanceSheet.totals.currentPeriodProfit, ''],
+      const cmp = balanceSheet.comparison;
+      downloadCsv(name('balance-sheet'), withPrior(cmp), [
+        [
+          'ASSETS',
+          '',
+          '',
+          '',
+          '',
+          balanceSheet.totals.assets,
+          'DEBIT',
+          ...(cmp ? [balanceSheet.totals.priorAssets ?? ''] : []),
+        ],
+        ...flattenNodes(balanceSheet.assets, 0, Boolean(cmp)),
+        [
+          'LIABILITIES',
+          '',
+          '',
+          '',
+          '',
+          balanceSheet.totals.liabilities,
+          'CREDIT',
+          ...(cmp ? [balanceSheet.totals.priorLiabilities ?? ''] : []),
+        ],
+        ...flattenNodes(balanceSheet.liabilities, 0, Boolean(cmp)),
+        [
+          'Profit for the period',
+          '',
+          '',
+          '',
+          '',
+          balanceSheet.totals.currentPeriodProfit,
+          '',
+          ...(cmp ? [balanceSheet.totals.priorCurrentPeriodProfit ?? ''] : []),
+        ],
       ]);
     } else if (tab === 'profit-loss' && profitLoss) {
-      downloadCsv(name('profit-and-loss'), treeHeaders, [
-        ['INCOME', '', '', '', '', profitLoss.totals.income, 'CREDIT'],
-        ...flattenNodes(profitLoss.income),
-        ['EXPENSES', '', '', '', '', profitLoss.totals.expenses, 'DEBIT'],
-        ...flattenNodes(profitLoss.expenses),
-        ['Net profit', '', '', '', '', profitLoss.totals.netProfit, ''],
+      const cmp = profitLoss.comparison;
+      downloadCsv(name('profit-and-loss'), withPrior(cmp), [
+        [
+          'INCOME',
+          '',
+          '',
+          '',
+          '',
+          profitLoss.totals.income,
+          'CREDIT',
+          ...(cmp ? [profitLoss.totals.priorIncome ?? ''] : []),
+        ],
+        ...flattenNodes(profitLoss.income, 0, Boolean(cmp)),
+        [
+          'EXPENSES',
+          '',
+          '',
+          '',
+          '',
+          profitLoss.totals.expenses,
+          'DEBIT',
+          ...(cmp ? [profitLoss.totals.priorExpenses ?? ''] : []),
+        ],
+        ...flattenNodes(profitLoss.expenses, 0, Boolean(cmp)),
+        [
+          'Net profit',
+          '',
+          '',
+          '',
+          '',
+          profitLoss.totals.netProfit,
+          '',
+          ...(cmp ? [profitLoss.totals.priorNetProfit ?? ''] : []),
+        ],
       ]);
     } else if (tab === 'trial-balance' && trialBalance) {
       downloadCsv(
@@ -426,7 +516,7 @@ export function ReportsPage() {
   const outstandings = tab === 'receivables' ? receivables : payables;
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} ref={pageRef}>
       <div className={styles.header}>
         <div>
           {/* The report itself, not the word "Reports" — the shell's context strip already says
@@ -565,7 +655,12 @@ export function ReportsPage() {
           <ColumnChart
             labels={profitLoss.monthly.map((month) => monthLabel(month.month))}
             formatValue={money}
-            caption="Income and expenses for each month of the period"
+            scaleLabel={money}
+            caption={
+              profitLoss.comparison
+                ? `Income and expenses each month, against FY ${profitLoss.comparison.financialYearLabel}`
+                : 'Income and expenses for each month of the period'
+            }
             series={[
               {
                 label: 'Income',
@@ -577,6 +672,21 @@ export function ReportsPage() {
                 color: 'var(--data-2)',
                 values: profitLoss.monthly.map((month) => Number(month.expenses)),
               },
+              /*
+                Only when a comparison is in play, and only net: adding last year's income and
+                expenses as well would put five bars in every month and the shape would be lost.
+                Net is the one figure that answers "was this month better than the same month last
+                year", which is what a comparison is for.
+              */
+              ...(profitLoss.comparison
+                ? [
+                    {
+                      label: `Net · FY ${profitLoss.comparison.financialYearLabel}`,
+                      color: 'var(--data-3)',
+                      values: profitLoss.monthly.map((month) => Number(month.priorNetProfit ?? 0)),
+                    },
+                  ]
+                : []),
             ]}
           />
         </section>
@@ -629,71 +739,36 @@ export function ReportsPage() {
       )}
 
       {tab === 'trial-balance' && trialBalance && (
+        <TrialBalanceView trialBalance={trialBalance} money={money} openLedger={openLedger} />
+      )}
+
+      {/*
+        The Cash and Bank books are every cash or bank account's statement one after another, drawn
+        by the same component the drill-down uses — see LedgerStatement.
+      */}
+      {(tab === 'cash-book' || tab === 'bank-book') && (
         <section className={styles.panel}>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Ledger</th>
-                  <th className={styles.num}>Opening Dr</th>
-                  <th className={styles.num}>Opening Cr</th>
-                  <th className={styles.num}>Debit</th>
-                  <th className={styles.num}>Credit</th>
-                  <th className={styles.num}>Closing Dr</th>
-                  <th className={styles.num}>Closing Cr</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trialBalance.rows.map((row) => (
-                  <tr key={row.ledgerId}>
-                    <td>{row.code}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.linkCell}
-                        onClick={() =>
-                          openLedger({
-                            kind: 'ledger',
-                            id: row.ledgerId,
-                            code: row.code,
-                            name: row.name,
-                            debit: row.debit,
-                            credit: row.credit,
-                            balance: row.closingDebit,
-                            balanceSide: 'DEBIT',
-                          })
-                        }
-                      >
-                        {row.name}
-                      </button>
-                    </td>
-                    <td className={styles.num}>{money(row.openingDebit)}</td>
-                    <td className={styles.num}>{money(row.openingCredit)}</td>
-                    <td className={styles.num}>{row.debit}</td>
-                    <td className={styles.num}>{row.credit}</td>
-                    <td className={styles.num}>{money(row.closingDebit)}</td>
-                    <td className={styles.num}>{money(row.closingCredit)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={2}>Total</td>
-                  <td className={styles.num}>{money(trialBalance.totals.openingDebit)}</td>
-                  <td className={styles.num}>{money(trialBalance.totals.openingCredit)}</td>
-                  <td className={styles.num}>{trialBalance.totals.debit}</td>
-                  <td className={styles.num}>{trialBalance.totals.credit}</td>
-                  <td className={styles.num}>{money(trialBalance.totals.closingDebit)}</td>
-                  <td className={styles.num}>{money(trialBalance.totals.closingCredit)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          {trialBalance.totals.difference !== '0.00' && (
-            <p className={styles.warning}>
-              Trial balance does not tie: difference {money(trialBalance.totals.difference)}.
+          {(tab === 'cash-book' ? cashBook : bankBook)?.length === 0 ? (
+            <p className={styles.empty}>
+              This company has no {tab === 'cash-book' ? 'cash' : 'bank'} account yet.
             </p>
+          ) : (
+            (tab === 'cash-book' ? cashBook : bankBook)?.map((entry) => (
+              <LedgerStatement key={entry.ledger.id} statement={entry} money={money} heading />
+            ))
+          )}
+        </section>
+      )}
+
+      {tab === 'group-summary' && groupSummary && (
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>Every group, with its closing position</span>
+          </div>
+          {groupSummary.length === 0 ? (
+            <p className={styles.empty}>This company has no account groups yet.</p>
+          ) : (
+            <ReportTree nodes={groupSummary} onSelectLedger={openLedger} formatAmount={money} />
           )}
         </section>
       )}
@@ -701,7 +776,7 @@ export function ReportsPage() {
       {tab === 'day-book' && dayBook && (
         <section className={styles.panel}>
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
+            <table className={styles.table} data-stack>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -735,79 +810,7 @@ export function ReportsPage() {
       )}
 
       {tab === 'receipts-payments' && receiptsPayments && (
-        <section className={styles.panel}>
-          <div className={styles.buckets}>
-            <div className={styles.bucket}>
-              <span className={styles.bucketLabel}>Opening</span>
-              <span className={styles.bucketAmount}>{money(receiptsPayments.openingBalance)}</span>
-            </div>
-            <div className={styles.bucket}>
-              <span className={styles.bucketLabel}>Receipts</span>
-              <span className={styles.bucketAmount}>{receiptsPayments.totals.receipts}</span>
-            </div>
-            <div className={styles.bucket}>
-              <span className={styles.bucketLabel}>Payments</span>
-              <span className={styles.bucketAmount}>{receiptsPayments.totals.payments}</span>
-            </div>
-            <div className={cn(styles.bucket, styles.bucketTotal)}>
-              <span className={styles.bucketLabel}>Closing</span>
-              <span className={styles.bucketAmount}>{money(receiptsPayments.closingBalance)}</span>
-            </div>
-          </div>
-
-          <p className={styles.hint}>
-            Only money that actually moved. An invoice raised but unpaid is income, so it appears on
-            the Profit &amp; Loss and not here.
-          </p>
-
-          <div className={styles.twoColumn}>
-            <div>
-              <h2 className={styles.panelTitle}>
-                Receipts{' '}
-                <span className={styles.panelTotal}>{receiptsPayments.totals.receipts}</span>
-              </h2>
-              <table className={styles.table}>
-                <tbody>
-                  {receiptsPayments.receipts.map((row) => (
-                    <tr key={`r-${row.ledgerId}`}>
-                      <td>{row.name}</td>
-                      <td className={styles.num}>{money(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {receiptsPayments.receipts.length === 0 && (
-                <p className={styles.empty}>Nothing received in this period.</p>
-              )}
-            </div>
-            <div>
-              <h2 className={styles.panelTitle}>
-                Payments{' '}
-                <span className={styles.panelTotal}>{receiptsPayments.totals.payments}</span>
-              </h2>
-              <table className={styles.table}>
-                <tbody>
-                  {receiptsPayments.payments.map((row) => (
-                    <tr key={`p-${row.ledgerId}`}>
-                      <td>{row.name}</td>
-                      <td className={styles.num}>{money(row.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {receiptsPayments.payments.length === 0 && (
-                <p className={styles.empty}>Nothing paid in this period.</p>
-              )}
-            </div>
-          </div>
-
-          {receiptsPayments.totals.difference !== '0.00' && (
-            <p className={styles.warning}>
-              Opening plus receipts less payments does not reach the closing balance: difference{' '}
-              {money(receiptsPayments.totals.difference)}.
-            </p>
-          )}
-        </section>
+        <ReceiptsAndPaymentsView report={receiptsPayments} money={money} />
       )}
 
       {tab === 'cash-flow' && cashFlow && cashFlow.monthly.length > 0 && (
@@ -816,6 +819,7 @@ export function ReportsPage() {
           <ColumnChart
             labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
             formatValue={money}
+            scaleLabel={money}
             caption="Cash in and cash out for each month of the period"
             series={[
               {
@@ -881,54 +885,7 @@ export function ReportsPage() {
       )}
 
       {(tab === 'receivables' || tab === 'payables') && outstandings && (
-        <section className={styles.panel}>
-          <div className={styles.buckets}>
-            {Object.entries(outstandings.totals.byBucket).map(([bucket, amount]) => (
-              <div key={bucket} className={styles.bucket}>
-                <span className={styles.bucketLabel}>{BUCKET_LABELS[bucket] ?? bucket}</span>
-                <span className={styles.bucketAmount}>{amount}</span>
-              </div>
-            ))}
-            <div className={cn(styles.bucket, styles.bucketTotal)}>
-              <span className={styles.bucketLabel}>Total</span>
-              <span className={styles.bucketAmount}>{outstandings.totals.outstanding}</span>
-            </div>
-          </div>
-
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Party</th>
-                  <th>Reference</th>
-                  <th>Due</th>
-                  <th className={styles.num}>Amount</th>
-                  <th className={styles.num}>Settled</th>
-                  <th className={styles.num}>Outstanding</th>
-                  <th className={styles.num}>Overdue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outstandings.bills.map((bill) => (
-                  <tr key={bill.billId}>
-                    <td>{bill.ledgerName}</td>
-                    <td>{bill.reference}</td>
-                    <td>{bill.dueDate ? asDay(bill.dueDate) : asDay(bill.billDate)}</td>
-                    <td className={styles.num}>{money(bill.amount)}</td>
-                    <td className={styles.num}>{bill.settled}</td>
-                    <td className={styles.num}>{bill.outstanding}</td>
-                    <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
-                      {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {outstandings.bills.length === 0 && (
-            <p className={styles.empty}>Nothing outstanding as at {asDay(outstandings.asOf)}.</p>
-          )}
-        </section>
+        <OutstandingsView outstandings={outstandings} money={money} />
       )}
 
       {tab === 'forex' && forex && (
@@ -962,7 +919,7 @@ export function ReportsPage() {
           )}
 
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
+            <table className={styles.table} data-stack>
               <thead>
                 <tr>
                   <th>Party</th>
@@ -1005,50 +962,12 @@ export function ReportsPage() {
         title={statement ? `${statement.ledger.name} (${statement.ledger.code})` : ''}
       >
         {statement && (
-          <div className={styles.statement}>
-            <div className={styles.statementHead}>
-              <span>Opening</span>
-              <span>
-                {money(statement.openingBalance)} {statement.openingSide === 'DEBIT' ? 'Dr' : 'Cr'}
-              </span>
-            </div>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Voucher</th>
-                    <th className={styles.num}>Debit</th>
-                    <th className={styles.num}>Credit</th>
-                    <th className={styles.num}>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statement.lines.map((line, index) => (
-                    <tr key={`${line.voucherId}-${index}`}>
-                      <td>{asDay(line.voucherDate)}</td>
-                      <td>{line.voucherNumber}</td>
-                      <td className={styles.num}>{line.debit}</td>
-                      <td className={styles.num}>{line.credit}</td>
-                      <td className={styles.num}>{money(line.runningBalance)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {statement.lines.length === 0 && (
-              <p className={styles.empty}>No postings in this period.</p>
-            )}
-            <div className={styles.statementHead}>
-              <span>Closing</span>
-              <span>
-                {money(statement.closingBalance)} {statement.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}
-              </span>
-            </div>
+          <>
+            <LedgerStatement statement={statement} money={money} />
             <button type="button" className={styles.closeLink} onClick={() => setStatement(null)}>
               <X size={14} /> Close
             </button>
-          </div>
+          </>
         )}
       </Modal>
     </div>
