@@ -25,6 +25,7 @@ import { FinancialYearsPanel } from './FinancialYearsPanel';
 import { CompanySettingsPanel } from './CompanySettingsPanel';
 import { CurrenciesPanel } from './CurrenciesPanel';
 import { CompanyGateway } from './CompanyGateway';
+import { ImportExportPanel } from './ImportExportPanel';
 import styles from './CompanyDashboardPage.module.css';
 
 /** Plain words for the stored company type — the enum value is not what a person should read. */
@@ -34,7 +35,14 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
   ANALYTICS: 'Portfolio analytics',
 };
 
-const TAB_IDS = ['accounts', 'voucher-types', 'financial-years', 'currencies', 'settings'] as const;
+const TAB_IDS = [
+  'accounts',
+  'voucher-types',
+  'financial-years',
+  'currencies',
+  'import-export',
+  'settings',
+] as const;
 
 type Tab = (typeof TAB_IDS)[number];
 
@@ -97,6 +105,9 @@ export function CompanyDashboardPage() {
   const [openingBalance, setOpeningBalance] = useState<OpeningBalanceSummary | null>(null);
   const [numberSeries, setNumberSeries] = useState<NumberSeries[]>([]);
 
+  /** Bumped by anything that creates masters in bulk, so the lists below re-read what it made. */
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     if (!companyId) return;
     const id = companyId;
@@ -152,7 +163,7 @@ export function CompanyDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [companyId, showTabs]);
+  }, [companyId, showTabs, reloadKey]);
 
   /**
    * A company edited here is the same record the switcher and the companies page are showing, so
@@ -338,6 +349,13 @@ export function CompanyDashboardPage() {
         )}
         <button
           type="button"
+          className={cn(styles.tab, tab === 'import-export' && styles.tabActive)}
+          onClick={() => setTab('import-export')}
+        >
+          Import &amp; export
+        </button>
+        <button
+          type="button"
           className={cn(styles.tab, tab === 'settings' && styles.tabActive)}
           onClick={() => setTab('settings')}
         >
@@ -349,6 +367,17 @@ export function CompanyDashboardPage() {
 
       {tab === 'currencies' && company.features.multiCurrency && (
         <CurrenciesPanel companyId={id} baseCurrency={company.baseCurrency} />
+      )}
+
+      {tab === 'import-export' && (
+        <ImportExportPanel
+          companyId={id}
+          companyCode={company.code}
+          groups={groups}
+          ledgers={ledgers}
+          /* Imported ledgers are the same records the chart of accounts shows, so it re-reads. */
+          onImported={() => setReloadKey((key) => key + 1)}
+        />
       )}
 
       {tab === 'settings' && (

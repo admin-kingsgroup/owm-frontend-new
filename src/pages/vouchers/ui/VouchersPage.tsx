@@ -394,6 +394,7 @@ export function VouchersPage() {
                 <th>Date</th>
                 <th>Type</th>
                 <th>Narration</th>
+                <th className={styles.amountHead}>Amount</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -409,6 +410,14 @@ export function VouchersPage() {
                   <td data-label="Type">{typeName(voucher.voucherTypeId)}</td>
                   <td className={styles.narration} data-label="Narration">
                     {voucher.narration ?? '—'}
+                  </td>
+                  {/* What the voucher is worth. A list of postings without amounts is a list of
+                      dates and narrations, and nobody scanning a day of them is looking for those. */}
+                  <td className={styles.amount} data-label="Amount">
+                    {formatMoney(voucher.amount, {
+                      currency: loaded?.company?.baseCurrency,
+                      country: loaded?.company?.country,
+                    })}
                   </td>
                   <td data-label="Status">
                     <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>

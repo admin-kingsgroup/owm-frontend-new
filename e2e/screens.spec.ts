@@ -40,6 +40,7 @@ const SCREENS = [
   { name: 'vouchers', path: () => `/companies/${companyId}/vouchers` },
   { name: 'voucher-entry', path: () => `/companies/${companyId}/vouchers?new=CONTRA` },
   { name: 'masters', path: () => `/companies/${companyId}?tab=accounts` },
+  { name: 'import-export', path: () => `/companies/${companyId}?tab=import-export` },
   { name: 'shortcuts', path: () => `/companies/${companyId}?help=shortcuts` },
 ];
 
@@ -58,12 +59,11 @@ test.describe('every screen, drawn', () => {
       await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
       await page.waitForLoadState('networkidle');
 
-      await page.screenshot({
-        path: `e2e/screenshots/${screen.name}.png`,
-        fullPage: true,
-      });
-
       /*
+        Measured before any picture is taken. A fullPage screenshot resizes the emulated viewport
+        while it works, so a width read straight afterwards is read mid-resize and reports an
+        overflow that is not there.
+
         The page must never scroll sideways. A statement is wide and a voucher grid is wider, and
         the failure mode is always the same: one column pushes the document past the viewport and
         the figures at the end of every row become unreachable.
@@ -74,6 +74,23 @@ test.describe('every screen, drawn', () => {
       expect(overflow, `${screen.name} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
 
       expect(faults, `${screen.name} reported ${faults.length} fault(s)`).toEqual([]);
+
+      // The readable record, for someone reviewing what a change did.
+      await page.screenshot({ path: `e2e/screenshots/${screen.name}.png`, fullPage: true });
+
+      /*
+        And the same picture compared against the last one accepted, so a change that moves
+        something nobody was looking at fails here rather than reaching the user.
+
+        The status strip is masked: it carries today's date, which would otherwise make every
+        baseline stale overnight. The financial year is not masked — it changes once a year, and a
+        baseline that needs refreshing each January is a fair price for seeing the year at all.
+      */
+      await expect(page).toHaveScreenshot(`${screen.name}.png`, {
+        fullPage: true,
+        mask: [page.locator('[data-print="hide"]')],
+        maxDiffPixelRatio: 0.01,
+      });
     });
   }
 });

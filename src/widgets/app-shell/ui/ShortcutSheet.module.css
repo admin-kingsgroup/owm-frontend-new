@@ -1,12 +1,20 @@
 /*
-  Columns of key-and-meaning pairs. Wide enough to read as a reference card rather than a list, and
-  it reflows to one column where there is no room for two.
+  Columns of key-and-meaning pairs, balanced rather than gridded.
+
+  A grid places each group in the next cell, so one long group beside three short ones left three
+  quarters of the sheet empty with Menus running far past everything next to it. Multi-column flows
+  the groups as one list and evens the heights out, which is what a reference card wants.
 */
 .sheet {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--space-5) var(--space-6);
+  columns: 3 15rem;
+  column-gap: var(--space-6);
   padding: var(--space-4);
+}
+
+@media (max-width: 48rem) {
+  .sheet {
+    columns: 1;
+  }
 }
 
 .group {
@@ -15,6 +23,9 @@
   gap: var(--space-2);
   /* A group is never split across two columns mid-way. */
   break-inside: avoid;
+  /* Multi-column needs both to keep a group whole and to space it from the one above. */
+  page-break-inside: avoid;
+  margin-bottom: var(--space-5);
 }
 
 .groupName {

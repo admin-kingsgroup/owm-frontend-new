@@ -186,3 +186,15 @@
   color: var(--ink-faint);
   white-space: nowrap;
 }
+
+/* Figures line up down the column and are read right to left, like every other amount here. */
+.amountHead {
+  text-align: right;
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}

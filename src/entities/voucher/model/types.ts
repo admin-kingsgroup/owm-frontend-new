@@ -52,6 +52,12 @@ export interface VoucherSummary {
   referenceNumber?: string;
   narration?: string;
   status: VoucherStatus;
+  /**
+   * What the voucher is worth: its debit side, which is the whole of it — a voucher that does not
+   * balance cannot be posted. A string, like every other amount, because it is Decimal128 on the
+   * server and a figure that has to tie exactly must not be rounded through a JS number.
+   */
+  amount: string;
   createdBy: string;
   postedAt?: string;
   cancelledAt?: string;
