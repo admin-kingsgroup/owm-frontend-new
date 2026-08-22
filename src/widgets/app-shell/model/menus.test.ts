@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 
 import type { Company, CompanyType } from '@/entities/company';
 
+import type { VoucherType } from '@/entities/voucher-type';
+
 import { buildMenus, periodQuery } from './menus';
 
 const company = (patch: Partial<Company> = {}): Company => ({
@@ -27,8 +29,11 @@ const company = (patch: Partial<Company> = {}): Company => ({
   ...patch,
 });
 
-const linksFor = (here: string) =>
-  buildMenus('c1', company(), here)
+const voucherType = (code: string, name: string, isActive = true) =>
+  ({ id: code, companyId: 'c1', code, name, isActive }) as unknown as VoucherType;
+
+const linksFor = (here: string, types: VoucherType[] = []) =>
+  buildMenus('c1', company(), here, false, types)
     .flatMap((menu) => menu.items)
     .map((item) => item.to);
 
@@ -97,5 +102,52 @@ describe('menu destinations', () => {
     for (const to of notReports) {
       expect(to).not.toContain('from=2027-04-01');
     }
+  });
+});
+
+/**
+ * The registers and the Create list are written from the company's own voucher types. A fixed list
+ * would offer a register for a type somebody had switched off and hide one they had invented,
+ * which is the menu telling you about a product other than the one you are using.
+ */
+describe("menus built from the company's voucher types", () => {
+  const types = [voucherType('SALES', 'Sales'), voucherType('CUSTOM', 'Site Transfer')];
+
+  it('names a register for every type the company keeps', () => {
+    const links = linksFor('/companies/c1/reports', types);
+
+    expect(links).toContain('/companies/c1/reports?report=register&type=SALES');
+    expect(links).toContain('/companies/c1/reports?report=register&type=CUSTOM');
+  });
+
+  it('offers a way to raise every one of them', () => {
+    const links = linksFor('/companies/c1/reports', types);
+
+    expect(links).toContain('/companies/c1/vouchers?new=SALES');
+    expect(links).toContain('/companies/c1/vouchers?new=CUSTOM');
+  });
+
+  it('prints the key only where the shell actually binds one', () => {
+    const items = buildMenus('c1', company(), '/companies/c1', false, types)
+      .flatMap((menu) => menu.items)
+      .filter((item) => item.to.includes('vouchers?new='));
+
+    expect(items.find((item) => item.to.endsWith('SALES'))?.hint).toBe('F8');
+    // A type the company invented has no binding, and a made-up one would eventually collide.
+    expect(items.find((item) => item.to.endsWith('CUSTOM'))?.hint).toBeUndefined();
+  });
+
+  it('names no register at all while the types are still unknown', () => {
+    // The reports screen's own picker is what answers in the meantime, so this is a shorter menu
+    // rather than a dead end.
+    expect(
+      linksFor('/companies/c1/reports').filter((to) => to.includes('report=register')),
+    ).toEqual([]);
+  });
+
+  it('carries the period onto a register the same as any other report', () => {
+    const links = linksFor('/companies/c1/reports?report=day-book&from=2027-04-01', types);
+
+    expect(links).toContain('/companies/c1/reports?report=register&type=SALES&from=2027-04-01');
   });
 });

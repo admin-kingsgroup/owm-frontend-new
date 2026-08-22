@@ -1,4 +1,5 @@
 import type { Company } from '@/entities/company';
+import type { VoucherType } from '@/entities/voucher-type';
 
 export interface MenuItem {
   label: string;
@@ -51,6 +52,44 @@ export function periodQuery(here: string): string {
  * depend on a company feature are dropped when the feature is off, exactly as the screens behind
  * them already do.
  */
+/**
+ * The function keys the shell binds, by voucher type — Tally's, unchanged.
+ *
+ * Only the seeded eight have one. A type a company invents is reachable from the menu and from the
+ * vouchers screen, but gets no key: inventing a binding for it would eventually collide with a
+ * real one, and a key that does the wrong thing is worse than no key.
+ */
+const VOUCHER_HINTS: Record<string, string> = {
+  CONTRA: 'F4',
+  PAYMENT: 'F5',
+  RECEIPT: 'F6',
+  JOURNAL: 'F7',
+  SALES: 'F8',
+  PURCHASE: 'F9',
+  CREDIT_NOTE: 'Ctrl+F8',
+  DEBIT_NOTE: 'Ctrl+F9',
+};
+
+/**
+ * The seeded types in key order, then anything the company added, alphabetically.
+ *
+ * The server hands them back alphabetically, which puts Credit Note second in a list somebody
+ * reads as F4, F5, F6, F7 — the order the keys are in their fingers. A type with no key has no
+ * place in that sequence, so it follows the ones that do.
+ */
+function inKeyOrder(types: VoucherType[]): VoucherType[] {
+  const keyed = Object.keys(VOUCHER_HINTS);
+
+  return [...types].sort((a, b) => {
+    const left = keyed.indexOf(a.code);
+    const right = keyed.indexOf(b.code);
+    if (left !== -1 && right !== -1) return left - right;
+    if (left !== -1) return -1;
+    if (right !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 export function buildMenus(
   companyId: string | undefined,
   company: Company | null,
@@ -62,8 +101,18 @@ export function buildMenus(
    * something the product will not do, which is the one thing the note above rules out.
    */
   isAdmin = false,
+  /**
+   * The company's own voucher types, for the registers and the Create list.
+   *
+   * Passed in rather than fetched here so this stays a pure function of what it is given — and
+   * because the shell already holds them. Empty while they are still loading, or if the read
+   * failed: both menus simply carry fewer entries, and every one of them is also reachable from
+   * the reports screen's picker.
+   */
+  voucherTypes: VoucherType[] = [],
 ): Menu[] {
   const period = periodQuery(here);
+  const orderedTypes = inKeyOrder(voucherTypes);
 
   if (!companyId) {
     return [
@@ -138,14 +187,17 @@ export function buildMenus(
         ? [{ label: 'Portfolio', to: `${base}/kg` }]
         : [
             { label: 'Vouchers', to: `${base}/vouchers`, hint: 'Alt+V' },
-            { label: 'Contra', to: `${base}/vouchers?new=CONTRA`, hint: 'F4', section: 'Create' },
-            { label: 'Payment', to: `${base}/vouchers?new=PAYMENT`, hint: 'F5' },
-            { label: 'Receipt', to: `${base}/vouchers?new=RECEIPT`, hint: 'F6' },
-            { label: 'Journal', to: `${base}/vouchers?new=JOURNAL`, hint: 'F7' },
-            { label: 'Sales', to: `${base}/vouchers?new=SALES`, hint: 'F8' },
-            { label: 'Purchase', to: `${base}/vouchers?new=PURCHASE`, hint: 'F9' },
-            { label: 'Credit Note', to: `${base}/vouchers?new=CREDIT_NOTE`, hint: 'Ctrl+F8' },
-            { label: 'Debit Note', to: `${base}/vouchers?new=DEBIT_NOTE`, hint: 'Ctrl+F9' },
+            /*
+              Every type the company actually keeps, in its own order, each with the key the shell
+              binds for it where there is one. A company that has added a type gets it here; one
+              that has switched a type off does not.
+            */
+            ...orderedTypes.map((type, index) => ({
+              label: type.name,
+              to: `${base}/vouchers?new=${type.code}`,
+              ...(VOUCHER_HINTS[type.code] ? { hint: VOUCHER_HINTS[type.code] } : {}),
+              ...(index === 0 ? { section: 'Create' } : {}),
+            })),
           ],
     },
     {
@@ -176,11 +228,15 @@ export function buildMenus(
           section: 'Books & registers',
         },
         /*
-          One entry rather than one per voucher type. The shell does not hold the company's voucher
-          types, and a fixed list of eight would offer some a company has deleted and miss any it
-          has added — so the screen names them, from the company's own list.
+          A register per voucher type, from the company's own list rather than a written-out eight:
+          a fixed list would offer registers for types a company has deleted and hide any it has
+          added. The reports screen keeps its picker, which is what answers while these load.
         */
-        { label: 'Registers — by voucher type', to: `${base}/reports?report=register${period}` },
+        ...orderedTypes.map((type, index) => ({
+          label: `${type.name} Register`,
+          to: `${base}/reports?report=register&type=${type.code}${period}`,
+          ...(index === 0 ? { section: 'Registers' } : {}),
+        })),
         { label: 'Ledger — account statement', to: `${base}/reports?report=ledger${period}` },
         { label: 'Cash Book', to: `${base}/reports?report=cash-book${period}` },
         { label: 'Bank Book', to: `${base}/reports?report=bank-book${period}` },

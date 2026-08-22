@@ -17,6 +17,7 @@ import {
 } from '../model/button-bar';
 import type { ButtonBarAction } from '../model/button-bar';
 import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-company-context';
+import { useVoucherTypes } from '../model/use-voucher-types';
 import { ButtonBar } from './ButtonBar';
 import { buildMenus, periodQuery } from '../model/menus';
 import { MenuBar } from './MenuBar';
@@ -114,10 +115,13 @@ export function AppShell() {
   }, [searchParams, setSearchParams]);
   // Checked against the Role union, so a typo is a compile error rather than a menu that is
   // silently never offered.
+  /* Declared before the menus, which name a register and a Create entry for each of them. */
+  const voucherTypes = useVoucherTypes(companyId);
+
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const menus = useMemo(
-    () => buildMenus(companyId, company, here, isAdmin),
-    [companyId, company, here, isAdmin],
+    () => buildMenus(companyId, company, here, isAdmin, voucherTypes),
+    [companyId, company, here, isAdmin, voucherTypes],
   );
 
   /**
