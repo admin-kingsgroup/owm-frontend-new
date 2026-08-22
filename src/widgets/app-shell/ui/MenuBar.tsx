@@ -128,6 +128,13 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
             <button
               type="button"
               className={cn(styles.trigger, open && styles.triggerOpen)}
+              /*
+                Named explicitly, because the mnemonic underline splits the word. `<u>R</u>eports`
+                computes an accessible name of "R eports" — the element boundary is a word boundary
+                to an accessibility tree — so every menu was announced with its first letter read
+                out separately. The label is the word; the underline stays a visual cue.
+              */
+              aria-label={menu.label}
               aria-haspopup="menu"
               aria-expanded={open}
               aria-controls={open ? menuId : undefined}

@@ -445,24 +445,40 @@ export function VouchersPage() {
       )}
 
       <Modal open={createModalOpen} onClose={() => closeCreate()} title="New voucher" size="wide">
-        <CreateVoucherForm
-          companyId={companyId}
-          voucherTypes={voucherTypes}
-          ledgers={ledgers}
-          billWiseEnabled={Boolean(loaded?.company.features.billWiseDetails)}
-          multiCurrencyEnabled={Boolean(loaded?.company.features.multiCurrency)}
-          currencies={loaded?.currencies ?? []}
-          baseCurrency={loaded?.company.baseCurrency ?? ''}
-          initialVoucherTypeCode={createType ?? undefined}
-          ledgerBalances={
-            ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
-          }
-          onCreated={() => {
-            closeCreate();
-            booksChanged();
-          }}
-          onCancel={() => closeCreate()}
-        />
+        {/*
+          Held back until the masters are in.
+
+          The form reads the ledger list once, when it mounts, to decide what each line starts on.
+          Mounting it before the list arrives left both lines holding an empty ledger code while the
+          select — which falls back to its first option when its value matches none — showed the
+          first account as though it were chosen. Nothing looked wrong, the balance beside each line
+          could not be found, and accepting it would have posted a voucher against no account at all.
+
+          It only became reachable when ?new= let a function key open this form on first paint;
+          before that the button was the only way in, and by then the masters had long arrived.
+        */}
+        {!setupLoadedOk ? (
+          <Loading label="Loading accounts…" />
+        ) : (
+          <CreateVoucherForm
+            companyId={companyId}
+            voucherTypes={voucherTypes}
+            ledgers={ledgers}
+            billWiseEnabled={Boolean(loaded?.company.features.billWiseDetails)}
+            multiCurrencyEnabled={Boolean(loaded?.company.features.multiCurrency)}
+            currencies={loaded?.currencies ?? []}
+            baseCurrency={loaded?.company.baseCurrency ?? ''}
+            initialVoucherTypeCode={createType ?? undefined}
+            ledgerBalances={
+              ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
+            }
+            onCreated={() => {
+              closeCreate();
+              booksChanged();
+            }}
+            onCancel={() => closeCreate()}
+          />
+        )}
       </Modal>
 
       <Modal
