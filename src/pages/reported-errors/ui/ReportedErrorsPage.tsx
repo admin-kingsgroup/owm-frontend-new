@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 
 import { listClientErrors } from '@/entities/client-error';
@@ -6,10 +7,16 @@ import type { ClientError, ClientErrorKind } from '@/entities/client-error';
 import { useStackedTables } from '@/shared/hooks';
 import { Button, Select, Loading, EmptyState, Badge } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
+import { useButtonBar } from '@/widgets/app-shell';
 
 import styles from './ReportedErrorsPage.module.css';
 
 const PAGE_SIZE = 25;
+
+/** A kind the server would accept — anything else in the URL is treated as "all". */
+function isKind(value: string | null): value is ClientErrorKind {
+  return value === 'RENDER' || value === 'UNHANDLED_REJECTION' || value === 'UNCAUGHT';
+}
 
 /** Plain words for the stored kind — the enum value is not what a person should read. */
 const KIND_LABELS: Record<ClientErrorKind, string> = {
@@ -26,16 +33,45 @@ const KIND_LABELS: Record<ClientErrorKind, string> = {
  * column, so a report of "it broke, here is the code" resolves to one record rather than a search.
  */
 export function ReportedErrorsPage() {
+  /**
+   * Which page and which kind live in the URL, not in component state.
+   *
+   * It is the convention the rest of the shell already follows — a menu item links straight at a
+   * screen in a particular state — and it is what makes "the render fault on page 3" something you
+   * can send to somebody rather than describe to them.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const kind = (isKind(searchParams.get('kind')) ? searchParams.get('kind') : '') as
+    ClientErrorKind | '';
+  const page = Math.max(1, Number(searchParams.get('page') ?? 1) || 1);
+
   const [errors, setErrors] = useState<ClientError[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [kind, setKind] = useState<ClientErrorKind | ''>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const pageRef = useRef<HTMLDivElement>(null);
   useStackedTables(pageRef);
+
+  /** Writes one parameter and drops it when it is the default, so the URL stays readable. */
+  const setParam = useCallback(
+    (updates: Record<string, string>) => {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          for (const [name, value] of Object.entries(updates)) {
+            if (value) next.set(name, value);
+            else next.delete(name);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -63,9 +99,30 @@ export function ReportedErrorsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, kind]);
+  }, [page, kind, refreshKey]);
 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  /*
+    What this screen can do, printed down the right-hand side with the key that does it — the same
+    way every other screen in the shell describes itself.
+  */
+  useButtonBar([
+    {
+      group: 'This list',
+      key: 'F5',
+      label: 'Refresh',
+      onSelect: () => setRefreshKey((current) => current + 1),
+      disabled: loading,
+    },
+    {
+      group: 'This list',
+      key: 'Alt+A',
+      label: 'All kinds',
+      onSelect: () => setParam({ kind: '', page: '' }),
+      disabled: loading || kind === '',
+    },
+  ]);
 
   return (
     <div className={styles.page} ref={pageRef}>
@@ -82,10 +139,7 @@ export function ReportedErrorsPage() {
         <Select
           value={kind}
           aria-label="Filter by kind"
-          onChange={(event) => {
-            setKind(event.target.value as ClientErrorKind | '');
-            setPage(1);
-          }}
+          onChange={(event) => setParam({ kind: event.target.value, page: '' })}
         >
           <option value="">All kinds</option>
           {(Object.keys(KIND_LABELS) as ClientErrorKind[]).map((value) => (
@@ -169,7 +223,7 @@ export function ReportedErrorsPage() {
                 type="button"
                 variant="secondary"
                 disabled={page <= 1}
-                onClick={() => setPage((current) => current - 1)}
+                onClick={() => setParam({ page: String(page - 1) })}
               >
                 Previous
               </Button>
@@ -177,7 +231,7 @@ export function ReportedErrorsPage() {
                 type="button"
                 variant="secondary"
                 disabled={page >= lastPage}
-                onClick={() => setPage((current) => current + 1)}
+                onClick={() => setParam({ page: String(page + 1) })}
               >
                 Next
               </Button>
