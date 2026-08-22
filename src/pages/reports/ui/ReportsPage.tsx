@@ -32,7 +32,7 @@ import type { CashMovementRow } from '@/entities/report';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
-import { Button, Input, Loading, Modal, Checkbox, ColumnChart } from '@/shared/ui';
+import { Loading, Modal, ColumnChart } from '@/shared/ui';
 import { cn, formatMoney, getErrorMessage, localeFor, toCalendarDay } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
@@ -41,6 +41,7 @@ import { LedgerStatement } from './LedgerStatement';
 import { TrialBalanceView } from './TrialBalanceView';
 import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
 import { MonthlyFigures } from './MonthlyFigures';
+import { PeriodControls } from './PeriodControls';
 import { OutstandingsView } from './OutstandingsView';
 import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
@@ -154,12 +155,6 @@ export function ReportsPage() {
   const appliedFrom = searchParams.get('from') ?? '';
   const appliedTo = searchParams.get('to') ?? '';
   const appliedCompare = searchParams.get('compare') === 'true';
-
-  // Empty means "the whole financial year", which is what the server defaults to. Seeded from the
-  // address so an opened link shows the boxes that produced it, not empty ones.
-  const [from, setFrom] = useState(appliedFrom);
-  const [to, setTo] = useState(appliedTo);
-  const [compare, setCompare] = useState(appliedCompare);
 
   /**
    * Applying replaces rather than pushes: refining a period is an adjustment to the report you are
@@ -638,9 +633,7 @@ export function ReportsPage() {
       key: 'Alt+Y',
       label: 'Whole year',
       onSelect: () => {
-        setFrom('');
-        setTo('');
-        applyPeriod({ from: '', to: '', compare });
+        applyPeriod({ from: '', to: '', compare: appliedCompare });
       },
       disabled: !appliedFrom && !appliedTo,
     },
@@ -670,52 +663,17 @@ export function ReportsPage() {
           )}
         </div>
 
-        <div className={styles.toolbar}>
-          <div className={styles.periodField}>
-            <label className={styles.periodLabel} htmlFor="report-from">
-              From
-            </label>
-            <Input
-              id="report-from"
-              type="date"
-              value={from}
-              onChange={(event) => setFrom(event.target.value)}
-            />
-          </div>
-          <div className={styles.periodField}>
-            <label className={styles.periodLabel} htmlFor="report-to">
-              To
-            </label>
-            <Input
-              id="report-to"
-              type="date"
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-            />
-          </div>
-          {/*
-            Applied with the period rather than on its own, because asking for it re-fetches both
-            statements — and because a comparison only means anything against a stated span.
-          */}
-          {isComparable(tab) && (
-            <div className={styles.compareField}>
-              <Checkbox
-                id="report-compare"
-                label="Compare with last year"
-                checked={compare}
-                onChange={(event) => setCompare(event.target.checked)}
-              />
-            </div>
-          )}
-          <Button variant="secondary" onClick={() => applyPeriod({ from, to, compare })}>
-            Apply
-          </Button>
-          {/*
-            Whole year, CSV and Print are not repeated here: they are on the shell's button bar,
-            which is on screen at every width and carries the key for each of them. Two buttons for
-            one action is how a toolbar starts disagreeing with itself.
-          */}
-        </div>
+        {/*
+          Keyed on the applied period, so anything that changes it without leaving this screen —
+          Back, Forward, a link carrying no period — reseeds the boxes. Boxes that go on showing
+          dates the statement below is not using are worse than no boxes at all.
+        */}
+        <PeriodControls
+          key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
+          applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
+          canCompare={isComparable(tab)}
+          onApply={applyPeriod}
+        />
       </div>
 
       {error && (

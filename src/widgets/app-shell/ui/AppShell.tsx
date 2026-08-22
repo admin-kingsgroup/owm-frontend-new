@@ -18,7 +18,7 @@ import {
 import type { ButtonBarAction } from '../model/button-bar';
 import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-company-context';
 import { ButtonBar } from './ButtonBar';
-import { buildMenus } from '../model/menus';
+import { buildMenus, periodQuery } from '../model/menus';
 import { MenuBar } from './MenuBar';
 import { ShortcutSheet } from './ShortcutSheet';
 import { CompanySwitcher } from './CompanySwitcher';
@@ -87,6 +87,8 @@ export function AppShell() {
   );
 
   const here = `${location.pathname}${location.search}`;
+  /* The shortcuts below reach the same reports the menus do, so they carry the period too. */
+  const reportPeriod = periodQuery(here);
 
   /*
     The shortcut sheet is a parameter on whatever screen is open, so Help can be reached from any
@@ -176,22 +178,22 @@ export function AppShell() {
         group: 'Go to',
         key: 'Alt+B',
         label: 'Balance Sheet',
-        onSelect: go(`${base}/reports?report=balance-sheet`),
+        onSelect: go(`${base}/reports?report=balance-sheet${reportPeriod}`),
       },
       {
         group: 'Go to',
         key: 'Alt+P',
         label: 'Profit & Loss',
-        onSelect: go(`${base}/reports?report=profit-loss`),
+        onSelect: go(`${base}/reports?report=profit-loss${reportPeriod}`),
       },
       {
         group: 'Go to',
         key: 'Alt+D',
         label: 'Day Book',
-        onSelect: go(`${base}/reports?report=day-book`),
+        onSelect: go(`${base}/reports?report=day-book${reportPeriod}`),
       },
     ];
-  }, [companyId, company, navigate]);
+  }, [companyId, company, navigate, reportPeriod]);
 
   const actions = useMemo(() => [...pageActions, ...shellActions], [pageActions, shellActions]);
 

@@ -18,6 +18,32 @@ export interface Menu {
 }
 
 /**
+ * The period a report is being read at, as a fragment to append to another report's link.
+ *
+ * Moving between statements keeps the period you are reading. It is Tally's F2: set it once and it
+ * stays put as you move around, because the whole point of setting it is to look at more than one
+ * statement over the same span. The period lives in the address now, so carrying it means copying
+ * it onto the link — and without that, opening Profit & Loss from Cash Flow silently threw the
+ * dates and the comparison away.
+ *
+ * Empty when there is nothing to carry, so a link built anywhere else is untouched.
+ */
+export function periodQuery(here: string): string {
+  const mark = here.indexOf('?');
+  if (mark < 0) return '';
+
+  const current = new URLSearchParams(here.slice(mark + 1));
+  const kept = new URLSearchParams();
+  for (const key of ['from', 'to', 'compare']) {
+    const value = current.get(key);
+    if (value) kept.set(key, value);
+  }
+
+  const text = kept.toString();
+  return text ? `&${text}` : '';
+}
+
+/**
  * The menus, for the company that is open.
  *
  * Everything here resolves to a route that exists. A menu that lists destinations the product does
@@ -37,6 +63,8 @@ export function buildMenus(
    */
   isAdmin = false,
 ): Menu[] {
+  const period = periodQuery(here);
+
   if (!companyId) {
     return [
       {
@@ -100,38 +128,46 @@ export function buildMenus(
       label: 'Reports',
       mnemonic: 'R',
       items: [
-        { label: 'Balance Sheet', to: `${base}/reports?report=balance-sheet`, hint: 'Alt+B' },
-        { label: 'Profit & Loss', to: `${base}/reports?report=profit-loss`, hint: 'Alt+P' },
-        { label: 'Trial Balance', to: `${base}/reports?report=trial-balance` },
-        { label: 'Cash Flow', to: `${base}/reports?report=cash-flow` },
+        {
+          label: 'Balance Sheet',
+          to: `${base}/reports?report=balance-sheet${period}`,
+          hint: 'Alt+B',
+        },
+        {
+          label: 'Profit & Loss',
+          to: `${base}/reports?report=profit-loss${period}`,
+          hint: 'Alt+P',
+        },
+        { label: 'Trial Balance', to: `${base}/reports?report=trial-balance${period}` },
+        { label: 'Cash Flow', to: `${base}/reports?report=cash-flow${period}` },
         {
           label: 'Receipts & Payments',
-          to: `${base}/reports?report=receipts-payments`,
+          to: `${base}/reports?report=receipts-payments${period}`,
         },
         {
           label: 'Day Book',
-          to: `${base}/reports?report=day-book`,
+          to: `${base}/reports?report=day-book${period}`,
           hint: 'Alt+D',
           section: 'Books & registers',
         },
-        { label: 'Cash Book', to: `${base}/reports?report=cash-book` },
-        { label: 'Bank Book', to: `${base}/reports?report=bank-book` },
-        { label: 'Group Summary', to: `${base}/reports?report=group-summary` },
+        { label: 'Cash Book', to: `${base}/reports?report=cash-book${period}` },
+        { label: 'Bank Book', to: `${base}/reports?report=bank-book${period}` },
+        { label: 'Group Summary', to: `${base}/reports?report=group-summary${period}` },
         ...(features?.billWiseDetails
           ? [
               {
                 label: 'Receivables',
-                to: `${base}/reports?report=receivables`,
+                to: `${base}/reports?report=receivables${period}`,
                 section: 'Outstanding',
               },
-              { label: 'Payables', to: `${base}/reports?report=payables` },
+              { label: 'Payables', to: `${base}/reports?report=payables${period}` },
             ]
           : []),
         ...(features?.multiCurrency
           ? [
               {
-                label: 'Forex gain / loss',
-                to: `${base}/reports?report=forex`,
+                label: 'Forex Gain/Loss',
+                to: `${base}/reports?report=forex${period}`,
                 section: 'Currency',
               },
             ]
@@ -162,7 +198,10 @@ export function buildMenus(
         and a menu that lists what the product cannot do teaches you not to trust the menu.
       */
       items: [
-        { label: 'Verify books — trial balance', to: `${base}/reports?report=trial-balance` },
+        {
+          label: 'Verify books — trial balance',
+          to: `${base}/reports?report=trial-balance${period}`,
+        },
         { label: 'Opening balances', to: `${base}?tab=accounts` },
         { label: 'Close or reopen a financial year', to: `${base}?tab=financial-years` },
       ],
