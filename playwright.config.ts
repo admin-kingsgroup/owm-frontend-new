@@ -40,7 +40,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: 'npx tsx dist/run-live.mts',
+      command: 'npx tsx scripts/run-live.mts',
       cwd: backendDir,
       env: { PORT: String(API_PORT), NODE_ENV: 'development' },
       url: `http://localhost:${API_PORT}/api/v1/health`,
