@@ -11,15 +11,13 @@ import {
 } from '@/entities/financial-year';
 import type { FinancialYear } from '@/entities/financial-year';
 import { Badge, Button, Input, Loading } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/lib';
+import { getErrorMessage, toCalendarDay } from '@/shared/lib';
 
 import styles from './FinancialYearsPanel.module.css';
 
 export interface FinancialYearsPanelProps {
   companyId: string;
 }
-
-const asDay = (value: string) => value.slice(0, 10);
 
 /** The day after the last year ends — the natural start for the next one. */
 function nextYearRange(years: FinancialYear[]): { start: string; end: string } {
@@ -196,8 +194,8 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
           {years.map((year) => (
             <tr key={year.id}>
               <td data-label="Year">{year.label}</td>
-              <td data-label="Starts">{asDay(year.startDate)}</td>
-              <td data-label="Ends">{asDay(year.endDate)}</td>
+              <td data-label="Starts">{toCalendarDay(year.startDate)}</td>
+              <td data-label="Ends">{toCalendarDay(year.endDate)}</td>
               <td data-label="Status">
                 <Badge variant={year.status === 'OPEN' ? 'success' : 'neutral'}>
                   {year.status}

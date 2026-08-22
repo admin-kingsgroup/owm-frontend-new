@@ -133,10 +133,39 @@
   white-space: nowrap;
 }
 
+/* Dr or Cr beside the figure, quieter than it — the amount is what is being read. */
+.side {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+/* Which half of the sheet the rows under it belong to. */
+.figuresHeading {
+  padding: 0.5rem 0.875rem 0.1875rem;
+  text-align: left;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.figuresEmpty {
+  padding: 0.3125rem 0.875rem;
+  color: var(--ink-faint);
+}
+
+/* The row heading is a th now, so both cells need the footing treatment. */
+.total th,
 .total td {
   background-color: var(--paper-sunken);
   border-top: 1px solid var(--border);
   font-weight: 600;
+  text-align: left;
+}
+
+.total .amount {
+  text-align: right;
 }
 
 .pending,

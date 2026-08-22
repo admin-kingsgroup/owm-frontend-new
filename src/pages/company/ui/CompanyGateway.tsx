@@ -177,28 +177,53 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
 
             {balanceSheet && (
               <table className={styles.figures}>
-                <tbody>
-                  {/* The statement's own top-level groups, in its own order — nothing named here,
-                      so a company with a different chart of accounts still reads correctly. */}
-                  {balanceSheet.assets.map((node) => (
-                    <tr key={node.id}>
-                      <td>{node.name}</td>
-                      <td className={styles.amount}>{money(node.balance)}</td>
+                {/*
+                  The statement's own top-level groups, in its own order and under its own two
+                  headings — nothing is named here, so a company with a different chart of accounts
+                  still reads correctly. Without the headings the two lists ran together and the
+                  only thing separating a holding from a debt was the sign in front of it.
+
+                  Each figure carries Dr or Cr, the way the statements themselves show it.
+                */}
+                {[
+                  { heading: 'Assets', nodes: balanceSheet.assets },
+                  { heading: 'Liabilities', nodes: balanceSheet.liabilities },
+                ].map((section) => (
+                  <tbody key={section.heading}>
+                    <tr>
+                      <th scope="colgroup" colSpan={2} className={styles.figuresHeading}>
+                        {section.heading}
+                      </th>
                     </tr>
-                  ))}
-                  {balanceSheet.liabilities.map((node) => (
-                    <tr key={node.id}>
-                      <td>{node.name}</td>
-                      <td className={styles.amount}>{money(node.balance)}</td>
-                    </tr>
-                  ))}
-                  {netWorth !== null && (
+                    {section.nodes.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className={styles.figuresEmpty}>
+                          None
+                        </td>
+                      </tr>
+                    ) : (
+                      section.nodes.map((node) => (
+                        <tr key={node.id}>
+                          <td>{node.name}</td>
+                          <td className={styles.amount}>
+                            {money(node.balance)}{' '}
+                            <span className={styles.side}>
+                              {node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                ))}
+                {netWorth !== null && (
+                  <tfoot>
                     <tr className={styles.total}>
-                      <td>Net worth</td>
+                      <th scope="row">Net worth</th>
                       <td className={styles.amount}>{money(netWorth)}</td>
                     </tr>
-                  )}
-                </tbody>
+                  </tfoot>
+                )}
               </table>
             )}
           </section>

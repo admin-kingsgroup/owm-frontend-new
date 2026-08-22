@@ -32,7 +32,7 @@ import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Button, Input, Loading, Modal, Checkbox, ColumnChart } from '@/shared/ui';
-import { cn, getErrorMessage, formatMoney, localeFor } from '@/shared/lib';
+import { cn, formatMoney, getErrorMessage, localeFor, toCalendarDay } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
 import { ReportTree } from './ReportTree';
@@ -103,7 +103,15 @@ function isAvailable(tab: Tab, company: Company | null): boolean {
   return true;
 }
 
-const asDay = (value: string) => value.slice(0, 10);
+/**
+ * The two statements the server answers a comparison for. The flag rides along on every report
+ * request, but the rest ignore it, so offering the control on those reports would be offering a
+ * tick box that does nothing — worse than not offering it, because the reader is left to wonder
+ * whether the two years really did match.
+ */
+function isComparable(tab: Tab): boolean {
+  return tab === 'balance-sheet' || tab === 'profit-loss';
+}
 
 export function ReportsPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -364,7 +372,7 @@ export function ReportsPage() {
         name('day-book'),
         ['Date', 'Number', 'Type', 'Narration', 'Amount'],
         dayBook.rows.map((row) => [
-          asDay(row.voucherDate),
+          toCalendarDay(row.voucherDate),
           row.voucherNumber,
           row.voucherTypeCode,
           row.narration ?? '',
@@ -408,8 +416,8 @@ export function ReportsPage() {
         report.bills.map((bill) => [
           bill.ledgerName,
           bill.reference,
-          asDay(bill.billDate),
-          bill.dueDate ? asDay(bill.dueDate) : '',
+          toCalendarDay(bill.billDate),
+          bill.dueDate ? toCalendarDay(bill.dueDate) : '',
           bill.amount,
           bill.settled,
           bill.outstanding,
@@ -525,7 +533,8 @@ export function ReportsPage() {
           <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
           {period && (
             <p className={styles.subtitle}>
-              FY {period.financialYearLabel} · {asDay(period.from)} to {asDay(period.to)}
+              FY {period.financialYearLabel} · {toCalendarDay(period.from)} to{' '}
+              {toCalendarDay(period.to)}
             </p>
           )}
         </div>
@@ -557,14 +566,16 @@ export function ReportsPage() {
             Applied with the period rather than on its own, because asking for it re-fetches both
             statements — and because a comparison only means anything against a stated span.
           */}
-          <div className={styles.compareField}>
-            <Checkbox
-              id="report-compare"
-              label="Compare with last year"
-              checked={compare}
-              onChange={(event) => setCompare(event.target.checked)}
-            />
-          </div>
+          {isComparable(tab) && (
+            <div className={styles.compareField}>
+              <Checkbox
+                id="report-compare"
+                label="Compare with last year"
+                checked={compare}
+                onChange={(event) => setCompare(event.target.checked)}
+              />
+            </div>
+          )}
           <Button variant="secondary" onClick={() => setApplied({ from, to, compare })}>
             Apply
           </Button>
@@ -582,7 +593,7 @@ export function ReportsPage() {
         </p>
       )}
 
-      {applied.compare && (tab === 'balance-sheet' || tab === 'profit-loss') && (
+      {applied.compare && isComparable(tab) && (
         <p className={styles.hint} role="status">
           {(tab === 'balance-sheet' ? balanceSheet?.comparison : profitLoss?.comparison)
             ? `Compared with FY ${(tab === 'balance-sheet' ? balanceSheet : profitLoss)?.comparison?.financialYearLabel}.`
@@ -789,7 +800,7 @@ export function ReportsPage() {
               <tbody>
                 {dayBook.rows.map((row) => (
                   <tr key={row.voucherId}>
-                    <td>{asDay(row.voucherDate)}</td>
+                    <td>{toCalendarDay(row.voucherDate)}</td>
                     <td>{row.voucherNumber}</td>
                     <td>{row.voucherTypeCode}</td>
                     <td>{row.narration ?? '—'}</td>
@@ -913,7 +924,7 @@ export function ReportsPage() {
 
           {forex.skippedForMissingRate.length > 0 && (
             <p className={styles.warning}>
-              Left out for want of a rate on {asDay(forex.asOf)}:{' '}
+              Left out for want of a rate on {toCalendarDay(forex.asOf)}:{' '}
               {forex.skippedForMissingRate.join(', ')}
             </p>
           )}
@@ -951,7 +962,9 @@ export function ReportsPage() {
             </table>
           </div>
           {forex.lines.length === 0 && (
-            <p className={styles.empty}>No exchange differences as at {asDay(forex.asOf)}.</p>
+            <p className={styles.empty}>
+              No exchange differences as at {toCalendarDay(forex.asOf)}.
+            </p>
           )}
         </section>
       )}

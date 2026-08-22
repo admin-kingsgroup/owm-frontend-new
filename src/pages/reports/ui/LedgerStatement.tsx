@@ -1,4 +1,5 @@
 import type { LedgerStatementReport } from '@/entities/report';
+import { toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
@@ -9,8 +10,6 @@ interface LedgerStatementProps {
   /** Shown above the postings when this is one of several statements on a page. */
   heading?: boolean;
 }
-
-const asDay = (value: string) => value.slice(0, 10);
 
 /**
  * One account's postings, opening to closing.
@@ -51,7 +50,7 @@ export function LedgerStatement({ statement, money, heading = false }: LedgerSta
           <tbody>
             {statement.lines.map((line, index) => (
               <tr key={`${line.voucherId}-${index}`}>
-                <td>{asDay(line.voucherDate)}</td>
+                <td>{toCalendarDay(line.voucherDate)}</td>
                 <td>{line.voucherNumber}</td>
                 <td className={styles.num}>{line.debit}</td>
                 <td className={styles.num}>{line.credit}</td>

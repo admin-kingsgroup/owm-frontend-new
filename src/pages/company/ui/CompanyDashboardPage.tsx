@@ -76,6 +76,9 @@ export function CompanyDashboardPage() {
   const tab: Tab =
     isTab(requestedTab) && isAvailable(requestedTab, company) ? requestedTab : 'accounts';
 
+  /** With no panel asked for this screen is the gateway, which needs far less than the panels do. */
+  const showTabs = requestedTab !== null;
+
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams);
     params.set('tab', next);
@@ -99,34 +102,41 @@ export function CompanyDashboardPage() {
     const id = companyId;
     let cancelled = false;
 
+    /**
+     * The gateway needs the company and its voucher types; the panels need the masters as well.
+     *
+     * Split because the gateway is the company's front door — the screen opened most often, and by
+     * far the one that used to pay the most for it. Loading every master list to draw a menu and a
+     * balance summary cost seven requests where two will do; the other five arrive when a panel
+     * that actually reads them is opened.
+     */
     async function load() {
       setLoading(true);
       try {
-        const [
-          companyResult,
-          groupsResult,
-          ledgersResult,
-          voucherTypesResult,
-          openingResult,
-          seriesResult,
-          currenciesResult,
-        ] = await Promise.all([
+        const [companyResult, voucherTypesResult] = await Promise.all([
           getCompany(id),
-          listAccountGroups(id),
-          listLedgers(id),
           listVoucherTypes(id),
-          getOpeningBalanceSummary(id),
-          listNumberSeries(id),
-          // Optional context for the ledger form, not something the page depends on. A company
-          // with multi-currency off has none, and failing the whole dashboard over that would
-          // be the wrong trade.
-          listCurrencies(id).catch(() => [] as Currency[]),
         ]);
         if (cancelled) return;
         setCompany(companyResult);
+        setVoucherTypes(voucherTypesResult);
+
+        if (!showTabs) return;
+
+        const [groupsResult, ledgersResult, openingResult, seriesResult, currenciesResult] =
+          await Promise.all([
+            listAccountGroups(id),
+            listLedgers(id),
+            getOpeningBalanceSummary(id),
+            listNumberSeries(id),
+            // Optional context for the ledger form, not something the page depends on. A company
+            // with multi-currency off has none, and failing the whole dashboard over that would
+            // be the wrong trade.
+            listCurrencies(id).catch(() => [] as Currency[]),
+          ]);
+        if (cancelled) return;
         setGroups(groupsResult);
         setLedgers(ledgersResult);
-        setVoucherTypes(voucherTypesResult);
         setOpeningBalance(openingResult);
         setNumberSeries(seriesResult);
         setCurrencies(currenciesResult);
@@ -142,7 +152,7 @@ export function CompanyDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [companyId, showTabs]);
 
   /**
    * A company edited here is the same record the switcher and the companies page are showing, so
@@ -169,7 +179,7 @@ export function CompanyDashboardPage() {
     menu written out, beside what the books say and what is unfinished. Every panel below is still
     one ?tab= away, and that is what the Company and Masters menus link at.
   */
-  if (requestedTab === null) {
+  if (!showTabs) {
     return <CompanyGateway company={company} voucherTypes={voucherTypes} />;
   }
 

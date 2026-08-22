@@ -1,5 +1,5 @@
 import type { OutstandingsReport } from '@/entities/outstanding';
-import { cn } from '@/shared/lib';
+import { cn, toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
@@ -11,8 +11,6 @@ const BUCKET_LABELS: Record<string, string> = {
   '61_90': '61–90 days',
   OVER_90: 'Over 90 days',
 };
-
-const asDay = (value: string) => value.slice(0, 10);
 
 interface OutstandingsViewProps {
   outstandings: OutstandingsReport;
@@ -61,7 +59,7 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
               <tr key={bill.billId}>
                 <td>{bill.ledgerName}</td>
                 <td>{bill.reference}</td>
-                <td>{bill.dueDate ? asDay(bill.dueDate) : asDay(bill.billDate)}</td>
+                <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : toCalendarDay(bill.billDate)}</td>
                 <td className={styles.num}>{money(bill.amount)}</td>
                 <td className={styles.num}>{bill.settled}</td>
                 <td className={styles.num}>{bill.outstanding}</td>
@@ -74,7 +72,9 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
         </table>
       </div>
       {outstandings.bills.length === 0 && (
-        <p className={styles.empty}>Nothing outstanding as at {asDay(outstandings.asOf)}.</p>
+        <p className={styles.empty}>
+          Nothing outstanding as at {toCalendarDay(outstandings.asOf)}.
+        </p>
       )}
     </section>
   );

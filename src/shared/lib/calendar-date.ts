@@ -32,6 +32,18 @@ export function formatCalendarDay(value: string | Date, country?: string): strin
   return new Date(value).toLocaleDateString(localeFor(country), { timeZone: 'UTC' });
 }
 
+/**
+ * The calendar day out of an API date, as "YYYY-MM-DD".
+ *
+ * A plain slice rather than a parse: the API already writes the day at UTC midnight, and putting it
+ * through a Date only to take the front of it back is how the day moves for anyone west of UTC.
+ * Use this where the raw day is wanted — a table column, a filter value — and formatCalendarDay
+ * where a person is going to read it.
+ */
+export function toCalendarDay(value: string): string {
+  return value.slice(0, 10);
+}
+
 /** Calendar year of an API date, read in UTC so it cannot slip across a 1 January boundary. */
 export function calendarYear(value: string | Date): number {
   return new Date(value).getUTCFullYear();

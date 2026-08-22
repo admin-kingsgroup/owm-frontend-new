@@ -116,7 +116,8 @@ export function AppShell() {
 
   /* For the status strip. Read here rather than in a child so the strip is one element. */
   const user = useAuthStore((state) => state.user);
-  const today = formatCalendarDay(new Date(), company?.country);
+  // Intl formatting is not cheap, and this only changes when the company writing it does.
+  const today = useMemo(() => formatCalendarDay(new Date(), company?.country), [company?.country]);
   const period = readout.context?.period ?? null;
   const difference = readout.context?.difference ?? null;
   const balanced = difference !== null && Number(difference) === 0;

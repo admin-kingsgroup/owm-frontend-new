@@ -10,7 +10,7 @@ import {
 } from '@/entities/currency';
 import type { Currency, ExchangeRate, RateType } from '@/entities/currency';
 import { Button, Input, Loading, Select } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/lib';
+import { getErrorMessage, toCalendarDay } from '@/shared/lib';
 
 import styles from './CurrenciesPanel.module.css';
 
@@ -25,7 +25,6 @@ const RATE_TYPES: Array<{ value: RateType; label: string }> = [
   { value: 'BUYING', label: 'Buying — when paying foreign currency' },
 ];
 
-const asDay = (value: string) => value.slice(0, 10);
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -309,7 +308,7 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
                     <tr key={entry.id}>
                       <td>{entry.currencyCode}</td>
                       <td>{entry.rateType}</td>
-                      <td>{asDay(entry.effectiveFrom)}</td>
+                      <td>{toCalendarDay(entry.effectiveFrom)}</td>
                       <td className={styles.num}>{entry.rate}</td>
                     </tr>
                   ))}

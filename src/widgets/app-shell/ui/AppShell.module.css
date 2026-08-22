@@ -147,7 +147,9 @@
 .status {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  /* Six items on one line runs off a narrow screen; they wrap rather than truncate. */
+  flex-wrap: wrap;
+  gap: 0.25rem var(--space-4);
   flex-shrink: 0;
   padding: 0.3125rem 0.875rem;
   background-color: var(--paper-sunken);

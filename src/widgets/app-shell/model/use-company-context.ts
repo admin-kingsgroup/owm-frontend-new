@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getCompanyContext } from '@/entities/report';
 import type { CompanyContext } from '@/entities/report';
@@ -60,8 +60,11 @@ export function useCompanyReadoutState(companyId: string | undefined): CompanyRe
     };
   }, [companyId, nonce]);
 
-  return {
-    context: state && state.companyId === companyId ? state.context : null,
-    refresh,
-  };
+  /*
+    Memoised because this is a context value: a fresh object on every render of the shell would
+    re-render every screen under it, and the shell renders on every navigation.
+  */
+  const context = state && state.companyId === companyId ? state.context : null;
+
+  return useMemo(() => ({ context, refresh }), [context, refresh]);
 }
