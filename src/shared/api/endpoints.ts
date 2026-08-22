@@ -71,14 +71,22 @@ export const endpoints = {
     receivables: (companyId: string) => `/companies/${companyId}/outstandings/receivables`,
     payables: (companyId: string) => `/companies/${companyId}/outstandings/payables`,
   },
+  /** Browser-side faults. Written by the error reporter, read only by an administrator. */
+  clientErrors: {
+    list: () => '/client-errors',
+  },
   reports: {
     /** Spans companies, so it is not nested under /companies/:companyId. */
     groupOverview: () => '/reports/group-overview',
+    /** Period, difference and draft backlog in one call — what the app frame states. */
+    context: (companyId: string) => `/companies/${companyId}/reports/context`,
     dayBook: (companyId: string) => `/companies/${companyId}/reports/day-book`,
     trialBalance: (companyId: string) => `/companies/${companyId}/reports/trial-balance`,
     balanceSheet: (companyId: string) => `/companies/${companyId}/reports/balance-sheet`,
     profitAndLoss: (companyId: string) => `/companies/${companyId}/reports/profit-and-loss`,
     groupSummary: (companyId: string) => `/companies/${companyId}/reports/group-summary`,
+    cashBook: (companyId: string) => `/companies/${companyId}/reports/cash-book`,
+    bankBook: (companyId: string) => `/companies/${companyId}/reports/bank-book`,
     receiptsAndPayments: (companyId: string) =>
       `/companies/${companyId}/reports/receipts-and-payments`,
     cashFlow: (companyId: string) => `/companies/${companyId}/reports/cash-flow`,

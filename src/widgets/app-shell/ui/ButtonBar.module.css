@@ -117,7 +117,15 @@
   .group:first-child .groupName {
     padding-top: 0;
   }
+}
 
+/*
+  The compact 36px action is for a narrow *window*, not a small screen. Left unqualified it also
+  applied to a phone, where it outranked the 44px floor in globals.css — a class selector against
+  an element one — and put the whole bar under the minimum target size on the one device that
+  needs it most. Keyed on the pointer, so a mouse keeps the tighter bar and a thumb gets the floor.
+*/
+@media (max-width: 60rem) and (pointer: fine) {
   .action {
     min-height: 2.25rem;
   }

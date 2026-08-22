@@ -1,0 +1,160 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.25rem;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 22rem;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: 0.875rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  background-color: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.table th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  vertical-align: top;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.row {
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.row:hover {
+  background-color: var(--hover-tint);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* The one column worth the room: it is what tells you whether two reports are the same fault. */
+.message {
+  max-width: 26rem;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background-color: var(--paper-sunken);
+}
+
+.detailTitle {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.stack {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background-color: var(--paper-card);
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  /* A stack is lines, and wrapping them at the panel edge is what keeps it on a phone. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pagerText {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.pagerButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media screen and (max-width: 40rem) {
+  .header,
+  .pager {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters {
+    max-width: none;
+  }
+
+  .message {
+    max-width: none;
+  }
+}

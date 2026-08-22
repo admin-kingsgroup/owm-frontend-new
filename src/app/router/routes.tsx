@@ -7,6 +7,7 @@ import { CompanyDashboardPage } from '@/pages/company';
 import { VouchersPage } from '@/pages/vouchers';
 import { ReportsPage } from '@/pages/reports';
 import { KgPage } from '@/pages/kg';
+import { ReportedErrorsPage } from '@/pages/reported-errors';
 import { AppShell } from '@/widgets/app-shell';
 
 import { RequireAuth } from './RequireAuth';
@@ -23,6 +24,9 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: '/companies', element: <CompaniesPage /> },
+          /* Not company-scoped: a fault can be reported from anywhere, including before a company
+             is open. The endpoint behind it admits administrators only. */
+          { path: '/reported-errors', element: <ReportedErrorsPage /> },
           { path: '/companies/:companyId', element: <CompanyDashboardPage /> },
           { path: '/companies/:companyId/vouchers', element: <VouchersPage /> },
           { path: '/companies/:companyId/reports', element: <ReportsPage /> },

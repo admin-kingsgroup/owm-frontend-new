@@ -475,6 +475,9 @@ textarea:focus-visible {
 @media screen and (max-width: 48rem) {
   table[data-stack],
   table[data-stack] tbody,
+  /* tfoot too: left as a table-footer-group, its block rows shrink to their content and a totals
+     line renders as a narrow box floating beside the cards it belongs under. */
+  table[data-stack] tfoot,
   table[data-stack] tr,
   table[data-stack] td {
     display: block;

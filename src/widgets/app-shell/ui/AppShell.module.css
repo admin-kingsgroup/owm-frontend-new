@@ -160,6 +160,12 @@
   margin-left: auto;
 }
 
+/* The date, which is the one figure on the strip worth lining up between renders. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /*
   Below this width the menu bar, the button bar and the content cannot all sit beside each other.
   The menus become a drawer — the full list one tap away rather than behind a sideways scroll — the
@@ -181,6 +187,9 @@
   .brand {
     border-right: none;
     padding: 0;
+    /* Never the thing that widens the row — the end of the topbar has to fit first. */
+    min-width: 0;
+    flex-shrink: 0;
   }
 
   .navPanel {
@@ -263,5 +272,23 @@
 @media (max-width: 60rem) and (prefers-reduced-motion: reduce) {
   .navPanel {
     transition: none;
+  }
+}
+
+/*
+  On a phone the wordmark, the menu button, the company switcher and the account did not fit on one
+  row: the row grew, the page scrolled sideways, and the account avatar was clipped off the right
+  edge. The mark alone still identifies the product, and the switcher already names the company
+  underneath it — so the words go and everything fits.
+*/
+@media screen and (max-width: 34rem) {
+  .brandName {
+    display: none;
+  }
+
+  .topbarEnd {
+    gap: var(--space-1);
+    padding-left: var(--space-1);
+    padding-right: 0.375rem;
   }
 }
