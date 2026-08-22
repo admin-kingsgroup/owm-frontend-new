@@ -52,23 +52,24 @@ jobs:
       - name: Check browser-check prerequisites
         id: e2e
         env:
-          T: ${{ secrets.BACKEND_REPO_TOKEN }}
+          K: ${{ secrets.BACKEND_DEPLOY_KEY }}
         run: |
-          if [ -n "$T" ]; then
+          if [ -n "$K" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::BACKEND_REPO_TOKEN not set - browser checks skipped, deploy continues."
+            echo "::notice::BACKEND_DEPLOY_KEY not set - browser checks skipped, deploy continues."
           fi
 
       - name: Check out the backend
         if: steps.e2e.outputs.ready == 'true'
         uses: actions/checkout@v4
         with:
-          # Same owner, but GITHUB_TOKEN is scoped to this repository alone, so a token with read
-          # access to the backend is what makes this possible at all.
+          # GITHUB_TOKEN is scoped to this repository alone, so reaching the backend needs a
+          # credential of its own. A read-only deploy key rather than a personal token: it opens
+          # exactly one repository and nothing else the account can reach.
           repository: ${{ vars.BACKEND_REPO || 'admin-kingsgroup/owm-backend-new' }}
-          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          ssh-key: ${{ secrets.BACKEND_DEPLOY_KEY }}
           # checkout may only write inside the workspace; the step below moves it where the
           # harness resolves it from — `../OWM-ADB Backend`, as playwright.config.ts expects.
           path: .backend
@@ -90,8 +91,20 @@ jobs:
           path: ~/.cache/mongodb-binaries
           key: mongod-${{ runner.os }}
 
+      # The browser is a ~130MB download on every run without this. Keyed on the Playwright
+      # version, so a bump fetches the matching build instead of reusing the old one.
+      - name: Cache Chromium
+        if: steps.e2e.outputs.ready == 'true'
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Chromium
         if: steps.e2e.outputs.ready == 'true'
+        # --with-deps every time: the system libraries live outside the cached directory, so a
+        # cache hit still leaves a browser that cannot start without them.
         run: npx playwright install --with-deps chromium
 
       - name: Browser checks
@@ -99,6 +112,18 @@ jobs:
         # The harness starts both servers itself and gives the API a throwaway in-memory replica
         # set, so there is no database or credential for CI to hold.
         run: npm run e2e
+
+      # The committed baselines are the Linux set, and this is where that set comes from: a screen
+      # CI has never captured is written on the run that first sees it, and uploaded here to be
+      # committed once. The same artifact carries the refreshed set after a deliberate UI change.
+      - name: Publish the visual baselines
+        if: always() && steps.e2e.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: e2e/screens.spec.ts-snapshots/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Keep what the browser checks saw
         # `always()`, because the screenshots and traces are worth most on the run that failed.

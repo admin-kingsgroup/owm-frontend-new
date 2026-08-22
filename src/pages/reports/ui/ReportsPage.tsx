@@ -821,80 +821,97 @@ export function ReportsPage() {
   ]);
 
   if (!companyId) return null;
-  if (loading) return <Loading label="Loading reports…" />;
   if (loadError) return <p className={styles.error}>{loadError}</p>;
 
   const period = balanceSheet?.period;
 
   const outstandings = tab === 'receivables' ? receivables : payables;
 
+  /*
+    Kept out of the branches below so the screen keeps its heading and its period controls
+    while the next period is being fetched. Replacing the whole page with a spinner took away
+    the very controls a reader had just used, and left the report with no <h1> at all until
+    twelve requests had come back.
+  */
+  const header = (
+    <div className={styles.header}>
+      <div>
+        {/* The report itself, not the word "Reports" — the shell's context strip already says
+            which company and year these figures belong to, and this is the line that gets
+            printed at the top of the page. */}
+        <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
+        {!loading && period && (
+          <p className={styles.subtitle}>
+            FY {period.financialYearLabel} · {toCalendarDay(period.from)} to{' '}
+            {toCalendarDay(period.to)}
+          </p>
+        )}
+      </div>
+
+      {/*
+        Keyed on the applied period, so anything that changes it without leaving this screen —
+        Back, Forward, a link carrying no period — reseeds the boxes. Boxes that go on showing
+        dates the statement below is not using are worse than no boxes at all.
+      */}
+      {/*
+        Which subject the report is about, for the reports that are about one. Sits before the
+        period because it is the first choice a reader makes: a ledger statement with no ledger
+        is not a statement waiting for a date, it is nothing at all.
+      */}
+      {tab === 'register' && (
+        <SubjectPicker
+          id="report-type"
+          label="Voucher type"
+          placeholder="Choose a voucher type…"
+          value={subjectType}
+          onChange={(value) => chooseSubject('type', value)}
+          options={voucherTypes.map((type) => ({ value: type.code, label: type.name }))}
+        />
+      )}
+      {(tab === 'ledger' || tab === 'monthly-summary') && (
+        <SubjectPicker
+          id="report-ledger"
+          label="Ledger"
+          placeholder="Choose an account…"
+          value={subjectLedgerId}
+          onChange={(value) => chooseSubject('ledgerId', value)}
+          options={ledgers.map((ledger) => ({ value: ledger.id, label: ledger.name }))}
+        />
+      )}
+      {tab === 'bank-reconciliation' && (
+        <SubjectPicker
+          id="report-bank"
+          label="Account"
+          placeholder="Choose a cash or bank account…"
+          value={subjectLedgerId}
+          onChange={(value) => chooseSubject('ledgerId', value)}
+          /* Only the accounts that have a statement to be reconciled against. */
+          options={ledgers
+            .filter((ledger) => ledger.ledgerType === 'CASH' || ledger.ledgerType === 'BANK')
+            .map((ledger) => ({ value: ledger.id, label: ledger.name }))}
+        />
+      )}
+
+      <PeriodControls
+        key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
+        applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
+        canCompare={isComparable(tab)}
+        onApply={applyPeriod}
+      />
+    </div>
+  );
+
+  if (loading)
+    return (
+      <div className={styles.page} ref={pageRef}>
+        {header}
+        <Loading label="Loading reports…" />
+      </div>
+    );
+
   return (
     <div className={styles.page} ref={pageRef}>
-      <div className={styles.header}>
-        <div>
-          {/* The report itself, not the word "Reports" — the shell's context strip already says
-              which company and year these figures belong to, and this is the line that gets
-              printed at the top of the page. */}
-          <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
-          {period && (
-            <p className={styles.subtitle}>
-              FY {period.financialYearLabel} · {toCalendarDay(period.from)} to{' '}
-              {toCalendarDay(period.to)}
-            </p>
-          )}
-        </div>
-
-        {/*
-          Keyed on the applied period, so anything that changes it without leaving this screen —
-          Back, Forward, a link carrying no period — reseeds the boxes. Boxes that go on showing
-          dates the statement below is not using are worse than no boxes at all.
-        */}
-        {/*
-          Which subject the report is about, for the reports that are about one. Sits before the
-          period because it is the first choice a reader makes: a ledger statement with no ledger
-          is not a statement waiting for a date, it is nothing at all.
-        */}
-        {tab === 'register' && (
-          <SubjectPicker
-            id="report-type"
-            label="Voucher type"
-            placeholder="Choose a voucher type…"
-            value={subjectType}
-            onChange={(value) => chooseSubject('type', value)}
-            options={voucherTypes.map((type) => ({ value: type.code, label: type.name }))}
-          />
-        )}
-        {(tab === 'ledger' || tab === 'monthly-summary') && (
-          <SubjectPicker
-            id="report-ledger"
-            label="Ledger"
-            placeholder="Choose an account…"
-            value={subjectLedgerId}
-            onChange={(value) => chooseSubject('ledgerId', value)}
-            options={ledgers.map((ledger) => ({ value: ledger.id, label: ledger.name }))}
-          />
-        )}
-        {tab === 'bank-reconciliation' && (
-          <SubjectPicker
-            id="report-bank"
-            label="Account"
-            placeholder="Choose a cash or bank account…"
-            value={subjectLedgerId}
-            onChange={(value) => chooseSubject('ledgerId', value)}
-            /* Only the accounts that have a statement to be reconciled against. */
-            options={ledgers
-              .filter((ledger) => ledger.ledgerType === 'CASH' || ledger.ledgerType === 'BANK')
-              .map((ledger) => ({ value: ledger.id, label: ledger.name }))}
-          />
-        )}
-
-        <PeriodControls
-          key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
-          applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
-          canCompare={isComparable(tab)}
-          onApply={applyPeriod}
-        />
-      </div>
+      {header}
 
       {error && (
         <p className={styles.error} role="alert">

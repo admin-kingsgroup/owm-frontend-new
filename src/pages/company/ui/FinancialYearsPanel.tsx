@@ -122,24 +122,38 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
     }
   }
 
-  if (loading) return <Loading label="Loading financial years…" />;
+  /*
+    Rendered both while the years are loading and once they are — see CurrenciesPanel, which sits
+    beside this one and had the same hole.
+  */
+  const head = (
+    <div className={styles.head}>
+      <div>
+        <h2 className={styles.title}>Financial years</h2>
+        <p className={styles.hint}>
+          Vouchers are filed into the year covering their date. Closing a year locks it — nothing
+          new can be posted into it afterwards.
+        </p>
+      </div>
+      {!loading && !adding && (
+        <Button variant="secondary" onClick={startAdding}>
+          <Plus size={14} /> New year
+        </Button>
+      )}
+    </div>
+  );
+
+  if (loading)
+    return (
+      <div className={styles.panel}>
+        {head}
+        <Loading label="Loading financial years…" />
+      </div>
+    );
 
   return (
     <div className={styles.panel}>
-      <div className={styles.head}>
-        <div>
-          <h2 className={styles.title}>Financial years</h2>
-          <p className={styles.hint}>
-            Vouchers are filed into the year covering their date. Closing a year locks it — nothing
-            new can be posted into it afterwards.
-          </p>
-        </div>
-        {!adding && (
-          <Button variant="secondary" onClick={startAdding}>
-            <Plus size={14} /> New year
-          </Button>
-        )}
-      </div>
+      {head}
 
       {error && <p className={styles.error}>{error}</p>}
 

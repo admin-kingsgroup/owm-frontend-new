@@ -190,13 +190,26 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
     }
   }
 
-  if (loading) return <Loading label={`Loading ${business.name}…`} />;
+  /*
+    Held in one place because it is rendered twice — while the month is loading and once it has.
+    A spinner that replaces the whole panel takes the name of the business being loaded with it,
+    which on a screen that shows one business at a time leaves nothing saying which one.
+  */
+  const title = <h3 className={styles.sectionTitle}>{business.name} — import a month</h3>;
+
+  if (loading)
+    return (
+      <div className={styles.workspace}>
+        {title}
+        <Loading label={`Loading ${business.name}…`} />
+      </div>
+    );
 
   const readyToImport = preview !== null && preview.unmapped.length === 0;
 
   return (
     <div className={styles.workspace}>
-      <h3 className={styles.sectionTitle}>{business.name} — import a month</h3>
+      {title}
 
       {error && <p className={styles.error}>{error}</p>}
       {notice && <p className={styles.notice}>{notice}</p>}

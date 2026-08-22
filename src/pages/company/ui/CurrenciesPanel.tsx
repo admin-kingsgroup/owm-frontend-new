@@ -123,24 +123,38 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
     }
   }
 
-  if (loading) return <Loading label="Loading currencies…" />;
+  /*
+    Rendered both while the rates are loading and once they are. A spinner in place of the whole
+    panel takes the heading with it, so the tab a reader just chose looks empty rather than busy.
+  */
+  const head = (
+    <div className={styles.head}>
+      <div>
+        <h2 className={styles.title}>Currencies</h2>
+        <p className={styles.hint}>
+          Everything is reported in {baseCurrency}, this company&apos;s base currency. Add the
+          other currencies it transacts in, then a rate for each date you post on.
+        </p>
+      </div>
+      {!loading && !addingCurrency && (
+        <Button variant="secondary" onClick={() => setAddingCurrency(true)}>
+          <Plus size={14} /> Add currency
+        </Button>
+      )}
+    </div>
+  );
+
+  if (loading)
+    return (
+      <div className={styles.panel}>
+        {head}
+        <Loading label="Loading currencies…" />
+      </div>
+    );
 
   return (
     <div className={styles.panel}>
-      <div className={styles.head}>
-        <div>
-          <h2 className={styles.title}>Currencies</h2>
-          <p className={styles.hint}>
-            Everything is reported in {baseCurrency}, this company&apos;s base currency. Add the
-            other currencies it transacts in, then a rate for each date you post on.
-          </p>
-        </div>
-        {!addingCurrency && (
-          <Button variant="secondary" onClick={() => setAddingCurrency(true)}>
-            <Plus size={14} /> Add currency
-          </Button>
-        )}
-      </div>
+      {head}
 
       {error && (
         <p className={styles.error} role="alert">

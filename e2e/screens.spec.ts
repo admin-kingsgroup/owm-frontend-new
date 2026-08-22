@@ -44,13 +44,27 @@ const SCREENS = [
   { name: 'shortcuts', path: () => `/companies/${companyId}?help=shortcuts` },
 ];
 
+/**
+ * Browser-level failures that say something about the network rather than about the code.
+ *
+ * `ERR_NETWORK_CHANGED` failed a run on a laptop that switched access point mid-suite; the other
+ * two are the same event under different names.
+ */
+const IGNORED_TRANSPORT =
+  /net::(ERR_NETWORK_CHANGED|ERR_INTERNET_DISCONNECTED|ERR_NETWORK_IO_SUSPENDED)/;
+
 test.describe('every screen, drawn', () => {
   for (const screen of SCREENS) {
     test(`${screen.name} draws without overflowing or erroring`, async ({ page }) => {
       const faults: string[] = [];
       page.on('pageerror', (error) => faults.push(`uncaught: ${error.message}`));
       page.on('console', (message) => {
-        if (message.type() === 'error') faults.push(`console: ${message.text()}`);
+        if (message.type() !== 'error') return;
+        // The machine's network moving is not the application misbehaving, and a run that fails
+        // for it teaches everyone to ignore this check. Only the codes that mean exactly that are
+        // dropped — a refused connection or a 500 still counts, because those are ours.
+        if (IGNORED_TRANSPORT.test(message.text())) return;
+        faults.push(`console: ${message.text()}`);
       });
 
       await signIn(page);
@@ -165,10 +179,16 @@ test.describe('the frame', () => {
       expect(page.url(), `${report.id} did not survive the navigation`).toContain(
         `report=${report.id}`,
       );
+      /*
+        Only a *different* report sharing a heading is a fallback. One report legitimately appears
+        several times over: the registers are listed per voucher type, so `report=register` is on
+        the menu once for each of them, and every one of those is correctly headed "Register".
+      */
+      const claimed = headings.get(heading);
       expect(
-        headings.get(heading),
-        `${report.id} and ${headings.get(heading)} both opened "${heading}" — one of them fell back`,
-      ).toBeUndefined();
+        claimed === undefined || claimed === report.id,
+        `${report.id} and ${claimed} both opened "${heading}" — one of them fell back`,
+      ).toBe(true);
 
       headings.set(heading, report.id);
     }
