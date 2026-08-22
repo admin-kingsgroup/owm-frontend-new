@@ -40,7 +40,6 @@ export function VouchersPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
 
-  const [statusFilter, setStatusFilter] = useState<VoucherStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState('');
 
   const [loading, setLoading] = useState(true);
@@ -69,6 +68,23 @@ export function VouchersPage() {
     params.delete('new');
     // Replaced, so Back leaves the vouchers list rather than reopening the form just closed.
     setSearchParams(params, { replace: true });
+  }
+
+  /**
+   * The status filter is in the URL too, so a link can point at a filtered list: the gateway says
+   * "6 drafts awaiting post" and expects that to land on the drafts, not on every voucher ever
+   * raised. An unrecognised value is ignored rather than filtering the list down to nothing.
+   */
+  const requestedStatus = searchParams.get('status');
+  const statusFilter: VoucherStatus | '' = STATUS_OPTIONS.includes(requestedStatus as VoucherStatus)
+    ? (requestedStatus as VoucherStatus)
+    : '';
+
+  function setStatusFilter(next: VoucherStatus | '') {
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('status', next);
+    else params.delete('status');
+    setSearchParams(params);
   }
 
   /**
