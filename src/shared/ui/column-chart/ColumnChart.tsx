@@ -18,6 +18,12 @@ export interface ColumnChartProps {
   /** Turns a value into the text shown on hover. */
   formatValue?: (value: number) => string;
   /**
+   * Rendered once at the top of the plot, so the reader can size every bar against a number
+   * instead of against the tallest bar. Without it a single large month says only "the others are
+   * smaller", which is not worth a chart.
+   */
+  scaleLabel?: (value: number) => string;
+  /**
    * The chart's accessible name. The statement below carries every figure, so a reader hears one
    * sentence naming the shape and moves on rather than being walked through bars they cannot see.
    */
@@ -40,6 +46,7 @@ export function ColumnChart({
   series,
   height = 168,
   formatValue = (value) => value.toFixed(2),
+  scaleLabel,
   caption,
 }: ColumnChartProps) {
   const gradientId = useId();
@@ -63,13 +70,18 @@ export function ColumnChart({
 
   return (
     <figure className={styles.figure}>
-      <div className={styles.legend} aria-hidden="true">
-        {series.map((entry) => (
-          <span key={entry.label} className={styles.legendItem}>
-            <i className={styles.swatch} style={{ background: entry.color }} />
-            {entry.label}
-          </span>
-        ))}
+      <div className={styles.head} aria-hidden="true">
+        <div className={styles.legend}>
+          {series.map((entry) => (
+            <span key={entry.label} className={styles.legendItem}>
+              <i className={styles.swatch} style={{ background: entry.color }} />
+              {entry.label}
+            </span>
+          ))}
+        </div>
+        {/* Sits with the dashed rule it names, at the ceiling of the plot — below the bars it
+            would read as a total rather than as the scale. */}
+        {scaleLabel && max > 0 && <span className={styles.scale}>{scaleLabel(max)}</span>}
       </div>
 
       <svg
@@ -88,6 +100,19 @@ export function ColumnChart({
             <rect x="0" y="0" width="100" height={height} />
           </clipPath>
         </defs>
+
+        {scaleLabel && max > 0 && (
+          <line
+            x1="0"
+            x2="100"
+            y1={padTop}
+            y2={padTop}
+            stroke="var(--border)"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
 
         {/* The zero line is the only rule drawn: with negatives on the chart it is the reference
             every bar is read against, and more grid than that competes with the bars. */}
@@ -115,7 +140,12 @@ export function ColumnChart({
                   x={x}
                   y={y}
                   width={barWidth * 0.86}
-                  height={Math.max(magnitude, value === 0 ? 0 : 1)}
+                  /*
+                    A non-zero month must stay visible next to a much larger one. One unit of a
+                    168-unit box is about a pixel and reads as nothing, so anything that actually
+                    happened gets at least three — the shape stays honest, the month stays legible.
+                  */
+                  height={Math.max(magnitude, value === 0 ? 0 : 3)}
                   fill={entry.color}
                 >
                   <title>{`${label} · ${entry.label}: ${formatValue(value)}`}</title>

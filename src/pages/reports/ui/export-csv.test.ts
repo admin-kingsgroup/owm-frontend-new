@@ -75,3 +75,50 @@ describe('flattenNodes', () => {
     expect(flattenNodes([])).toEqual([]);
   });
 });
+
+describe('flattenNodes with a comparison', () => {
+  const tree = [
+    {
+      kind: 'group' as const,
+      id: 'g1',
+      code: 'SALES',
+      name: 'Sales Accounts',
+      debit: '0.00',
+      credit: '900.00',
+      balance: '900.00',
+      balanceSide: 'CREDIT' as const,
+      priorBalance: '400.00',
+      priorBalanceSide: 'CREDIT' as const,
+      children: [
+        {
+          kind: 'ledger' as const,
+          id: 'l1',
+          code: 'SALES',
+          name: 'Sales',
+          debit: '0.00',
+          credit: '900.00',
+          balance: '900.00',
+          balanceSide: 'CREDIT' as const,
+        },
+      ],
+    },
+  ];
+
+  it('leaves the row shape alone when nothing is being compared', () => {
+    const [row] = flattenNodes(tree);
+    expect(row).toHaveLength(7);
+  });
+
+  it('appends the prior figure as a raw decimal, not a formatted string', () => {
+    const [group] = flattenNodes(tree, 0, true);
+    expect(group).toHaveLength(8);
+    // Raw: a spreadsheet sums 400.00 and imports "₹400.00" as text.
+    expect(group[7]).toBe('400.00');
+  });
+
+  it('leaves the cell empty where the prior year had no such row', () => {
+    const [, child] = flattenNodes(tree, 0, true);
+    // Empty, not "0.00" — the row did not exist, which is not a balance of nothing.
+    expect(child[7]).toBe('');
+  });
+});

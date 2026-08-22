@@ -48,3 +48,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The legend and the scale share one row: series names left, the plot's ceiling right. */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.scale {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}

@@ -31,8 +31,14 @@ export function downloadCsv(filename: string, headers: string[], rows: string[][
   URL.revokeObjectURL(url);
 }
 
-/** Flattens a report tree into indented rows, preserving the nesting a statement is read by. */
-export function flattenNodes(nodes: ReportNode[], depth = 0): string[][] {
+/**
+ * Flattens a report tree into indented rows, preserving the nesting a statement is read by.
+ *
+ * With `withPrior` each row gains the comparison year's figure as a final column. Figures stay raw
+ * decimals throughout — a spreadsheet needs a number, and a grouped, symbol-prefixed string imports
+ * as text and stops summing.
+ */
+export function flattenNodes(nodes: ReportNode[], depth = 0, withPrior = false): string[][] {
   return nodes.flatMap((node) => [
     [
       `${'    '.repeat(depth)}${node.name}`,
@@ -42,7 +48,9 @@ export function flattenNodes(nodes: ReportNode[], depth = 0): string[][] {
       node.credit,
       node.balance,
       node.balanceSide,
+      // Empty, not "0.00": the prior year had no such row, which is not the same as a zero balance.
+      ...(withPrior ? [node.priorBalance ?? ''] : []),
     ],
-    ...(node.children ? flattenNodes(node.children, depth + 1) : []),
+    ...(node.children ? flattenNodes(node.children, depth + 1, withPrior) : []),
   ]);
 }
