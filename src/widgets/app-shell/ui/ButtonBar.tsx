@@ -17,10 +17,12 @@ interface ButtonBarProps {
 export function ButtonBar({ actions }: ButtonBarProps) {
   const idPrefix = useId();
 
-  if (actions.length === 0) return null;
+  /* Bound elsewhere on screen — see keyOnly. The bar draws what it owns, not every live binding. */
+  const drawn = actions.filter((action) => !action.keyOnly);
+  if (drawn.length === 0) return null;
 
   const groups: Array<{ name: string; actions: ButtonBarAction[] }> = [];
-  for (const action of actions) {
+  for (const action of drawn) {
     const existing = groups.find((group) => group.name === action.group);
     if (existing) existing.actions.push(action);
     else groups.push({ name: action.group, actions: [action] });

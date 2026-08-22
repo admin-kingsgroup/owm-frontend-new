@@ -119,9 +119,20 @@ export function buildMenus(
       id: 'transactions',
       label: 'Transactions',
       mnemonic: 'T',
+      /*
+        Entering a voucher is the first thing this product is for, so it is named on the menu bar
+        rather than in the right-hand strip, which belongs to whichever screen is open. The function
+        keys printed here are the real bindings — the shell holds them, so they work from anywhere.
+      */
       items: isPortfolio
         ? [{ label: 'Portfolio', to: `${base}/kg` }]
-        : [{ label: 'Vouchers', to: `${base}/vouchers`, hint: 'Alt+V' }],
+        : [
+            { label: 'Vouchers', to: `${base}/vouchers`, hint: 'Alt+V' },
+            { label: 'Contra', to: `${base}/vouchers?new=CONTRA`, hint: 'F4', section: 'Create' },
+            { label: 'Payment', to: `${base}/vouchers?new=PAYMENT`, hint: 'F5' },
+            { label: 'Receipt', to: `${base}/vouchers?new=RECEIPT`, hint: 'F6' },
+            { label: 'Journal', to: `${base}/vouchers?new=JOURNAL`, hint: 'F7' },
+          ],
     },
     {
       id: 'reports',

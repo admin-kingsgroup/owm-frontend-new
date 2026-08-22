@@ -156,16 +156,21 @@ export function AppShell() {
       },
 
       /*
-        Raising a voucher from wherever you are, which is the point of the function keys. The shell
-        does not hold the company's voucher types, so it names the code and lets the vouchers screen
-        resolve it — a company whose masters do not include that code opens the form on its own
-        first active type instead. An analytics workspace posts nothing, so it gets none of these.
+        Raising a voucher from wherever you are, which is the point of the function keys. Bound here
+        but drawn in the Transactions menu: entering a voucher is the first thing this product is
+        for, so it belongs on the menu bar at the top rather than in a strip of actions that belongs
+        to whichever report happens to be open. The keys themselves are unchanged.
+
+        The shell does not hold the company's voucher types, so it names the code and lets the
+        vouchers screen resolve it — a company whose masters do not include that code opens the form
+        on its own first active type instead. An analytics workspace posts nothing, so it gets none.
       */
       ...(posts
         ? VOUCHER_KEYS.map(({ key, code, label }) => ({
             group: 'Create',
             key,
             label,
+            keyOnly: true,
             onSelect: go(`${base}/vouchers?new=${code}`),
           }))
         : []),
