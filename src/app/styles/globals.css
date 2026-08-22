@@ -468,8 +468,11 @@ textarea:focus-visible {
 
   The attribute outweighs the per-module `.table` rules, which turn the same tables into a
   sideways scroll between here and 60rem, so the two are undone explicitly rather than by luck.
+
+  `screen` because paper is not narrow in the way a phone is: printing from a phone would
+  otherwise put cards on the page and drop the header row the print block above restores.
 */
-@media (max-width: 48rem) {
+@media screen and (max-width: 48rem) {
   table[data-stack],
   table[data-stack] tbody,
   table[data-stack] tr,
@@ -536,8 +539,10 @@ textarea:focus-visible {
   and a large one both need the bigger target, and a narrow desktop window does not.
 
   44px is the figure both platform guidelines land on, and WCAG 2.5.8's floor is 24.
+
+  `screen` again: nothing is tapped on a printout, and 44px rows there would only waste paper.
 */
-@media (pointer: coarse) {
+@media screen and (pointer: coarse) {
   button,
   [role='button'],
   input:not([type='checkbox']):not([type='radio']),

@@ -149,8 +149,11 @@
 /*
   A ledger row is wider than a phone. Scrolling the table inside its own panel keeps the columns
   legible and stops the page itself from scrolling sideways.
+
+  `screen` only — a printed table must stay a table, with the header row globals.css restores for
+  print. A sideways scroll on paper is just columns cut off the edge of the page.
 */
-@media (max-width: 60rem) {
+@media screen and (max-width: 60rem) {
   .table {
     display: block;
     width: 100%;
