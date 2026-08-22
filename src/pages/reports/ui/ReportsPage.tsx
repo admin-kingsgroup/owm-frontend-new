@@ -228,22 +228,22 @@ export function ReportsPage() {
     };
   }, [companyId, applied]);
 
-  const openLedger = useCallback(
-    async (node: ReportNode) => {
-      if (!companyId) return;
-      try {
-        setStatement(
-          await getLedgerStatement(companyId, node.id, {
-            from: applied.from || undefined,
-            to: applied.to || undefined,
-          }),
-        );
-      } catch (err) {
-        setError(getErrorMessage(err, 'Could not open ledger'));
-      }
-    },
-    [companyId, applied],
-  );
+  /* Not memoized: every tree this is handed to is a plain component, so a stable identity saved
+     no render, while the compiler could not preserve the wrapper across the await and gave up on
+     optimizing the whole page because of it. */
+  async function openLedger(node: ReportNode) {
+    if (!companyId) return;
+    try {
+      setStatement(
+        await getLedgerStatement(companyId, node.id, {
+          from: applied.from || undefined,
+          to: applied.to || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not open ledger'));
+    }
+  }
 
   function exportCurrentTab() {
     const stamp = balanceSheet ? balanceSheet.period.financialYearLabel : 'report';
@@ -669,8 +669,8 @@ export function ReportsPage() {
             scaleLabel={money}
             caption={
               profitLoss.comparison
-                ? `Income and expenses each month, against FY ${profitLoss.comparison.financialYearLabel}`
-                : 'Income and expenses for each month of the period'
+                ? `Income, expenses and net profit each month, against the net profit of FY ${profitLoss.comparison.financialYearLabel}`
+                : 'Income, expenses and net profit for each month of the period'
             }
             series={[
               {
@@ -683,17 +683,25 @@ export function ReportsPage() {
                 color: 'var(--data-2)',
                 values: profitLoss.monthly.map((month) => Number(month.expenses)),
               },
+              {
+                /* Named for its year only while there are two of them on the plot. */
+                label: profitLoss.comparison
+                  ? `Net · FY ${profitLoss.period.financialYearLabel}`
+                  : 'Net',
+                color: 'var(--data-3)',
+                values: profitLoss.monthly.map((month) => Number(month.netProfit)),
+              },
               /*
-                Only when a comparison is in play, and only net: adding last year's income and
-                expenses as well would put five bars in every month and the shape would be lost.
-                Net is the one figure that answers "was this month better than the same month last
-                year", which is what a comparison is for.
+                Only net is carried over from last year: its income and expenses as well would put
+                six bars in every month and the shape would be lost. Net is the figure that answers
+                "was this month better than the same month last year", and it is drawn beside this
+                year's net so the pair can actually be read against each other.
               */
               ...(profitLoss.comparison
                 ? [
                     {
                       label: `Net · FY ${profitLoss.comparison.financialYearLabel}`,
-                      color: 'var(--data-3)',
+                      color: 'var(--data-4)',
                       values: profitLoss.monthly.map((month) => Number(month.priorNetProfit ?? 0)),
                     },
                   ]
@@ -831,7 +839,7 @@ export function ReportsPage() {
             labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
             formatValue={money}
             scaleLabel={money}
-            caption="Cash in and cash out for each month of the period"
+            caption="Cash in, cash out and the net change for each month of the period"
             series={[
               {
                 label: 'Cash in',
