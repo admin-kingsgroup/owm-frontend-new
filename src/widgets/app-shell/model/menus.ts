@@ -167,6 +167,7 @@ export function buildMenus(
       */
       items: [
         { label: 'Chart of accounts & ledgers', to: `${base}?tab=accounts` },
+        { label: 'Parties — customers & suppliers', to: `${base}?tab=parties` },
         { label: 'Voucher types & numbering', to: `${base}?tab=voucher-types` },
         { label: 'Financial years', to: `${base}?tab=financial-years` },
         ...(features?.multiCurrency

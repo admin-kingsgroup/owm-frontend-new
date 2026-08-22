@@ -5,5 +5,8 @@ export type {
   CreateLedgerInput,
   UpdateLedgerInput,
   OpeningBalanceSummary,
+  OpeningBill,
+  OpeningBillInput,
+  OpeningBills,
 } from './model/types';
 export * from './api/ledger-api';

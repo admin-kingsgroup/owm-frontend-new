@@ -23,6 +23,7 @@ import { getErrorMessage, cn, formatRecordId, calendarYear, formatMoney } from '
 import { AccountGroupTree } from './AccountGroupTree';
 import { FinancialYearsPanel } from './FinancialYearsPanel';
 import { CompanySettingsPanel } from './CompanySettingsPanel';
+import { PartiesPanel } from './PartiesPanel';
 import { CurrenciesPanel } from './CurrenciesPanel';
 import { CompanyGateway } from './CompanyGateway';
 import { ImportExportPanel } from './ImportExportPanel';
@@ -37,6 +38,7 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
 
 const TAB_IDS = [
   'accounts',
+  'parties',
   'voucher-types',
   'financial-years',
   'currencies',
@@ -326,6 +328,13 @@ export function CompanyDashboardPage() {
         </button>
         <button
           type="button"
+          className={cn(styles.tab, tab === 'parties' && styles.tabActive)}
+          onClick={() => setTab('parties')}
+        >
+          Parties
+        </button>
+        <button
+          type="button"
           className={cn(styles.tab, tab === 'voucher-types' && styles.tabActive)}
           onClick={() => setTab('voucher-types')}
         >
@@ -362,6 +371,12 @@ export function CompanyDashboardPage() {
           Settings
         </button>
       </div>
+
+      {/*
+        Separate from the chart of accounts because it answers a different question: that screen is
+        about the shape of the books, this is about the people in them.
+      */}
+      {tab === 'parties' && <PartiesPanel companyId={id} />}
 
       {tab === 'financial-years' && <FinancialYearsPanel companyId={id} />}
 
