@@ -104,8 +104,16 @@
   flex-shrink: 0;
 }
 
+/*
+  The name gives way last.
+
+  The code used to refuse to shrink, so in a narrow panel a name was squeezed to "H." beside a code
+  reading HOUSEHOLD_GROCERIES in full — the wrong way round, since the name is what a person reads
+  and the code is what a machine does. The name now keeps a floor and the code truncates first.
+*/
 .itemName {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 6rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -114,7 +122,11 @@
 .itemCode {
   font-size: 0.6875rem;
   color: var(--ink-soft);
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rowSelected .itemCode {

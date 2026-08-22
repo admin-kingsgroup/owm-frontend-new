@@ -29,6 +29,14 @@ const SCREENS = [
     name: 'reports-trial-balance',
     path: () => `/companies/${companyId}/reports?report=trial-balance`,
   },
+  // The three the server had always answered and nothing asked for until this direction was built.
+  { name: 'reports-cash-book', path: () => `/companies/${companyId}/reports?report=cash-book` },
+  { name: 'reports-bank-book', path: () => `/companies/${companyId}/reports?report=bank-book` },
+  {
+    name: 'reports-group-summary',
+    path: () => `/companies/${companyId}/reports?report=group-summary`,
+  },
+  { name: 'reports-day-book', path: () => `/companies/${companyId}/reports?report=day-book` },
   { name: 'vouchers', path: () => `/companies/${companyId}/vouchers` },
   { name: 'voucher-entry', path: () => `/companies/${companyId}/vouchers?new=CONTRA` },
   { name: 'masters', path: () => `/companies/${companyId}?tab=accounts` },
@@ -98,6 +106,35 @@ test.describe('the frame', () => {
 
     await page.getByRole('menuitem', { name: /Day Book/ }).click();
     await expect(page).toHaveURL(/report=day-book/);
+  });
+
+  /**
+   * Every report the menu offers has to open on something. A menu item pointing at a report the
+   * page does not know how to draw falls back to the balance sheet silently — the heading would be
+   * the only clue, and only to someone who noticed it had not changed.
+   */
+  test('opens every report the menu lists, on the report it names', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Reports' }).click();
+    const items = await page.getByRole('menuitem').all();
+    const reports: Array<{ label: string; href: string }> = [];
+    for (const item of items) {
+      const href = (await item.getAttribute('href')) ?? '';
+      if (!href.includes('report=')) continue;
+      // The first span is the name; the second, when present, is the shortcut hint.
+      const label = (await item.locator('span').first().textContent()) ?? '';
+      reports.push({ label, href });
+    }
+    expect(reports.length, 'the Reports menu is empty').toBeGreaterThan(8);
+
+    for (const report of reports) {
+      await page.goto(report.href);
+      // The heading is the report's own name, so a silent fallback shows up as the wrong one.
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(report.label.trim());
+    }
   });
 
   test('raises a voucher from a function key, on any screen', async ({ page }) => {

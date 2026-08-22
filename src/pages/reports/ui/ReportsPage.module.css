@@ -492,3 +492,28 @@
   font-weight: 600;
   color: var(--ink);
 }
+
+/*
+  The heading of one account, above its own postings — the Cash and Bank books stack several of
+  these on a page, so each needs to announce whose statement follows.
+
+  The code is set apart from the name deliberately. Both were rendered at the same weight and size
+  with only a space between them, so "Cash" and its code read as one odd phrase: "Cash CASH".
+*/
+.statementTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.statementCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-faint);
+}

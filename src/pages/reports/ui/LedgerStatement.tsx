@@ -18,6 +18,9 @@ interface LedgerStatementProps {
  * which are simply every cash or bank account's statement one after another. Extracted so those two
  * cannot drift: a running balance shown one way in a dialog and another way on a page is the kind of
  * difference that gets reconciled by hand for an hour before anyone notices it is the same data.
+ *
+ * Movement goes through the same formatter as the balances beside it. Printed raw it read 15000.00
+ * next to ₹15,000.00 — one figure, one table, two ways of writing it.
  */
 export function LedgerStatement({ statement, money, heading = false }: LedgerStatementProps) {
   return (
@@ -52,8 +55,8 @@ export function LedgerStatement({ statement, money, heading = false }: LedgerSta
               <tr key={`${line.voucherId}-${index}`}>
                 <td>{toCalendarDay(line.voucherDate)}</td>
                 <td>{line.voucherNumber}</td>
-                <td className={styles.num}>{line.debit}</td>
-                <td className={styles.num}>{line.credit}</td>
+                <td className={styles.num}>{money(line.debit)}</td>
+                <td className={styles.num}>{money(line.credit)}</td>
                 <td className={styles.num}>{money(line.runningBalance)}</td>
               </tr>
             ))}
