@@ -490,7 +490,25 @@ export function VouchersPage() {
                     <td className={styles.mono} data-label="ID" title={entry.id}>
                       {selectedVoucher.voucherNumber}/{index + 1}
                     </td>
-                    <td data-label="Ledger">{entry.ledgerCode}</td>
+                    <td data-label="Ledger">
+                      {entry.ledgerCode}
+                      {/*
+                        A foreign line shows what was actually typed and the rate it was converted
+                        at. The Debit and Credit columns are always base currency, so without this
+                        the line is indistinguishable from an ordinary one.
+                      */}
+                      {entry.currencyCode && (
+                        <span className={styles.entryForeign}>
+                          {entry.fcAmount && (
+                            <>
+                              {' '}
+                              {entry.currencyCode} {Math.abs(Number(entry.fcAmount)).toFixed(2)}
+                            </>
+                          )}
+                          {entry.exchangeRate && <> @ {entry.exchangeRate}</>}
+                        </span>
+                      )}
+                    </td>
                     <td className={styles.mono} data-label="Debit">
                       {Number(entry.debit) > 0
                         ? formatMoney(entry.debit, {

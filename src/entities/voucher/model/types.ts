@@ -29,8 +29,17 @@ export interface VoucherEntry {
   id: string;
   ledgerId: string;
   ledgerCode: string;
+  /** Always the base currency, whatever the line was entered in. */
   debit: string;
   credit: string;
+  /**
+   * Present only on a line entered in another currency. Without these the converted figure is all
+   * there is, and 80,000 says nothing about the 1,000 dollars and the rate of 80 behind it.
+   */
+  currencyId?: string;
+  currencyCode?: string;
+  fcAmount?: string;
+  exchangeRate?: string;
   narration?: string;
 }
 

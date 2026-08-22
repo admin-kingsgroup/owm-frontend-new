@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 
 import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listBusinesses, listPartners } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
-import { Loading, EmptyState, Badge, Button } from '@/shared/ui';
+import { Loading, EmptyState, Button } from '@/shared/ui';
 import { getErrorMessage, cn } from '@/shared/lib';
 
 import { PartnersPanel } from './PartnersPanel';
@@ -91,20 +90,22 @@ export function KgPage() {
 
   return (
     <div className={styles.page}>
+      {/*
+        The company, its year and its currency are stated once by the shell's context strip, so the
+        heading names the screen instead of repeating them — the same shape Vouchers and Reports
+        took. Navigation is the menu bar's job, so there is no back link here either.
+      */}
       <div className={styles.header}>
         <div>
-          <div className={styles.headerTop}>
-            <h1 className={styles.title}>{company.name}</h1>
-            <Badge variant="neutral">Portfolio analytics</Badge>
-          </div>
+          <h1 className={styles.title}>Portfolio</h1>
           <p className={styles.subtitle}>
-            {businesses.length} business{businesses.length === 1 ? '' : 'es'} · {partners.length}{' '}
-            partner{partners.length === 1 ? '' : 's'} · reported in {company.baseCurrency}
+            {businesses.length === 0
+              ? 'Add the businesses whose figures you want compared.'
+              : `${businesses.length} business${businesses.length === 1 ? '' : 'es'}, ` +
+                `${partners.length} partner${partners.length === 1 ? '' : 's'}.`}{' '}
+            Figures come from month-end statements, not from books kept here.
           </p>
         </div>
-        <Link to={`/companies/${companyId}`} className={styles.backLink}>
-          <ArrowLeft size={16} /> Company
-        </Link>
       </div>
 
       <div className={styles.tabs}>

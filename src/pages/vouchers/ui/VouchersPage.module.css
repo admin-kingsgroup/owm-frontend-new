@@ -178,3 +178,11 @@
     max-width: none;
   }
 }
+
+/* What a foreign line was typed in, beside the ledger it was posted to. Recessive: the base-currency
+   figures in the Debit and Credit columns are still the ones that add up. */
+.entryForeign {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
