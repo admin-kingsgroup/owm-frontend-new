@@ -125,11 +125,21 @@ export function reportClientError({ kind, error, componentStack }: ClientErrorRe
   return reference;
 }
 
+/** Guards against a second install attaching a second set of listeners — see below. */
+let installed = false;
+
 /**
  * Installs the two handlers an error boundary can never replace. Called once from the composition
  * root, before the first render, so a throw during start-up is reported too.
+ *
+ * Idempotent, because a second set of listeners would file every fault twice and there is nothing
+ * in a duplicate report worth having. One call is all the app makes, but a dev server re-executing
+ * this module on hot reload would otherwise stack them up a pair at a time.
  */
 export function installClientErrorReporting(): void {
+  if (installed) return;
+  installed = true;
+
   window.addEventListener('unhandledrejection', (event) => {
     reportClientError({ kind: 'UNHANDLED_REJECTION', error: event.reason });
   });
