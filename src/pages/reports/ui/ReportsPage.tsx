@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Download, Printer, X } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { X } from 'lucide-react';
 
 import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
@@ -34,16 +34,59 @@ import { ReportTree } from './ReportTree';
 import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
 
-type Tab =
-  | 'balance-sheet'
-  | 'profit-loss'
-  | 'trial-balance'
-  | 'day-book'
-  | 'receipts-payments'
-  | 'cash-flow'
-  | 'receivables'
-  | 'payables'
-  | 'forex';
+/**
+ * The reports, in the order the menu and the tab strip list them.
+ *
+ * One list rather than a union plus a separate array: the menu bar links straight at a report by
+ * id, so an id that exists in one place and not the other is a link that lands on the wrong
+ * statement.
+ */
+const TAB_IDS = [
+  'balance-sheet',
+  'profit-loss',
+  'trial-balance',
+  'day-book',
+  'receipts-payments',
+  'cash-flow',
+  'receivables',
+  'payables',
+  'forex',
+] as const;
+
+type Tab = (typeof TAB_IDS)[number];
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (TAB_IDS as readonly string[]).includes(value);
+}
+
+/** Named once, for the tab strip and for the heading of whichever report is open. */
+const TAB_LABELS: Record<Tab, string> = {
+  'balance-sheet': 'Balance Sheet',
+  'profit-loss': 'Profit & Loss',
+  'trial-balance': 'Trial Balance',
+  'day-book': 'Day Book',
+  'receipts-payments': 'Receipts & Payments',
+  'cash-flow': 'Cash Flow',
+  receivables: 'Receivables',
+  payables: 'Payables',
+  forex: 'Forex Gain/Loss',
+};
+
+/**
+ * Whether this company can produce a report at all.
+ *
+ * Three of them exist only behind a company feature, and now that the open report comes from the
+ * URL the answer matters for more than which tabs to draw: a bookmark kept after bill-wise was
+ * switched off, or an address typed by hand, would otherwise open an outstandings report the
+ * company no longer keeps. A company still loading is given the benefit of the doubt — bouncing off
+ * a report that turns out to be perfectly valid is worse than a moment's wait.
+ */
+function isAvailable(tab: Tab, company: Company | null): boolean {
+  if (!company) return true;
+  if (tab === 'receivables' || tab === 'payables') return company.features.billWiseDetails;
+  if (tab === 'forex') return company.features.multiCurrency;
+  return true;
+}
 
 const BUCKET_LABELS: Record<string, string> = {
   NOT_DUE: 'Not due',
@@ -57,7 +100,25 @@ const asDay = (value: string) => value.slice(0, 10);
 
 export function ReportsPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const [tab, setTab] = useState<Tab>('balance-sheet');
+  /**
+   * Which report is open lives in the URL, not in component state.
+   *
+   * The menu bar links straight at a report, and a statement is the thing in this product most
+   * likely to be bookmarked, reloaded or sent to someone — all of which used to land on the Balance
+   * Sheet whatever had been open. An unknown or missing id falls back rather than blanking the page.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get('report');
+
+  const setTab = useCallback(
+    (next: Tab) => {
+      // Merged rather than replaced: the period a report is being read for is in here too.
+      const params = new URLSearchParams(searchParams);
+      params.set('report', next);
+      setSearchParams(params);
+    },
+    [searchParams, setSearchParams],
+  );
 
   // Empty means "the whole financial year", which is what the server defaults to.
   const [from, setFrom] = useState('');
@@ -66,6 +127,10 @@ export function ReportsPage() {
   const [applied, setApplied] = useState({ from: '', to: '', compare: false });
 
   const [company, setCompany] = useState<Company | null>(null);
+
+  /* Derived here rather than beside , because whether a report is available at all
+     depends on the company's features — see isAvailable. */
+  const tab: Tab = isTab(requested) && isAvailable(requested, company) ? requested : 'balance-sheet';
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
