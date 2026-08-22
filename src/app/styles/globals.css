@@ -21,9 +21,14 @@
    Contrast: every foreground token is >= 4.5:1 (WCAG AA) against the surface
    it is intended for, in both themes. Re-measure before changing any of them.
 
-   They sit ON the floor, not above it — --ink-faint is 4.66:1. Do not dim one
-   with `opacity` to make it quieter: 0.75 takes --ink-faint to 3.01:1 and out
-   of AA. Reach for --ink-faint itself, or a smaller size, instead.
+   Measured against all three light surfaces, not just --paper: --paper-sunken
+   is the darkest of them and therefore the one that decides. --ink-faint was
+   4.66:1 on --paper but only 4.34:1 on --paper-sunken, which is where the
+   status bar and the shortcut rail put it.
+
+   They sit close to the floor. Do not dim one with `opacity` to make it
+   quieter: 0.75 takes --ink-faint out of AA on any surface. Reach for
+   --ink-faint itself, or a smaller size, instead.
    ============================================================================ */
 
 :root {
@@ -70,7 +75,7 @@
   --paper-sunken: #f4f2ee;
   --ink: #1a1c1f;
   --ink-soft: #5b6068;
-  --ink-faint: #6b727c;
+  --ink-faint: #656c76;
   --border: #e9e6e0;
   /* 1px dividers only. Too light to read as a hover fill — use --hover-tint. */
   --border-soft: #f1efea;
@@ -407,6 +412,21 @@ textarea:focus-visible {
     height: auto !important;
     min-height: 0 !important;
     padding: 0 !important;
+  }
+
+  /*
+    The shell's own chrome sits one level below #root — the menu bar and the status strip are
+    children of the shell, which is exactly what the reset above matches. `#root > div > div` is
+    (1,0,2) and beats both `header` (0,0,1) and `[data-print='hide']` (0,1,0), so those rules lost
+    and a printed balance sheet carried the menu bar across its top. Doubling the id takes this to
+    (2,0,1), which wins on id count — the same trick as `:root:root` at the head of this block.
+
+    The context strip is deliberately NOT hidden: it is the only thing that names the company and
+    the year on paper, and a filed statement without them is not much use.
+  */
+  #root#root header,
+  #root#root [data-print='hide'] {
+    display: none !important;
   }
 
   /* A row split across a page break is unreadable in a statement. */
