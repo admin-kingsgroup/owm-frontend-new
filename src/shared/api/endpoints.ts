@@ -100,6 +100,11 @@ export const endpoints = {
     bankReconciliation: (companyId: string, ledgerId: string) =>
       `/companies/${companyId}/reports/bank-reconciliation/${ledgerId}`,
     monthlySummary: (companyId: string) => `/companies/${companyId}/reports/monthly-summary`,
+    fundsFlow: (companyId: string) => `/companies/${companyId}/reports/funds-flow`,
+    ratios: (companyId: string) => `/companies/${companyId}/reports/ratios`,
+    exceptions: (companyId: string) => `/companies/${companyId}/reports/exceptions`,
+    statementOfAccount: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/reports/statement-of-account/${ledgerId}`,
   },
   vouchers: {
     list: (companyId: string) => `/companies/${companyId}/vouchers`,

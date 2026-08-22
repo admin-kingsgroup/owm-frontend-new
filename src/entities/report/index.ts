@@ -29,5 +29,14 @@ export type {
   AuditAction,
   AuditEntry,
   AuditList,
+  StatementBill,
+  StatementOfAccountReport,
+  FundsFlowLine,
+  FundsFlowReport,
+  RatioLine,
+  RatioReport,
+  ExceptionSeverity,
+  ExceptionLine,
+  ExceptionReport,
 } from './model/types';
 export * from './api/report-api';

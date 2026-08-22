@@ -274,6 +274,36 @@
    this year's figure first whichever shape the report happens to take. */
 /* Last year's figure under a headline bucket. Small and muted: it qualifies the number above
    rather than competing with it. */
+/* Who the party is, above their statement. A definition list because that is what it is: a set of
+   labelled facts, not a table — nothing here is a column of anything. */
+.partyFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: var(--space-3) 0 0;
+}
+
+.partyFacts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.partyFacts dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.partyFacts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
 .bucketPrior {
   margin-top: 2px;
   color: var(--ink-faint);

@@ -388,3 +388,90 @@ export interface AuditList {
   page: number;
   limit: number;
 }
+
+/** One invoice still open on a party's statement. */
+export interface StatementBill {
+  billId: string;
+  reference: string;
+  billDate: string;
+  dueDate?: string;
+  amount: string;
+  settled: string;
+  outstanding: string;
+  overdueDays: number;
+}
+
+/** A party's movement and its open invoices in one document — what gets sent when chasing payment. */
+export interface StatementOfAccountReport {
+  period: ReportPeriod;
+  party: {
+    id: string;
+    code: string;
+    name: string;
+    gstin?: string;
+    pan?: string;
+    address?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    creditDays?: number;
+    creditLimit?: string;
+  };
+  statement: LedgerStatementReport;
+  openBills: StatementBill[];
+  totals: {
+    closing: string;
+    closingSide: BalanceSide;
+    openTotal: string;
+    unallocated: string;
+    overdue: string;
+  };
+}
+
+export interface FundsFlowLine {
+  groupId: string;
+  code: string;
+  name: string;
+  /** Always positive; which list it is in says which way the funds went. */
+  amount: string;
+}
+
+/** Where the money came from over the period and what it went into. */
+export interface FundsFlowReport {
+  period: ReportPeriod;
+  sources: FundsFlowLine[];
+  applications: FundsFlowLine[];
+  totals: { sources: string; applications: string; difference: string };
+}
+
+export interface RatioLine {
+  key: string;
+  label: string;
+  /** Null where the denominator is nil — unanswerable, rather than zero. */
+  value: string | null;
+  numerator: string;
+  denominator: string;
+  unit: 'TIMES' | 'PERCENT';
+  hint: string;
+}
+
+export interface RatioReport {
+  period: ReportPeriod;
+  ratios: RatioLine[];
+}
+
+export type ExceptionSeverity = 'ERROR' | 'WARNING';
+
+export interface ExceptionLine {
+  kind: string;
+  severity: ExceptionSeverity;
+  message: string;
+  entity?: 'LEDGER' | 'VOUCHER' | 'BILL';
+  entityId?: string;
+}
+
+/** What is worth a second look before the books are signed off. */
+export interface ExceptionReport {
+  period: ReportPeriod;
+  exceptions: ExceptionLine[];
+  totals: { errors: number; warnings: number };
+}

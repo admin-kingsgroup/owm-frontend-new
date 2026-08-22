@@ -16,6 +16,10 @@ import type {
   MonthlySummaryReport,
   AuditList,
   AuditEntity,
+  StatementOfAccountReport,
+  FundsFlowReport,
+  RatioReport,
+  ExceptionReport,
 } from '../model/types';
 
 /** Day Book narrowed to one voucher type — Tally's Sales, Purchase, Journal and other registers. */
@@ -108,3 +112,22 @@ export const getAuditTrail = (
   companyId: string,
   params: { entity?: AuditEntity; entityId?: string; from?: string; to?: string; limit?: number },
 ) => fetchReport<AuditList>(endpoints.audit(companyId), params as ReportParams);
+
+export const getFundsFlow = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<FundsFlowReport>(endpoints.reports.fundsFlow(companyId), params);
+
+export const getRatios = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<RatioReport>(endpoints.reports.ratios(companyId), params);
+
+export const getExceptions = (companyId: string, params: ReportParams = {}) =>
+  fetchReport<ExceptionReport>(endpoints.reports.exceptions(companyId), params);
+
+export const getStatementOfAccount = (
+  companyId: string,
+  ledgerId: string,
+  params: ReportParams = {},
+) =>
+  fetchReport<StatementOfAccountReport>(
+    endpoints.reports.statementOfAccount(companyId, ledgerId),
+    params,
+  );

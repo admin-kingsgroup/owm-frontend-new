@@ -250,6 +250,14 @@ export function buildMenus(
         ...(features?.billWiseDetails
           ? [
               {
+                label: 'Statement of Account',
+                to: `${base}/reports?report=statement-of-account${period}`,
+              },
+            ]
+          : []),
+        ...(features?.billWiseDetails
+          ? [
+              {
                 label: 'Receivables',
                 to: `${base}/reports?report=receivables${period}`,
                 section: 'Outstanding',
@@ -274,10 +282,21 @@ export function buildMenus(
       mnemonic: 'A',
       items: [
         ...(isPortfolio ? [{ label: 'Portfolio valuation', to: `${base}/kg` }] : []),
+        /*
+          These read across the statements rather than being one of them — funds flow sets the
+          balance sheet's two ends against each other, ratios divide it by the profit and loss, and
+          the exception list walks the lot. Reports is already the longest menu in the product.
+        */
+        { label: 'Funds Flow', to: `${base}/reports?report=funds-flow${period}` },
+        { label: 'Ratios', to: `${base}/reports?report=ratios${period}` },
+        {
+          label: 'Exceptions — what to check before signing',
+          to: `${base}/reports?report=exceptions${period}`,
+        },
         // Every company the signed-in user can reach, with its cash, profit and draft backlog —
         // the one view in the product that looks across the whole group rather than into one set
         // of books.
-        { label: 'Group overview — all companies', to: '/companies' },
+        { label: 'Group overview — all companies', to: '/companies', section: 'Across companies' },
       ],
     },
     {

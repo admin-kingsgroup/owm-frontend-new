@@ -13,6 +13,10 @@ import {
   getBankReconciliation,
   getMonthlySummary,
   getAuditTrail,
+  getStatementOfAccount,
+  getFundsFlow,
+  getRatios,
+  getExceptions,
   getProfitAndLoss,
   getTrialBalance,
   getReceiptsAndPayments,
@@ -33,6 +37,10 @@ import type {
   BankReconciliationReport,
   MonthlySummaryReport,
   AuditList,
+  StatementOfAccountReport,
+  FundsFlowReport,
+  RatioReport,
+  ExceptionReport,
 } from '@/entities/report';
 import { getPayables, getReceivables } from '@/entities/outstanding';
 import type { CashMovementRow } from '@/entities/report';
@@ -54,6 +62,10 @@ import { SubjectPicker } from './SubjectPicker';
 import { BankReconciliationView } from './BankReconciliationView';
 import { MonthlySummaryView } from './MonthlySummaryView';
 import { AuditTrailView } from './AuditTrailView';
+import { StatementOfAccountView } from './StatementOfAccountView';
+import { FundsFlowView } from './FundsFlowView';
+import { RatioView } from './RatioView';
+import { ExceptionView } from './ExceptionView';
 import { TrialBalanceView } from './TrialBalanceView';
 import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
 import { MonthlyFigures } from './MonthlyFigures';
@@ -92,6 +104,10 @@ const TAB_IDS = [
   'bank-reconciliation',
   'monthly-summary',
   'audit',
+  'statement-of-account',
+  'funds-flow',
+  'ratios',
+  'exceptions',
 ] as const;
 
 type Tab = (typeof TAB_IDS)[number];
@@ -107,6 +123,10 @@ const TAB_LABELS: Record<Tab, string> = {
   'bank-reconciliation': 'Bank Reconciliation',
   'monthly-summary': 'Monthly Summary',
   audit: 'Audit Trail',
+  'statement-of-account': 'Statement of Account',
+  'funds-flow': 'Funds Flow',
+  ratios: 'Ratios',
+  exceptions: 'Exceptions',
   'balance-sheet': 'Balance Sheet',
   'profit-loss': 'Profit & Loss',
   'trial-balance': 'Trial Balance',
@@ -154,6 +174,24 @@ function isAvailable(tab: Tab, company: Company | null): boolean {
  * tick box that does nothing — worse than not offering it, because the reader is left to wonder
  * whether the two years really did match.
  */
+/**
+ * The reports fetched on their own rather than with the twelve that load with the screen.
+ *
+ * Named once so the loading state and the fetch below cannot come to disagree about which they
+ * are — a spinner that never clears, or one that never appears, both come from that drifting.
+ */
+const SUBJECT_TABS = new Set<Tab>([
+  'register',
+  'ledger',
+  'bank-reconciliation',
+  'monthly-summary',
+  'audit',
+  'statement-of-account',
+  'funds-flow',
+  'ratios',
+  'exceptions',
+]);
+
 function isComparable(tab: Tab): boolean {
   return (
     tab === 'balance-sheet' ||
@@ -271,6 +309,10 @@ export function ReportsPage() {
   const [reconciliation, setReconciliation] = useState<BankReconciliationReport | null>(null);
   const [monthly, setMonthly] = useState<MonthlySummaryReport | null>(null);
   const [audit, setAudit] = useState<AuditList | null>(null);
+  const [soa, setSoa] = useState<StatementOfAccountReport | null>(null);
+  const [fundsFlow, setFundsFlow] = useState<FundsFlowReport | null>(null);
+  const [ratios, setRatios] = useState<RatioReport | null>(null);
+  const [exceptions, setExceptions] = useState<ExceptionReport | null>(null);
   const [subjectLoading, setSubjectLoading] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
@@ -404,6 +446,14 @@ export function ReportsPage() {
           );
         } else if (tab === 'audit') {
           setAudit(await getAuditTrail(id, { ...params, limit: 200 }));
+        } else if (tab === 'statement-of-account' && subjectLedgerId) {
+          setSoa(await getStatementOfAccount(id, subjectLedgerId, params));
+        } else if (tab === 'funds-flow') {
+          setFundsFlow(await getFundsFlow(id, params));
+        } else if (tab === 'ratios') {
+          setRatios(await getRatios(id, params));
+        } else if (tab === 'exceptions') {
+          setExceptions(await getExceptions(id, params));
         }
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err, 'Could not load this report'));
@@ -1243,12 +1293,18 @@ export function ReportsPage() {
 
       {tab === 'audit' && audit && <AuditTrailView trail={audit} />}
 
-      {subjectLoading &&
-        (tab === 'register' ||
-          tab === 'ledger' ||
-          tab === 'bank-reconciliation' ||
-          tab === 'monthly-summary' ||
-          tab === 'audit') && <Loading label="Loading…" />}
+      {tab === 'statement-of-account' && !subjectLedgerId && (
+        <p className={styles.empty}>Choose a party to see their statement.</p>
+      )}
+      {tab === 'statement-of-account' && subjectLedgerId && soa && (
+        <StatementOfAccountView report={soa} money={money} />
+      )}
+
+      {tab === 'funds-flow' && fundsFlow && <FundsFlowView report={fundsFlow} money={money} />}
+      {tab === 'ratios' && ratios && <RatioView report={ratios} money={money} />}
+      {tab === 'exceptions' && exceptions && <ExceptionView report={exceptions} />}
+
+      {subjectLoading && SUBJECT_TABS.has(tab) && <Loading label="Loading…" />}
 
       {tab === 'day-book' && dayBook && (
         <section className={styles.panel}>
