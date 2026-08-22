@@ -68,10 +68,19 @@ export interface TrialBalanceRow {
   credit: string;
   closingDebit: string;
   closingCredit: string;
+  /**
+   * Where the same ledger closed in the comparison year. Only the closing position is carried, and
+   * only when a comparison was asked for; absent means the ledger did not exist last year, which
+   * is not the same as having closed at nil.
+   */
+  priorClosingDebit?: string;
+  priorClosingCredit?: string;
 }
 
 export interface TrialBalanceReport {
   period: ReportPeriod;
+  /** Null when not asked for, or when there is no prior year. */
+  comparison: ReportComparison | null;
   rows: TrialBalanceRow[];
   totals: {
     openingDebit: string;
@@ -81,6 +90,8 @@ export interface TrialBalanceReport {
     closingDebit: string;
     closingCredit: string;
     difference: string;
+    priorClosingDebit?: string;
+    priorClosingCredit?: string;
   };
 }
 
@@ -229,6 +240,12 @@ export interface CashMovementRow {
   code: string;
   name: string;
   amount: string;
+  /**
+   * What the same account moved on the same side last year. A row can carry this with an `amount`
+   * of nil: an account that moved last year and not this one is listed so the prior column still
+   * adds up to the prior total.
+   */
+  priorAmount?: string;
 }
 
 /**
@@ -238,13 +255,21 @@ export interface CashMovementRow {
  */
 export interface ReceiptsAndPaymentsReport {
   period: ReportPeriod;
+  /** Null when not asked for, or when there is no prior year. */
+  comparison: ReportComparison | null;
   openingBalance: string;
   openingSide: BalanceSide;
   receipts: CashMovementRow[];
   payments: CashMovementRow[];
   closingBalance: string;
   closingSide: BalanceSide;
-  totals: { receipts: string; payments: string; difference: string };
+  totals: {
+    receipts: string;
+    payments: string;
+    difference: string;
+    priorReceipts?: string;
+    priorPayments?: string;
+  };
 }
 
 /** One month of cash movement, for the chart above the statement. */
@@ -253,10 +278,19 @@ export interface CashFlowMonth {
   inflow: string;
   outflow: string;
   netChange: string;
+  /**
+   * The same month of the comparison year, matched by distance from the year's start. Absent
+   * unless a comparison was asked for, and absent for a month the prior year had nothing in.
+   */
+  priorInflow?: string;
+  priorOutflow?: string;
+  priorNetChange?: string;
 }
 
 export interface CashFlowReport {
   period: ReportPeriod;
+  /** Null when not asked for, or when there is no prior year. */
+  comparison: ReportComparison | null;
   openingBalance: string;
   openingSide: BalanceSide;
   inflow: ReportNode[];
@@ -265,5 +299,12 @@ export interface CashFlowReport {
   closingSide: BalanceSide;
   /** Month by month. Empty when nothing has been posted. */
   monthly: CashFlowMonth[];
-  totals: { inflow: string; outflow: string; netChange: string };
+  totals: {
+    inflow: string;
+    outflow: string;
+    netChange: string;
+    priorInflow?: string;
+    priorOutflow?: string;
+    priorNetChange?: string;
+  };
 }

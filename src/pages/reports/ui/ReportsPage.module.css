@@ -270,6 +270,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Last year, in a table. Muted the same amount as .treePriorAmount so a reader's eye lands on
+   this year's figure first whichever shape the report happens to take. */
+/* Last year's figure under a headline bucket. Small and muted: it qualifies the number above
+   rather than competing with it. */
+.bucketPrior {
+  margin-top: 2px;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The Dr/Cr that turns one prior column back into the debit-and-credit pair it came from. */
+.priorSide {
+  margin-left: var(--space-1);
+  font-size: 0.6875em;
+  opacity: 0.8;
+}
+
+.numPrior {
+  text-align: right;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .linkCell {
   padding: 0;
   border: none;

@@ -28,6 +28,7 @@ import type {
   CashFlowReport,
 } from '@/entities/report';
 import { getPayables, getReceivables } from '@/entities/outstanding';
+import type { CashMovementRow } from '@/entities/report';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
@@ -39,6 +40,7 @@ import { ReportTree } from './ReportTree';
 import { LedgerStatement } from './LedgerStatement';
 import { TrialBalanceView } from './TrialBalanceView';
 import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
+import { MonthlyFigures } from './MonthlyFigures';
 import { OutstandingsView } from './OutstandingsView';
 import { downloadCsv, flattenNodes } from './export-csv';
 import styles from './ReportsPage.module.css';
@@ -110,7 +112,13 @@ function isAvailable(tab: Tab, company: Company | null): boolean {
  * whether the two years really did match.
  */
 function isComparable(tab: Tab): boolean {
-  return tab === 'balance-sheet' || tab === 'profit-loss';
+  return (
+    tab === 'balance-sheet' ||
+    tab === 'profit-loss' ||
+    tab === 'trial-balance' ||
+    tab === 'receipts-payments' ||
+    tab === 'cash-flow'
+  );
 }
 
 export function ReportsPage() {
@@ -131,14 +139,47 @@ export function ReportsPage() {
    * likely to be bookmarked, reloaded or sent to someone — all of which used to land on the Balance
    * Sheet whatever had been open. An unknown or missing id falls back rather than blanking the page.
    */
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get('report');
 
-  // Empty means "the whole financial year", which is what the server defaults to.
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [compare, setCompare] = useState(false);
-  const [applied, setApplied] = useState({ from: '', to: '', compare: false });
+  /**
+   * The applied period and the comparison sit in the URL beside the report, for the reason the
+   * report itself does: a statement is the thing in this product most likely to be bookmarked,
+   * reloaded or sent to somebody, and a comparison that disappears on reload is one the recipient
+   * never sees.
+   *
+   * Read as three values rather than one object so the effect below can depend on the values
+   * themselves. An object rebuilt on every render would refetch all twelve reports on every render.
+   */
+  const appliedFrom = searchParams.get('from') ?? '';
+  const appliedTo = searchParams.get('to') ?? '';
+  const appliedCompare = searchParams.get('compare') === 'true';
+
+  // Empty means "the whole financial year", which is what the server defaults to. Seeded from the
+  // address so an opened link shows the boxes that produced it, not empty ones.
+  const [from, setFrom] = useState(appliedFrom);
+  const [to, setTo] = useState(appliedTo);
+  const [compare, setCompare] = useState(appliedCompare);
+
+  /**
+   * Applying replaces rather than pushes: refining a period is an adjustment to the report you are
+   * already reading, and pushing would make Back walk through every date you tried instead of
+   * returning you to the screen you came from. Only what differs from the default is written, so an
+   * unfiltered report keeps a clean address.
+   */
+  function applyPeriod(next: { from: string; to: string; compare: boolean }) {
+    const params = new URLSearchParams(searchParams);
+    const setOrDrop = (key: string, value: string) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    };
+
+    setOrDrop('from', next.from);
+    setOrDrop('to', next.to);
+    setOrDrop('compare', next.compare ? 'true' : '');
+
+    setSearchParams(params, { replace: true });
+  }
 
   const [company, setCompany] = useState<Company | null>(null);
 
@@ -176,12 +217,12 @@ export function ReportsPage() {
       setLoadError(null);
       try {
         const params = {
-          from: applied.from || undefined,
-          to: applied.to || undefined,
-          compare: applied.compare || undefined,
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
+          compare: appliedCompare || undefined,
         };
         // `asOf` for the ageing reports is the end of the period being looked at.
-        const asOf = applied.to || undefined;
+        const asOf = appliedTo || undefined;
 
         const [companyResult, bs, pl, tb, db, rp, cf, rec, pay, cash, bank, groups] =
           await Promise.all([
@@ -226,7 +267,7 @@ export function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [companyId, applied]);
+  }, [companyId, appliedFrom, appliedTo, appliedCompare]);
 
   /* Not memoized: every tree this is handed to is a plain component, so a stable identity saved
      no render, while the compiler could not preserve the wrapper across the await and gave up on
@@ -236,8 +277,8 @@ export function ReportsPage() {
     try {
       setStatement(
         await getLedgerStatement(companyId, node.id, {
-          from: applied.from || undefined,
-          to: applied.to || undefined,
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
         }),
       );
     } catch (err) {
@@ -245,12 +286,30 @@ export function ReportsPage() {
     }
   }
 
+  /**
+   * The comparison belonging to the report currently on screen.
+   *
+   * Each statement carries its own, because each resolves it separately and any of them may come
+   * back null — the period was not a whole year, or there is no earlier one. Reading it from the
+   * report rather than from the checkbox is what keeps the banner honest.
+   */
+  const comparison =
+    (tab === 'balance-sheet'
+      ? balanceSheet?.comparison
+      : tab === 'profit-loss'
+        ? profitLoss?.comparison
+        : tab === 'trial-balance'
+          ? trialBalance?.comparison
+          : tab === 'receipts-payments'
+            ? receiptsPayments?.comparison
+            : tab === 'cash-flow'
+              ? cashFlow?.comparison
+              : null) ?? null;
+
   function exportCurrentTab() {
     const stamp = balanceSheet ? balanceSheet.period.financialYearLabel : 'report';
     const name = (label: string) => `${label}-${stamp}.csv`;
     const base = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
-    /* The reports that do not compare keep the plain header set. */
-    const treeHeaders = base;
     /*
       The comparison column is added only when there is one, so a file exported without comparing
       keeps the shape anything downstream was built against. Named for the year it holds rather
@@ -332,6 +391,7 @@ export function ReportsPage() {
         ],
       ]);
     } else if (tab === 'trial-balance' && trialBalance) {
+      const priorYear = trialBalance.comparison;
       downloadCsv(
         name('trial-balance'),
         [
@@ -343,6 +403,12 @@ export function ReportsPage() {
           'Credit',
           'Closing Dr',
           'Closing Cr',
+          ...(priorYear
+            ? [
+                `Closing Dr FY ${priorYear.financialYearLabel}`,
+                `Closing Cr FY ${priorYear.financialYearLabel}`,
+              ]
+            : []),
         ],
         [
           ...trialBalance.rows.map((row) => [
@@ -354,6 +420,8 @@ export function ReportsPage() {
             row.credit,
             row.closingDebit,
             row.closingCredit,
+            // Empty, not "0.00": the ledger had no such position last year.
+            ...(priorYear ? [row.priorClosingDebit ?? '', row.priorClosingCredit ?? ''] : []),
           ]),
           [
             '',
@@ -364,6 +432,12 @@ export function ReportsPage() {
             trialBalance.totals.credit,
             trialBalance.totals.closingDebit,
             trialBalance.totals.closingCredit,
+            ...(priorYear
+              ? [
+                  trialBalance.totals.priorClosingDebit ?? '',
+                  trialBalance.totals.priorClosingCredit ?? '',
+                ]
+              : []),
           ],
         ],
       );
@@ -380,23 +454,80 @@ export function ReportsPage() {
         ]),
       );
     } else if (tab === 'receipts-payments' && receiptsPayments) {
+      const priorYear = receiptsPayments.comparison;
+      const cashRow = (section: string, row: CashMovementRow) => [
+        section,
+        row.code,
+        row.name,
+        row.amount,
+        ...(priorYear ? [row.priorAmount ?? ''] : []),
+      ];
       downloadCsv(
         name('receipts-and-payments'),
-        ['Section', 'Code', 'Ledger', 'Amount'],
         [
-          ['Opening', '', '', receiptsPayments.openingBalance],
-          ...receiptsPayments.receipts.map((row) => ['Receipt', row.code, row.name, row.amount]),
-          ...receiptsPayments.payments.map((row) => ['Payment', row.code, row.name, row.amount]),
-          ['Closing', '', '', receiptsPayments.closingBalance],
+          'Section',
+          'Code',
+          'Ledger',
+          'Amount',
+          ...(priorYear ? [`Amount FY ${priorYear.financialYearLabel}`] : []),
+        ],
+        [
+          ['Opening', '', '', receiptsPayments.openingBalance, ...(priorYear ? [''] : [])],
+          ...receiptsPayments.receipts.map((row) => cashRow('Receipt', row)),
+          ...receiptsPayments.payments.map((row) => cashRow('Payment', row)),
+          [
+            'Total',
+            '',
+            'Receipts',
+            receiptsPayments.totals.receipts,
+            ...(priorYear ? [receiptsPayments.totals.priorReceipts ?? ''] : []),
+          ],
+          [
+            'Total',
+            '',
+            'Payments',
+            receiptsPayments.totals.payments,
+            ...(priorYear ? [receiptsPayments.totals.priorPayments ?? ''] : []),
+          ],
+          ['Closing', '', '', receiptsPayments.closingBalance, ...(priorYear ? [''] : [])],
         ],
       );
     } else if (tab === 'cash-flow' && cashFlow) {
-      downloadCsv(name('cash-flow'), treeHeaders, [
-        ['INFLOW', '', '', '', '', cashFlow.totals.inflow, 'DEBIT'],
-        ...flattenNodes(cashFlow.inflow),
-        ['OUTFLOW', '', '', '', '', cashFlow.totals.outflow, 'CREDIT'],
-        ...flattenNodes(cashFlow.outflow),
-        ['Net change', '', '', '', '', cashFlow.totals.netChange, ''],
+      const priorYear = cashFlow.comparison;
+      const withYear = (value: string | undefined) => (priorYear ? [value ?? ''] : []);
+      downloadCsv(name('cash-flow'), withPrior(priorYear), [
+        [
+          'INFLOW',
+          '',
+          '',
+          '',
+          '',
+          cashFlow.totals.inflow,
+          'DEBIT',
+          ...withYear(cashFlow.totals.priorInflow),
+        ],
+        ...flattenNodes(cashFlow.inflow, 0, Boolean(priorYear)),
+        [
+          'OUTFLOW',
+          '',
+          '',
+          '',
+          '',
+          cashFlow.totals.outflow,
+          'CREDIT',
+          ...withYear(cashFlow.totals.priorOutflow),
+        ],
+        ...flattenNodes(cashFlow.outflow, 0, Boolean(priorYear)),
+        [
+          'Net change',
+          '',
+          '',
+          '',
+          '',
+          cashFlow.totals.netChange,
+          '',
+          ...withYear(cashFlow.totals.priorNetChange),
+        ],
       ]);
     } else if ((tab === 'receivables' || tab === 'payables') && (receivables || payables)) {
       const report = tab === 'receivables' ? receivables : payables;
@@ -509,9 +640,9 @@ export function ReportsPage() {
       onSelect: () => {
         setFrom('');
         setTo('');
-        setApplied({ from: '', to: '', compare });
+        applyPeriod({ from: '', to: '', compare });
       },
-      disabled: !applied.from && !applied.to,
+      disabled: !appliedFrom && !appliedTo,
     },
   ]);
 
@@ -576,7 +707,7 @@ export function ReportsPage() {
               />
             </div>
           )}
-          <Button variant="secondary" onClick={() => setApplied({ from, to, compare })}>
+          <Button variant="secondary" onClick={() => applyPeriod({ from, to, compare })}>
             Apply
           </Button>
           {/*
@@ -593,10 +724,10 @@ export function ReportsPage() {
         </p>
       )}
 
-      {applied.compare && isComparable(tab) && (
+      {appliedCompare && isComparable(tab) && (
         <p className={styles.hint} role="status">
-          {(tab === 'balance-sheet' ? balanceSheet?.comparison : profitLoss?.comparison)
-            ? `Compared with FY ${(tab === 'balance-sheet' ? balanceSheet : profitLoss)?.comparison?.financialYearLabel}.`
+          {comparison
+            ? `Compared with FY ${comparison.financialYearLabel}.`
             : 'No comparison available — this is the first financial year, or the period is not a whole one.'}
         </p>
       )}
@@ -703,6 +834,40 @@ export function ReportsPage() {
                       label: `Net · FY ${profitLoss.comparison.financialYearLabel}`,
                       color: 'var(--data-4)',
                       values: profitLoss.monthly.map((month) => Number(month.priorNetProfit ?? 0)),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <MonthlyFigures
+            labels={profitLoss.monthly.map((month) => monthLabel(month.month))}
+            format={money}
+            series={[
+              {
+                label: 'Income',
+                values: profitLoss.monthly.map((month) => Number(month.income)),
+              },
+              {
+                label: 'Expenses',
+                values: profitLoss.monthly.map((month) => Number(month.expenses)),
+              },
+              {
+                label: profitLoss.comparison
+                  ? `Net · FY ${profitLoss.period.financialYearLabel}`
+                  : 'Net',
+                values: profitLoss.monthly.map((month) => Number(month.netProfit)),
+              },
+              /*
+                A month the prior year had nothing in is null here, not zero: the chart draws it as
+                no bar, and the table has to say the same thing rather than claim a nil result.
+              */
+              ...(profitLoss.comparison
+                ? [
+                    {
+                      label: `Net · FY ${profitLoss.comparison.financialYearLabel}`,
+                      values: profitLoss.monthly.map((month) =>
+                        month.priorNetProfit === undefined ? null : Number(month.priorNetProfit),
+                      ),
                     },
                   ]
                 : []),
@@ -839,7 +1004,11 @@ export function ReportsPage() {
             labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
             formatValue={money}
             scaleLabel={money}
-            caption="Cash in, cash out and the net change for each month of the period"
+            caption={
+              cashFlow.comparison
+                ? `Cash in, cash out and the net change each month, against the net change of FY ${cashFlow.comparison.financialYearLabel}`
+                : 'Cash in, cash out and the net change for each month of the period'
+            }
             series={[
               {
                 label: 'Cash in',
@@ -852,10 +1021,53 @@ export function ReportsPage() {
                 values: cashFlow.monthly.map((month) => Number(month.outflow)),
               },
               {
-                label: 'Net',
+                /* Named for its year only while there are two of them on the plot. */
+                label: cashFlow.comparison
+                  ? `Net · FY ${cashFlow.period.financialYearLabel}`
+                  : 'Net',
                 color: 'var(--data-3)',
                 values: cashFlow.monthly.map((month) => Number(month.netChange)),
               },
+              /* Only net is carried over, for the reason given above the profit and loss chart. */
+              ...(cashFlow.comparison
+                ? [
+                    {
+                      label: `Net · FY ${cashFlow.comparison.financialYearLabel}`,
+                      color: 'var(--data-4)',
+                      values: cashFlow.monthly.map((month) => Number(month.priorNetChange ?? 0)),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <MonthlyFigures
+            labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
+            format={money}
+            series={[
+              {
+                label: 'Cash in',
+                values: cashFlow.monthly.map((month) => Number(month.inflow)),
+              },
+              {
+                label: 'Cash out',
+                values: cashFlow.monthly.map((month) => Number(month.outflow)),
+              },
+              {
+                label: cashFlow.comparison
+                  ? `Net · FY ${cashFlow.period.financialYearLabel}`
+                  : 'Net',
+                values: cashFlow.monthly.map((month) => Number(month.netChange)),
+              },
+              ...(cashFlow.comparison
+                ? [
+                    {
+                      label: `Net · FY ${cashFlow.comparison.financialYearLabel}`,
+                      values: cashFlow.monthly.map((month) =>
+                        month.priorNetChange === undefined ? null : Number(month.priorNetChange),
+                      ),
+                    },
+                  ]
+                : []),
             ]}
           />
         </section>
@@ -887,6 +1099,7 @@ export function ReportsPage() {
                 formatAmount={money}
                 nodes={cashFlow.inflow}
                 onSelectLedger={openLedger}
+                showPrior={Boolean(cashFlow.comparison)}
               />
             </section>
             <section className={styles.panel}>
@@ -897,6 +1110,7 @@ export function ReportsPage() {
                 formatAmount={money}
                 nodes={cashFlow.outflow}
                 onSelectLedger={openLedger}
+                showPrior={Boolean(cashFlow.comparison)}
               />
             </section>
           </div>

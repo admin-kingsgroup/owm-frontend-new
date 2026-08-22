@@ -2,8 +2,7 @@ import { useState } from 'react';
 
 import { updateCompany } from '@/entities/company';
 import type { Company, CompanyFeatures } from '@/entities/company';
-import { Badge, Button, Checkbox } from '@/shared/ui';
-import { companyStatusVariant } from '@/entities/company';
+import { Checkbox } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './CompanySettingsPanel.module.css';
@@ -62,7 +61,6 @@ const FEATURES: Array<{
 
 export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPanelProps) {
   const [saving, setSaving] = useState<FeatureKey | null>(null);
-  const [togglingStatus, setTogglingStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function toggle(key: FeatureKey, value: boolean) {
@@ -74,25 +72,6 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
       setError(getErrorMessage(err, 'Could not update this setting'));
     } finally {
       setSaving(null);
-    }
-  }
-
-  /**
-   * Reactivation only.
-   *
-   * Deactivating a company is not offered — it is not something this product wants people doing by
-   * hand. Companies already carrying the flag keep a way back, though: without this they would sit
-   * out of every total for good, with nothing anywhere to undo it.
-   */
-  async function reactivate() {
-    setTogglingStatus(true);
-    setError(null);
-    try {
-      onChanged(await updateCompany(company.id, { status: 'ACTIVE' }));
-    } catch (err) {
-      setError(getErrorMessage(err, 'Could not reactivate this company'));
-    } finally {
-      setTogglingStatus(false);
     }
   }
 
@@ -145,25 +124,12 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
         vouchers already posted are denominated in it.
       </p>
 
-      <div className={styles.status}>
-        <div className={styles.statusText}>
-          <div className={styles.statusHeading}>
-            Status
-            <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
-          </div>
-          <p className={styles.hint}>
-            {company.status === 'ACTIVE'
-              ? 'This company is in day-to-day use and counts towards the group totals.'
-              : 'This company is hidden from day-to-day use and left out of the group totals. Its books are untouched and still readable.'}
-          </p>
-        </div>
-        {/* Shown only when there is something to undo — there is no way to deactivate from here. */}
-        {company.status !== 'ACTIVE' && (
-          <Button type="button" variant="primary" onClick={reactivate} disabled={togglingStatus}>
-            Reactivate company
-          </Button>
-        )}
-      </div>
+      {/*
+        Company status is deliberately not shown or changed here. Retiring a set of books is not a
+        thing to do from a settings panel, and once it is not offered, neither is the way back —
+        a lone "Reactivate" button describes a state this screen can no longer produce. Status
+        remains an API concern; the company switcher is where a deactivated company is identified.
+      */}
     </div>
   );
 }

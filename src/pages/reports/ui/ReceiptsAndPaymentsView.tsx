@@ -20,6 +20,29 @@ export function ReceiptsAndPaymentsView({
   report: receiptsPayments,
   money,
 }: ReceiptsAndPaymentsViewProps) {
+  const prior = receiptsPayments.comparison;
+
+  /*
+    Two bare numbers in a row are ambiguous, so the column heads only appear once there are two
+    years to tell apart. Without a comparison the table stays as it was: names and one figure.
+  */
+  const head = (label: string) =>
+    prior ? (
+      <thead>
+        <tr>
+          <th>{label}</th>
+          <th className={styles.num}>FY {receiptsPayments.period.financialYearLabel}</th>
+          <th className={styles.numPrior}>FY {prior.financialYearLabel}</th>
+        </tr>
+      </thead>
+    ) : null;
+
+  /* An em dash, not a nil: the account moved nothing that year. */
+  const priorCell = (amount: string | undefined) =>
+    prior ? (
+      <td className={styles.numPrior}>{amount === undefined ? '—' : money(amount)}</td>
+    ) : null;
+
   return (
     <section className={styles.panel}>
       <div className={styles.buckets}>
@@ -30,10 +53,22 @@ export function ReceiptsAndPaymentsView({
         <div className={styles.bucket}>
           <span className={styles.bucketLabel}>Receipts</span>
           <span className={styles.bucketAmount}>{receiptsPayments.totals.receipts}</span>
+          {prior && (
+            <span className={styles.bucketPrior}>
+              FY {prior.financialYearLabel}:{' '}
+              {money(receiptsPayments.totals.priorReceipts ?? '0.00')}
+            </span>
+          )}
         </div>
         <div className={styles.bucket}>
           <span className={styles.bucketLabel}>Payments</span>
           <span className={styles.bucketAmount}>{receiptsPayments.totals.payments}</span>
+          {prior && (
+            <span className={styles.bucketPrior}>
+              FY {prior.financialYearLabel}:{' '}
+              {money(receiptsPayments.totals.priorPayments ?? '0.00')}
+            </span>
+          )}
         </div>
         <div className={cn(styles.bucket, styles.bucketTotal)}>
           <span className={styles.bucketLabel}>Closing</span>
@@ -52,11 +87,13 @@ export function ReceiptsAndPaymentsView({
             Receipts <span className={styles.panelTotal}>{receiptsPayments.totals.receipts}</span>
           </h2>
           <table className={styles.table} data-stack>
+            {head('Received from')}
             <tbody>
               {receiptsPayments.receipts.map((row) => (
                 <tr key={`r-${row.ledgerId}`}>
                   <td>{row.name}</td>
                   <td className={styles.num}>{money(row.amount)}</td>
+                  {priorCell(row.priorAmount)}
                 </tr>
               ))}
             </tbody>
@@ -70,11 +107,13 @@ export function ReceiptsAndPaymentsView({
             Payments <span className={styles.panelTotal}>{receiptsPayments.totals.payments}</span>
           </h2>
           <table className={styles.table} data-stack>
+            {head('Paid to')}
             <tbody>
               {receiptsPayments.payments.map((row) => (
                 <tr key={`p-${row.ledgerId}`}>
                   <td>{row.name}</td>
                   <td className={styles.num}>{money(row.amount)}</td>
+                  {priorCell(row.priorAmount)}
                 </tr>
               ))}
             </tbody>
