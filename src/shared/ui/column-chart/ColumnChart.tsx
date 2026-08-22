@@ -17,7 +17,10 @@ export interface ColumnChartProps {
   height?: number;
   /** Turns a value into the text shown on hover. */
   formatValue?: (value: number) => string;
-  /** Describes the whole chart for screen readers; the table below it carries the detail. */
+  /**
+   * The chart's accessible name. The statement below carries every figure, so a reader hears one
+   * sentence naming the shape and moves on rather than being walked through bars they cannot see.
+   */
   caption?: string;
 }
 
@@ -28,8 +31,9 @@ export interface ColumnChartProps {
  * and the smallest library that would draw it costs more than every screen in the application put
  * together. Colours come in through `series` so the palette stays with the design tokens.
  *
- * The chart is decoration over data that is already on the page in full — so it is hidden from
- * screen readers, which get the statement itself rather than a shape they cannot read.
+ * Every figure here is also in the statement below, so the chart names itself once through
+ * `caption` and hides its own legend and axis labels — repeating "Income, Expenses, Apr, May" to a
+ * reader who cannot see which bar is which is noise, not access.
  */
 export function ColumnChart({
   labels,
@@ -58,8 +62,8 @@ export function ColumnChart({
   const groupPad = (groupWidth - barWidth * series.length) / 2;
 
   return (
-    <figure className={styles.figure} aria-hidden="true">
-      <div className={styles.legend}>
+    <figure className={styles.figure}>
+      <div className={styles.legend} aria-hidden="true">
         {series.map((entry) => (
           <span key={entry.label} className={styles.legendItem}>
             <i className={styles.swatch} style={{ background: entry.color }} />
@@ -122,7 +126,7 @@ export function ColumnChart({
         </g>
       </svg>
 
-      <div className={styles.labels}>
+      <div className={styles.labels} aria-hidden="true">
         {labels.map((label) => (
           <span key={label} className={styles.label} style={{ width: `${groupWidth}%` }}>
             {label}
