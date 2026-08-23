@@ -143,16 +143,18 @@ describe('CompanyGateway', () => {
     cleanup();
   });
 
-  it('offers the masters and every active voucher type as a way in', async () => {
+  it('offers the masters as a way in, and does not repeat the voucher types', () => {
     renderGateway([voucherType('PAYMENT', 'Payment'), voucherType('SALES', 'Sales', false)]);
 
     expect(screen.getByRole('link', { name: /Groups & ledgers/ }).getAttribute('href')).toBe(
       '/companies/c1?tab=accounts',
     );
-    expect(screen.getByRole('link', { name: /Payment/ }).getAttribute('href')).toBe(
-      '/companies/c1/vouchers?new=PAYMENT',
-    );
-    // Deactivated types are not offered — the form would refuse them.
+    /*
+      Raising a voucher belongs to the function-key strip, which is on screen everywhere rather than
+      only here. The dashboard listing the same types again was the same menu printed twice on one
+      page, and it taught that data entry starts by coming back to the dashboard.
+    */
+    expect(screen.queryByRole('link', { name: 'Payment' })).toBeNull();
     expect(screen.queryByRole('link', { name: /Sales/ })).toBeNull();
   });
 

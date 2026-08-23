@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Building2, Check, ChevronDown } from 'lucide-react';
+import { Building2, Check, ChevronDown, LayoutGrid } from 'lucide-react';
 
 import type { Company } from '@/entities/company';
 import { cn } from '@/shared/lib';
@@ -9,7 +9,11 @@ import { useMenuKeys } from '@/shared/hooks';
 import styles from './CompanySwitcher.module.css';
 
 interface CompanySwitcherProps {
-  companyId: string;
+  /**
+   * Absent on the screens that sit outside a company — the selection list itself, diagnostics. The
+   * control still draws there, because it is the only company control in the product.
+   */
+  companyId?: string;
   /**
    * Read by the shell, which needs the same list to decide the sidebar's section link. Passed in
    * rather than fetched here so entering a company costs one request, not two. `null` means the
@@ -19,10 +23,16 @@ interface CompanySwitcherProps {
 }
 
 /**
- * Switching company used to mean navigating back to /companies and picking again. This keeps the
- * switch in reach from anywhere inside a company, and — the part that matters day to day — keeps
- * you on the same screen: switch while reading Reports and you land on the other company's
- * Reports, not its overview.
+ * The one place a company is chosen, anywhere in the product.
+ *
+ * It began as a shortcut past the companies page and is now the only way past it: the menu bar and
+ * the button bar no longer offer a second route to the same screen, so this trigger has to answer
+ * every form of the question — switch to another company, and open the full selection list. Hence
+ * the footer item, and hence drawing with a single company or with none open, where it used to
+ * hide.
+ *
+ * Switching keeps you on the same screen — switch while reading Reports and you land on the other
+ * company's Reports, not its dashboard.
  */
 export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) {
   const navigate = useNavigate();
@@ -54,10 +64,15 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
     };
   }, [open]);
 
-  const active = companies?.find((company) => company.id === companyId);
+  /*
+    Undefined outside a company, and also for a stale bookmark into one this user can no longer
+    see. Neither hides the control any more: with no other way to reach the selection screen, a
+    hidden switcher is not a tidy empty state, it is a dead end.
+  */
+  const active = companyId ? companies?.find((company) => company.id === companyId) : undefined;
 
-  // Nothing to switch between, or the list has not arrived — the trigger would be a dead control.
-  if (!companies || companies.length < 2 || !active) return null;
+  // The list has not arrived, or could not be read — there is nothing to put in the menu.
+  if (!companies || companies.length === 0) return null;
 
   // Deactivated companies stay reachable, but sink below the ones in daily use.
   const ordered = [...companies].sort((a, b) => {
@@ -70,8 +85,9 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
     if (company.id === companyId) return;
 
     // Everything after /companies/:companyId is the section the user is reading. Carrying it over
-    // is what makes this a switch rather than a restart.
-    const section = location.pathname.slice(`/companies/${companyId}`.length);
+    // is what makes this a switch rather than a restart. From outside a company there is no
+    // section to carry, so the choice lands on that company's dashboard.
+    const section = companyId ? location.pathname.slice(`/companies/${companyId}`.length) : '';
     navigate(`/companies/${company.id}${section}`);
   }
 
@@ -85,9 +101,11 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
         aria-expanded={open}
       >
         <Building2 size={14} className={styles.icon} />
-        <span className={styles.name}>{active.name}</span>
-        {active.status !== 'ACTIVE' && <span className={styles.triggerInactive}>Deactivated</span>}
-        <span className={styles.code}>{active.code}</span>
+        <span className={styles.name}>{active ? active.name : 'Select company'}</span>
+        {active && active.status !== 'ACTIVE' && (
+          <span className={styles.triggerInactive}>Deactivated</span>
+        )}
+        {active && <span className={styles.code}>{active.code}</span>}
         <ChevronDown size={14} className={cn(styles.chevron, open && styles.chevronOpen)} />
       </button>
 
@@ -114,6 +132,26 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
               <span className={styles.optionCode}>{company.code}</span>
             </button>
           ))}
+
+          {/*
+            The way to the selection screen — where the group's figures sit side by side, and where
+            a company is created or edited. Separated below a rule because it is not one of the
+            companies: choosing it opens a screen, it does not switch anything.
+          */}
+          <button
+            type="button"
+            role="menuitem"
+            className={cn(styles.option, styles.optionAll)}
+            onClick={() => {
+              setOpen(false);
+              navigate('/companies');
+            }}
+          >
+            <span className={styles.optionCheck}>
+              <LayoutGrid size={14} />
+            </span>
+            <span className={styles.optionName}>All companies…</span>
+          </button>
         </div>
       )}
     </div>

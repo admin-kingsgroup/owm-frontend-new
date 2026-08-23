@@ -77,13 +77,12 @@ export function buildMenus(
   const orderedTypes = inFunctionKeyOrder(voucherTypes);
 
   if (!companyId) {
+    /*
+      No Company menu here. Choosing a company is the top-right switcher's alone, and outside a
+      company that menu held nothing else — a Company menu whose only item is the screen you are
+      already on is a menu that teaches you not to open it.
+    */
     return [
-      {
-        id: 'company',
-        label: 'Company',
-        mnemonic: 'C',
-        items: [{ label: 'All companies', to: '/companies' }],
-      },
       {
         id: 'help',
         label: 'Help',
@@ -104,17 +103,37 @@ export function buildMenus(
 
   return [
     {
+      /*
+        First on the bar, because it is where opening a company lands and the thing most often
+        wanted on the way back. One item, deliberately: the group dashboard is the selection screen
+        and belongs to the switcher, and splitting this company's figures into six themed
+        dashboards would be a second navigation tree over the numbers Reports already serves.
+
+        Named for which dashboard it is. An analytics workspace posts nothing, so its dashboard
+        answers an entirely different question from a set of books' — and the word is the only
+        warning anyone gets before the screen changes shape.
+      */
+      id: 'dashboards',
+      label: 'Dashboards',
+      mnemonic: 'D',
+      items: [
+        {
+          label: isPortfolio ? 'Portfolio dashboard' : 'Company dashboard',
+          to: base,
+          hint: 'Alt+O',
+        },
+      ],
+    },
+    {
       id: 'company',
       label: 'Company',
       mnemonic: 'C',
       items: [
-        { label: 'Overview', to: base, hint: 'Alt+O' },
         { label: 'Financial years', to: `${base}?tab=financial-years` },
         ...(features?.multiCurrency
           ? [{ label: 'Currencies & rates', to: `${base}?tab=currencies` }]
           : []),
         { label: 'Features & settings', to: `${base}?tab=settings` },
-        { label: 'All companies', to: '/companies', section: 'Switch' },
       ],
     },
     {
@@ -187,7 +206,7 @@ export function buildMenus(
         {
           label: 'Day Book',
           to: `${base}/reports?report=day-book${period}`,
-          hint: 'Alt+D',
+          hint: 'Alt+K',
           section: 'Books & registers',
         },
         /*
@@ -256,10 +275,12 @@ export function buildMenus(
           label: 'Exceptions — what to check before signing',
           to: `${base}/reports?report=exceptions${period}`,
         },
-        // Every company the signed-in user can reach, with its cash, profit and draft backlog —
-        // the one view in the product that looks across the whole group rather than into one set
-        // of books.
-        { label: 'Group overview — all companies', to: '/companies', section: 'Across companies' },
+        /*
+          The group view — every company's cash, profit and draft backlog side by side — is the
+          selection screen, so it is reached the way every company is: the switcher, top right.
+          Naming it here as well would be a second door onto the one screen that must have exactly
+          one.
+        */
       ],
     },
     {

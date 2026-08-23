@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2, BarChart3 } from 'lucide-react';
 
-import { getCompany, companyStatusVariant, useCompanyStore } from '@/entities/company';
+import {
+  getCompany,
+  companyStatusVariant,
+  companyTypeLabel,
+  useCompanyStore,
+} from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listAccountGroups, deleteAccountGroup } from '@/entities/account-group';
 import type { AccountGroup } from '@/entities/account-group';
@@ -26,15 +31,9 @@ import { CompanySettingsPanel } from './CompanySettingsPanel';
 import { PartiesPanel } from './PartiesPanel';
 import { CurrenciesPanel } from './CurrenciesPanel';
 import { CompanyGateway } from './CompanyGateway';
+import { PortfolioDashboard } from './PortfolioDashboard';
 import { ImportExportPanel } from './ImportExportPanel';
 import styles from './CompanyDashboardPage.module.css';
-
-/** Plain words for the stored company type — the enum value is not what a person should read. */
-const COMPANY_TYPE_LABELS: Record<string, string> = {
-  TRADING: 'Trading business',
-  PERSONAL: 'Personal wealth ledger',
-  ANALYTICS: 'Portfolio analytics',
-};
 
 const TAB_IDS = [
   'accounts',
@@ -200,12 +199,20 @@ export function CompanyDashboardPage() {
   }
 
   /*
-    With no panel asked for, this screen is the company's front door rather than its settings: the
-    menu written out, beside what the books say and what is unfinished. Every panel below is still
-    one ?tab= away, and that is what the Company and Masters menus link at.
+    With no panel asked for, this screen is the company's dashboard rather than its settings — the
+    screen the Dashboards menu names and the one entering a company lands on. Every panel below is
+    still one ?tab= away, and that is what the Company and Masters menus link at.
+
+    Which dashboard depends on what the company is for. An analytics workspace posts nothing, so it
+    has no cash position, no drafts and no trial balance to report on; showing it the accounting
+    dashboard would be four tiles of nil above a balance sheet that will never have anything in it.
   */
   if (!showTabs) {
-    return <CompanyGateway company={company} voucherTypes={voucherTypes} />;
+    return company.type === 'ANALYTICS' ? (
+      <PortfolioDashboard company={company} />
+    ) : (
+      <CompanyGateway company={company} voucherTypes={voucherTypes} />
+    );
   }
 
   const visibleLedgers = selectedGroupId
@@ -285,7 +292,7 @@ export function CompanyDashboardPage() {
               has to stay visible. Without it a personal ledger and a trading company are
               indistinguishable once created.
             */}
-            <Badge variant="neutral">{COMPANY_TYPE_LABELS[company.type] ?? company.type}</Badge>
+            <Badge variant="neutral">{companyTypeLabel(company.type)}</Badge>
           </div>
           <p className={styles.subtitle}>
             {company.code} · {company.baseCurrency} · {company.country} · FY{' '}

@@ -1,16 +1,19 @@
 import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
-import { seed, seedFeatured } from './seed';
+import { seed, seedFeatured, seedAnalytics } from './seed';
 
 let companyId: string;
 let token: string;
 /** A company with bill-wise and multi-currency on — see seedFeatured. */
 let featuredId: string;
+/** An analytics workspace, which gets an entirely different dashboard — see seedAnalytics. */
+let analyticsId: string;
 
 test.beforeAll(async () => {
   ({ companyId, token } = await seed());
   featuredId = await seedFeatured(token);
+  analyticsId = await seedAnalytics(token);
 });
 
 /**
@@ -57,6 +60,15 @@ const SCREENS = [
   { name: 'reports-payables', path: () => `/companies/${featuredId}/reports?report=payables` },
   { name: 'reports-forex', path: () => `/companies/${featuredId}/reports?report=forex` },
   { name: 'shortcuts', path: () => `/companies/${companyId}?help=shortcuts` },
+
+  /*
+    The dashboard is the screen entering a company lands on, and it draws differently for each kind
+    of company. The plain one above covers the common case; these two cover the halves of it that
+    the common case cannot show — the ageing and currency cards, which only exist behind a feature,
+    and the portfolio dashboard, which is a different screen entirely.
+  */
+  { name: 'dashboard-featured', path: () => `/companies/${featuredId}` },
+  { name: 'dashboard-portfolio', path: () => `/companies/${analyticsId}` },
 ];
 
 /**
@@ -428,6 +440,38 @@ test.describe('the frame', () => {
       mask: [page.locator('[data-print="hide"]')],
       maxDiffPixelRatio: 0.01,
     });
+  });
+
+  /*
+    An empty report behind a company feature has two quite different causes, and they must not read
+    alike: everything is settled, or the company does not keep books that way at all. Told "nothing
+    outstanding", somebody whose books are full of unpaid invoices would believe it.
+
+    Reached by address, because the menu leaves these out of a company without the feature — so the
+    only reader who arrives here is the one who needs telling. They used to be bounced to the
+    balance sheet instead, which answered a question nobody had asked.
+  */
+  test('says why a report behind a feature is empty, and where to switch it on', async ({
+    page,
+  }) => {
+    await signIn(page);
+
+    await page.goto(`/companies/${companyId}/reports?report=receivables`);
+    await expect(page.getByRole('heading', { name: 'Receivables' })).toBeVisible();
+    await expect(page.getByText(/not kept bill by bill/)).toBeVisible();
+    await expect(page.getByRole('link', { name: /company's settings/ })).toHaveAttribute(
+      'href',
+      `/companies/${companyId}?tab=settings`,
+    );
+
+    await page.goto(`/companies/${companyId}/reports?report=forex`);
+    await expect(page.getByRole('heading', { name: 'Forex Gain/Loss' })).toBeVisible();
+    await expect(page.getByText(/kept in one currency/)).toBeVisible();
+
+    // And the company that does keep bills says nothing of the sort.
+    await page.goto(`/companies/${featuredId}/reports?report=receivables`);
+    await expect(page.getByRole('heading', { name: 'Receivables' })).toBeVisible();
+    await expect(page.getByText(/not kept bill by bill/)).toHaveCount(0);
   });
 
   test('opens the working behind a balance on the gateway', async ({ page }) => {

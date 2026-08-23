@@ -150,3 +150,19 @@
 .optionInactive {
   margin-left: var(--space-1);
 }
+
+/*
+  Not one of the companies — it opens a screen rather than switching anything, so it is ruled off
+  from the list above and its icon reads as a destination rather than as a tick.
+*/
+.optionAll {
+  margin-top: var(--space-1);
+  padding-top: calc(var(--space-2) + 1px);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  color: var(--ink-soft);
+}
+
+.optionAll .optionCheck {
+  color: var(--ink-faint);
+}

@@ -42,14 +42,16 @@ export function AppShell() {
   // Focus stays in the drawer while it is open, page scroll is locked behind it, and focus returns
   // to the button that opened it. Shared with the modal — see useFocusTrap.
   useFocusTrap(menuOpen, navPanelRef);
-  const inCompany = Boolean(companyId);
 
   /**
-   * The company list, read on entering a company and shared by the switcher, the menus and the
-   * context strip. The menus need it because a company's features decide which reports exist and an
-   * analytics workspace posts nothing, so it gets Portfolio where the others get Vouchers. Keyed on
-   * `inCompany` rather than `companyId`, so switching company reuses the list it just read instead
-   * of fetching it again.
+   * The company list, shared by the switcher, the menus and the context strip. The menus need it
+   * because a company's features decide which reports exist and an analytics workspace posts
+   * nothing, so it gets Portfolio where the others get Vouchers.
+   *
+   * Read on every screen under the shell rather than only inside a company: the switcher is the
+   * product's only company control now, so it has to draw on the selection screen and on
+   * diagnostics too. The store fetches once a session, so this is the same single request it
+   * always was — and switching company reuses the list rather than reading it again.
    */
   // The same list the companies page holds, rather than a second copy. Sharing it means entering
   // a company costs no extra request, and a company created or renamed on that page reaches the
@@ -59,9 +61,8 @@ export function AppShell() {
   const loadCompanies = useCompanyStore((state) => state.load);
 
   useEffect(() => {
-    if (!inCompany) return;
     void loadCompanies();
-  }, [inCompany, loadCompanies]);
+  }, [loadCompanies]);
 
   /**
    * `null` until the list arrives, and after a load that failed. Everything drawn from it — the
@@ -136,7 +137,6 @@ export function AppShell() {
     const go = (to: string) => () => navigate(to);
 
     return [
-      { group: 'Context', key: 'F1', label: 'Company', onSelect: go('/companies') },
       {
         group: 'Context',
         key: 'F3',
@@ -144,7 +144,7 @@ export function AppShell() {
         onSelect: go(`${base}?tab=financial-years`),
       },
 
-      { group: 'Go to', key: 'Alt+O', label: 'Overview', onSelect: go(base) },
+      { group: 'Go to', key: 'Alt+O', label: 'Dashboard', onSelect: go(base) },
       ...(company?.type === 'ANALYTICS'
         ? [{ group: 'Go to', key: 'Alt+V', label: 'Portfolio', onSelect: go(`${base}/kg`) }]
         : [{ group: 'Go to', key: 'Alt+V', label: 'Vouchers', onSelect: go(`${base}/vouchers`) }]),
@@ -161,8 +161,13 @@ export function AppShell() {
         onSelect: go(`${base}/reports?report=profit-loss${reportPeriod}`),
       },
       {
+        /*
+          Alt+K, not Alt+D. Alt+D opens the Dashboards menu — every menu on the bar answers to its
+          own initial, and the menu bar claims the combination first, so leaving Day Book on Alt+D
+          left two handlers racing for one key. K is the free letter in the name.
+        */
         group: 'Go to',
-        key: 'Alt+D',
+        key: 'Alt+K',
         label: 'Day Book',
         onSelect: go(`${base}/reports?report=day-book${reportPeriod}`),
       },
@@ -299,7 +304,7 @@ export function AppShell() {
         {/* Always present, even when the switcher renders nothing: the topbar pushes this group to
             the end, so dropping it would slide the user menu left while the list is still loading. */}
         <div className={styles.topbarEnd}>
-          {companyId && <CompanySwitcher companyId={companyId} companies={companies} />}
+          <CompanySwitcher companyId={companyId} companies={companies} />
           <UserMenu />
         </div>
       </header>
@@ -311,9 +316,16 @@ export function AppShell() {
       */}
       {company && (
         <div className={styles.context}>
-          <span className={styles.contextItem}>
-            Company <b>{company.name}</b>
-          </span>
+          {/*
+            No company name here.
+
+            It was the first item on this strip while the switcher hid itself on an installation
+            holding one company. The switcher is now the product's only company control and is
+            always drawn, the dashboard header states the name again directly beneath, and the
+            status strip carries it at the foot — so this made four in one screen, two of them
+            within an inch of each other. What is left is the three facts that change what every
+            figure below means and are stated nowhere else.
+          */}
           {/*
             The year the company is posting into, read from its financial years rather than from
             the company record — `financialYearStart` there is the first year it was ever given, and

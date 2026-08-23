@@ -425,3 +425,84 @@ export async function seedFeatured(token: string): Promise<string> {
 
   return companyId;
 }
+
+/**
+ * An analytics workspace, with a registry and nothing locked yet.
+ *
+ * KG Business is the only company of this type in the product, and its dashboard answers an
+ * entirely different question from the accounting one — so until this existed, the portfolio
+ * dashboard had never been drawn by any check, only typechecked.
+ *
+ * Deliberately without snapshots. The state that matters most on that screen is the one where
+ * businesses are on the books and have not reported: it is the state a real month starts in, it is
+ * what the "n of m reporting" tile exists to say out loud, and it is reachable without driving a
+ * statement import through the API. A workspace where everything has reported is the easy case.
+ */
+export async function seedAnalytics(token: string): Promise<string> {
+  const existing = await call('/companies', { token });
+  const already = existing.body?.data?.find(
+    (company: { code: string }) => company.code === 'SHOT03',
+  );
+  if (already) return already.id as string;
+
+  const year = new Date().getUTCFullYear();
+  const created = await call('/companies', {
+    method: 'POST',
+    token,
+    body: {
+      name: 'KG Business',
+      code: 'SHOT03',
+      type: 'ANALYTICS',
+      financialYearStart: `${year}-01-01`,
+      financialYearEnd: `${year}-12-31`,
+      baseCurrency: 'INR',
+      country: 'IN',
+      timezone: 'Asia/Kolkata',
+    },
+  });
+  if (created.status !== 201) {
+    throw new Error(`Could not create the analytics workspace: ${JSON.stringify(created.body)}`);
+  }
+
+  const companyId = created.body.data.id as string;
+
+  const partner = async (code: string, name: string) => {
+    const made = await call(`/companies/${companyId}/kg/partners`, {
+      method: 'POST',
+      token,
+      body: { code, name },
+    });
+    if (!made.body?.data?.id) {
+      throw new Error(`Could not create partner ${code}: ${JSON.stringify(made.body)}`);
+    }
+    return made.body.data.id as string;
+  };
+
+  const first = await partner('PTR_A', 'A. Rahman');
+  const second = await partner('PTR_B', 'S. Devi');
+
+  // A shared business and a wholly owned one — the two shapes the tie-out treats differently.
+  const business = async (
+    code: string,
+    name: string,
+    reportingCurrency: string,
+    partners?: Array<{ partnerId: string; profitSharePercent: number }>,
+  ) => {
+    const made = await call(`/companies/${companyId}/kg/businesses`, {
+      method: 'POST',
+      token,
+      body: { code, name, reportingCurrency, ...(partners ? { partners } : {}) },
+    });
+    if (!made.body?.data?.id) {
+      throw new Error(`Could not create business ${code}: ${JSON.stringify(made.body)}`);
+    }
+  };
+
+  await business('KG_TEXTILES', 'KG Textiles', 'INR', [
+    { partnerId: first, profitSharePercent: 60 },
+    { partnerId: second, profitSharePercent: 40 },
+  ]);
+  await business('KG_EXPORTS', 'KG Exports', 'USD');
+
+  return companyId;
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Building2, ArrowRight, Pencil } from 'lucide-react';
 
-import { companyStatusVariant, useCompanyStore } from '@/entities/company';
+import { companyStatusVariant, companyTypeLabel, useCompanyStore } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { getGroupOverview } from '@/entities/report';
 import type { CompanyOverview, GroupOverview } from '@/entities/report';
@@ -11,13 +11,6 @@ import { Button, Modal, Loading, EmptyState, Badge, Sparkline } from '@/shared/u
 import { cn, formatMoney, getErrorMessage } from '@/shared/lib';
 
 import styles from './CompaniesPage.module.css';
-
-/** Plain words for the stored company type — the enum value is not what a person should read. */
-const COMPANY_TYPE_LABELS: Record<string, string> = {
-  TRADING: 'Trading business',
-  PERSONAL: 'Personal wealth ledger',
-  ANALYTICS: 'Portfolio analytics',
-};
 
 export function CompaniesPage() {
   const navigate = useNavigate();
@@ -294,7 +287,7 @@ export function CompaniesPage() {
                     Three companies of two different kinds sit in this list. Without the type they
                     are told apart only by a code someone has to remember the meaning of.
                   */}
-                  {COMPANY_TYPE_LABELS[company.type] ?? company.type} · {company.baseCurrency} ·{' '}
+                  {companyTypeLabel(company.type)} · {company.baseCurrency} ·{' '}
                   {company.country}
                 </p>
 

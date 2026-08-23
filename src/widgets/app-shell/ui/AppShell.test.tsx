@@ -209,10 +209,15 @@ describe('AppShell', () => {
     expect(screen.queryByRole('menuitem', { name: 'Vouchers' })).toBeNull();
   });
 
-  it('states the company, year and currency once for the whole app', async () => {
+  it('states the year and currency once for the whole app', async () => {
     renderShell();
 
-    expect(screen.getByText('ADB - INR')).toBeTruthy();
+    /*
+      The company is named by the switcher, not by this strip — once, at the top right, where it is
+      also the control that changes it. The strip carries only what is stated nowhere else.
+    */
+    expect(screen.getByRole('button', { name: /ADB - INR/ })).toBeTruthy();
+    expect(screen.queryByText('ADB - INR', { selector: 'b' })).toBeNull();
     // The label exactly as the server wrote it: the strip prints it rather than reformatting, so
     // what is on screen and what the reports API answers with can never drift apart.
     expect(await screen.findByText('2026-2027')).toBeTruthy();
