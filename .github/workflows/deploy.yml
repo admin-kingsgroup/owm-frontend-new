@@ -58,7 +58,10 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::BACKEND_DEPLOY_KEY not set - browser checks skipped, deploy continues."
+            # A warning, not a notice. A notice is folded away in the run summary, and a check that
+            # skips quietly for months looks exactly like a check that has been passing. See the
+            # two setup steps in DEPLOY.md.
+            echo "::warning title=Browser checks skipped::BACKEND_DEPLOY_KEY is not set, so nothing verified the drawn page. Deploy continues."
           fi
 
       - name: Check out the backend
@@ -112,6 +115,25 @@ jobs:
         # The harness starts both servers itself and gives the API a throwaway in-memory replica
         # set, so there is no database or credential for CI to hold.
         run: npm run e2e
+
+      # Says out loud whether the visual comparison actually compared anything.
+      #
+      # Playwright writes a baseline it does not have and passes, which is what lets a new screen
+      # through — and also means an uncommitted set passes every single run while appearing to
+      # check something. Untracked baselines are the state to shout about, because it is the one
+      # that looks identical to working.
+      - name: Report what the visual comparison did
+        if: always() && steps.e2e.outputs.ready == 'true'
+        run: |
+          DIR=e2e/screens.spec.ts-snapshots
+          TRACKED=$(git ls-files "$DIR" | grep -c . || true)
+          PRESENT=$(ls "$DIR" 2>/dev/null | grep -c . || true)
+
+          if [ "$TRACKED" -eq 0 ]; then
+            echo "::warning title=Visual baselines not committed::$PRESENT screen(s) were captured and none were compared - every run writes its own set and passes. Commit them once from the visual-baselines artifact; DEPLOY.md has the command."
+          else
+            echo "::notice::Compared $PRESENT screen(s) against $TRACKED committed baseline(s)."
+          fi
 
       # The committed baselines are the Linux set, and this is where that set comes from: a screen
       # CI has never captured is written on the run that first sees it, and uploaded here to be
