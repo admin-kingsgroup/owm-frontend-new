@@ -450,18 +450,34 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * A cell that opens the working behind it.
+ *
+ * Takes the row's own colour rather than the accent. A statement is read as a column of names
+ * beside a column of figures, and painting every name in link blue turns it into a list of links —
+ * which is the wrong emphasis for the one screen people scan for numbers. The hover underline and
+ * the focus ring are what say it can be opened, which is enough on a row the reader is already
+ * moving along. Same treatment as the balances on the gateway, deliberately: the two screens should
+ * not disagree about what a name that opens something looks like.
+ */
 .linkCell {
   padding: 0;
   border: none;
   background: none;
   font: inherit;
-  color: var(--accent);
+  color: inherit;
   cursor: pointer;
   text-align: left;
 }
 
 .linkCell:hover {
   text-decoration: underline;
+}
+
+.linkCell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /*
