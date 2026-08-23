@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react';
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, cleanup } from '@testing-library/react';
 
@@ -60,6 +61,19 @@ describe('useVoucherTypes', () => {
     expect(list).toHaveBeenCalledTimes(1);
   });
 
+  /*
+    The application runs inside StrictMode, which mounts, tears down and mounts again. A read that
+    is discarded on teardown never arrives if the second pass decides it has already been asked —
+    the bar then falls back to the four types every company has and silently drops the rest, which
+    is what a browser check caught and no unit test could.
+  */
+  it('still answers when the effect is mounted twice, as StrictMode mounts it', async () => {
+    const { result } = renderHook(() => useVoucherTypes('c1', 4), { wrapper: StrictMode });
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
+    expect(result.current[0].code).toBe('PAYMENT');
+  });
+
   it('re-reads when the company’s masters are synced, so the new types appear at once', async () => {
     const { result, rerender } = renderHook(
       ({ version }: { version: number }) => useVoucherTypes('c1', version),
@@ -73,6 +87,28 @@ describe('useVoucherTypes', () => {
 
     await waitFor(() => expect(result.current).toHaveLength(3));
     expect(result.current.map((entry) => entry.code)).toEqual(['PAYMENT', 'INCOME', 'EXPENSE']);
+  });
+
+  /*
+    The shell passes the company's seed version, and the company record arrives after the first
+    render — so the version goes from unknown to known on every cold load of a company screen.
+    Treated as a change, that read the list twice for a number that had not moved.
+  */
+  it('does not read twice when the version arrives after the company', async () => {
+    const { result, rerender } = renderHook(
+      ({ version }: { version?: number }) => useVoucherTypes('c1', version),
+      { initialProps: { version: undefined } as { version?: number } },
+    );
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
+    rerender({ version: 4 });
+
+    expect(list).toHaveBeenCalledTimes(1);
+
+    // And the version is remembered, so the next move is still seen.
+    answer = [type('PAYMENT'), type('INCOME')];
+    rerender({ version: 5 });
+    await waitFor(() => expect(result.current).toHaveLength(2));
   });
 
   it('does not re-read when nothing about the company has moved', async () => {

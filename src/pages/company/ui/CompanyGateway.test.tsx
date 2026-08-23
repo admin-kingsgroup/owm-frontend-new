@@ -90,6 +90,7 @@ const company: Company = {
   status: 'ACTIVE',
   initialized: true,
   seedVersion: 1,
+  currentSeedVersion: 1,
   features: {
     billWiseDetails: true,
     multiCurrency: false,

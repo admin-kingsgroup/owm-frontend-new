@@ -93,6 +93,13 @@ export function CompanySettingsPanel({
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
+  /*
+    Whether this company is missing anything the product has since added. The server states both
+    numbers — see currentSeedVersion — so the screen can say there is something to do rather than
+    leaving a reader to press a button and find out.
+  */
+  const behind = company.seedVersion < company.currentSeedVersion;
+
   async function toggle(key: FeatureKey, value: boolean) {
     setSaving(key);
     setError(null);
@@ -185,10 +192,28 @@ export function CompanySettingsPanel({
         <div>
           <dt>Default masters</dt>
           <dd className={styles.masters}>
-            version {company.seedVersion}
-            <Button type="button" variant="secondary" onClick={sync} disabled={syncing}>
-              {syncing ? 'Syncing…' : 'Sync'}
-            </Button>
+            {/*
+              Both numbers when they differ, because one of them alone says nothing: "version 3" is
+              only worth reading against what the product is on. Equal, the second would be noise —
+              a company that is current says so in words instead.
+            */}
+            {behind ? (
+              <span className={styles.behind}>
+                version {company.seedVersion} of {company.currentSeedVersion}
+              </span>
+            ) : (
+              <span>version {company.seedVersion} · up to date</span>
+            )}
+            {/*
+              Offered only when there is something to receive. Standing there on a current company
+              it was a control whose whole answer was "nothing to add" — a question the screen can
+              settle without anybody pressing anything.
+            */}
+            {behind && (
+              <Button type="button" variant="secondary" onClick={sync} disabled={syncing}>
+                {syncing ? 'Syncing…' : 'Sync'}
+              </Button>
+            )}
           </dd>
         </div>
       </dl>
@@ -203,14 +228,16 @@ export function CompanySettingsPanel({
       </p>
       {/*
         Said plainly, because "sync" is the one word here that could be read as two-way. It is not:
-        the server only ever inserts.
+        the server only ever inserts. Shown only alongside the control it explains.
       */}
-      <p className={styles.hint}>
-        Syncing gives this company any default account groups, ledgers and voucher types added to
-        the product since it was created — a personal book created before Income and Expense
-        existed, for instance. It only ever adds: anything renamed, edited or switched off here is
-        left exactly as it is, and syncing twice adds nothing the second time.
-      </p>
+      {behind && (
+        <p className={styles.hint}>
+          Syncing gives this company the default account groups, ledgers and voucher types added to
+          the product since it was created — a personal book created before Income and Expense
+          existed, for instance. It only ever adds: anything renamed, edited or switched off here is
+          left exactly as it is, and syncing twice adds nothing the second time.
+        </p>
+      )}
       {syncResult && (
         <p className={styles.result} role="status">
           {syncResult}

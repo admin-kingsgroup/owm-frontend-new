@@ -506,3 +506,52 @@ export async function seedAnalytics(token: string): Promise<string> {
 
   return companyId;
 }
+
+/**
+ * A company that has invented a voucher type of its own.
+ *
+ * Its own company rather than a type added to one of the two above, because every other check
+ * draws those and a seventh document would move menus, counts and pictures that have nothing to do
+ * with this. What is being checked is the one case the fixed table of function keys cannot express:
+ * a type with no key, which the button bar used to leave out altogether and which was therefore
+ * only raisable by going back to the gateway to find it.
+ */
+export async function seedInvented(token: string): Promise<string> {
+  const existing = await call('/companies', { token });
+  const already = existing.body?.data?.find(
+    (company: { code: string }) => company.code === 'SHOTINV',
+  );
+  if (already) return already.id;
+
+  const year = new Date().getUTCFullYear();
+  const created = await call('/companies', {
+    method: 'POST',
+    token,
+    body: {
+      name: 'ADB - Invented',
+      code: 'SHOTINV',
+      type: 'PERSONAL',
+      financialYearStart: `${year}-01-01`,
+      financialYearEnd: `${year}-12-31`,
+      baseCurrency: 'INR',
+      country: 'IN',
+      timezone: 'Asia/Kolkata',
+    },
+  });
+  if (created.status !== 201) {
+    throw new Error(`Could not create the invented-type company: ${JSON.stringify(created.body)}`);
+  }
+
+  const companyId = created.body.data.id;
+
+  const type = await call(`/companies/${companyId}/voucher-types`, {
+    method: 'POST',
+    token,
+    body: { code: 'PETTY_CASH', name: 'Petty Cash', category: 'PAYMENT' },
+  });
+  if (type.status !== 201) {
+    throw new Error(`Could not create the voucher type: ${JSON.stringify(type.body)}`);
+  }
+
+  return companyId;
+}

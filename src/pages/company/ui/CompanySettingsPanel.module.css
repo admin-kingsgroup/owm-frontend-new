@@ -84,3 +84,10 @@
   color: var(--success-fg);
   font-size: 0.8125rem;
 }
+
+/* A company that is behind. The warning ink the product uses for something waiting to be done,
+   not the danger ink — nothing is wrong, something is merely outstanding. */
+.behind {
+  color: var(--warning-fg);
+  font-weight: 500;
+}

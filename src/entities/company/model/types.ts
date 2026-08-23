@@ -56,6 +56,12 @@ export interface Company {
   initialized: boolean;
   /** Version of the seeded master set this company holds; 0 means it predates seeding. */
   seedVersion: number;
+  /**
+   * The version the product is on now. A constant of the release, sent with the company because it
+   * is only ever read against `seedVersion` — and because a copy of it here would be wrong from
+   * the first release that bumps it.
+   */
+  currentSeedVersion: number;
   features: CompanyFeatures;
 }
 
