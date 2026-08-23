@@ -15,7 +15,28 @@ import { isAxiosError } from 'axios';
  */
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (isAxiosError(error)) {
-    const message = (error.response?.data as { message?: unknown } | undefined)?.message;
+    const body = error.response?.data as { message?: unknown; errors?: unknown } | undefined;
+
+    /*
+      A rejected field says more than the refusal does. The API answers a failed validation with
+      "Validation failed" and the reasons in `errors`, so a form showing only the top-level message
+      tells somebody their entry was refused without telling them which box or why — and the server
+      had already said "gstin is not a valid GSTIN". `errors` is empty on every other kind of
+      failure, so preferring it costs those nothing.
+    */
+    const reasons = Array.isArray(body?.errors)
+      ? body.errors
+          .map((entry) => (entry as { message?: unknown } | null)?.message)
+          .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      : [];
+
+    if (reasons.length > 0) {
+      // Three at most: a form posting a dozen bad fields would otherwise fill the screen.
+      const shown = reasons.slice(0, 3).join(' · ');
+      return reasons.length > 3 ? `${shown} · and ${reasons.length - 3} more` : shown;
+    }
+
+    const message = body?.message;
     if (typeof message === 'string' && message.trim().length > 0) {
       return message;
     }
@@ -26,4 +47,16 @@ export function getErrorMessage(error: unknown, fallback = 'Something went wrong
   if (error instanceof Error && error.message) return error.message;
 
   return fallback;
+}
+
+/**
+ * The HTTP status a failure came back with, when it came back with one at all.
+ *
+ * A screen that treats every failure the same tells the user the wrong thing about most of them:
+ * the reported-errors list said "these are not yours to read" over a dropped connection, which
+ * sends someone to ask for permission they already have. `undefined` means the request never got
+ * a response — offline, blocked, or the server is down — which is not a refusal either.
+ */
+export function getErrorStatus(error: unknown): number | undefined {
+  return isAxiosError(error) ? error.response?.status : undefined;
 }

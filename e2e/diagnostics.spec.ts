@@ -103,6 +103,30 @@ test.describe('reading what was reported', () => {
     await expect(page).not.toHaveURL(/kind=/);
   });
 
+  test('a failed request is not reported as a closed door', async ({ page }) => {
+    /*
+      The screen used to render one refusal for every failure, so a dropped connection or a 500
+      told an administrator the list was not theirs to read — which sends somebody to ask for
+      permission they already hold, and offers "back to the companies" as the only way on.
+    */
+    await signIn(page);
+    await page.route('**/client-errors*', (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      return route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, message: 'The database is unavailable' }),
+      });
+    });
+
+    await page.goto('/reported-errors');
+
+    await expect(page.getByText(/Could not load reported errors/i)).toBeVisible();
+    await expect(page.getByText(/not yours to read/i)).toHaveCount(0);
+    // A failure is worth retrying; being turned away is not.
+    await expect(page.getByRole('button', { name: /Try again/i })).toBeVisible();
+  });
+
   test('turns away somebody who may not read them, and says only that', async ({ page }) => {
     // A plain account: created by the administrator, because registration is closed otherwise.
     const email = `plain-${Date.now()}@owm.local`;

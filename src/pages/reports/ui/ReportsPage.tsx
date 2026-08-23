@@ -871,7 +871,6 @@ export function ReportsPage() {
   ]);
 
   if (!companyId) return null;
-  if (loadError) return <p className={styles.error}>{loadError}</p>;
 
   const period = balanceSheet?.period;
 
@@ -890,7 +889,7 @@ export function ReportsPage() {
             which company and year these figures belong to, and this is the line that gets
             printed at the top of the page. */}
         <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
-        {!loading && period && (
+        {!loading && !loadError && period && (
           <p className={styles.subtitle}>
             FY {period.financialYearLabel} · {toCalendarDay(period.from)} to{' '}
             {toCalendarDay(period.to)}
@@ -956,6 +955,22 @@ export function ReportsPage() {
       <div className={styles.page} ref={pageRef}>
         {header}
         <Loading label="Loading reports…" />
+      </div>
+    );
+
+  /*
+    A failed load keeps the frame for the same reason a slow one does. This used to return the
+    message on its own, so the screen a reader had navigated to lost its heading, its period
+    controls and its subject picker — leaving nothing to adjust and nothing to try again with,
+    on the one screen state where wanting to change something is most likely.
+  */
+  if (loadError)
+    return (
+      <div className={styles.page} ref={pageRef}>
+        {header}
+        <p className={styles.error} role="alert">
+          {loadError}
+        </p>
       </div>
     );
 

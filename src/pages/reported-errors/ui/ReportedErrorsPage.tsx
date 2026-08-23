@@ -7,7 +7,7 @@ import { listClientErrors } from '@/entities/client-error';
 import type { ClientError, ClientErrorKind } from '@/entities/client-error';
 import { useStackedTables } from '@/shared/hooks';
 import { Button, Select, Loading, EmptyState, Badge } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/lib';
+import { getErrorMessage, getErrorStatus } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
 import styles from './ReportedErrorsPage.module.css';
@@ -57,7 +57,13 @@ export function ReportedErrorsPage() {
   const [errors, setErrors] = useState<ClientError[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  /*
+    Kept apart from the message, because the two failures need different words and different ways
+    out. Being turned away is final and the only thing to do is leave; a request that fell over is
+    worth trying again, and telling somebody they lack permission they actually hold sends them to
+    ask for it.
+  */
+  const [failure, setFailure] = useState<{ message: string; refused: boolean } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -104,9 +110,14 @@ export function ReportedErrorsPage() {
         if (cancelled) return;
         setErrors(result.items);
         setTotal(result.total);
-        setError(null);
+        setFailure(null);
       } catch (err) {
-        if (!cancelled) setError(getErrorMessage(err, 'Could not load reported errors'));
+        if (cancelled) return;
+        const status = getErrorStatus(err);
+        setFailure({
+          message: getErrorMessage(err, 'Could not load reported errors'),
+          refused: status === 401 || status === 403,
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -147,17 +158,23 @@ export function ReportedErrorsPage() {
     faults the app reported from someone's browser" above "only an administrator may read these"
     reads like something broke, when in fact the door is simply closed.
   */
-  if (error) {
+  if (failure) {
     return (
       <div className={styles.page}>
         <EmptyState
           icon={<AlertTriangle size={32} />}
-          title="These are not yours to read"
-          description={error}
+          title={failure.refused ? 'These are not yours to read' : 'Could not load reported errors'}
+          description={failure.message}
           action={
-            <Link to="/companies">
-              <Button variant="primary">Back to the companies</Button>
-            </Link>
+            failure.refused ? (
+              <Link to="/companies">
+                <Button variant="primary">Back to the companies</Button>
+              </Link>
+            ) : (
+              <Button variant="primary" onClick={() => setRefreshKey((current) => current + 1)}>
+                Try again
+              </Button>
+            )
           }
         />
       </div>
