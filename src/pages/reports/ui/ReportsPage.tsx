@@ -587,17 +587,30 @@ export function ReportsPage() {
    * grouped, symbol-prefixed string imports as text.
    */
   /**
+   * Whether nil figures are written out.
+   *
+   * Off by default, because a statement whose columns are mostly zero buries the two figures that
+   * are not — but it is a reader's choice, not the product's. Someone checking a chart of accounts
+   * against a printout wants to see that a ledger closed at nil rather than infer it from a dot,
+   * and someone signing off wants the noise gone. Local to the screen: it is a way of looking at a
+   * report, not a property of the books, so it has no business in the address or on the server.
+   */
+  const [showZeros, setShowZeros] = useState(false);
+
+  /**
    * How a figure is written on a report.
    *
    * No currency symbol: the status strip says which currency the figures are in, and repeating it
    * on every one of fifty cells only widens the columns. Nil is written as nothing, and the grid
    * draws a dot in the empty cell — a statement where five of seven columns are entirely zero is
-   * one where the two figures that matter are hidden among forty that do not.
+   * one where the two figures that matter are hidden among forty that do not. The reader can put
+   * the zeros back; see `showZeros`.
    */
   const money = useCallback(
     // string from the API, number from the chart — formatMoney takes either.
-    (value: string | number) => formatMoney(value, { country: company?.country, blankZero: true }),
-    [company],
+    (value: string | number) =>
+      formatMoney(value, { country: company?.country, blankZero: !showZeros }),
+    [company, showZeros],
   );
 
   /*
@@ -654,6 +667,21 @@ export function ReportsPage() {
           <p className={styles.subtitle}>
             FY {period.financialYearLabel} · {day(period.from)} to {day(period.to)}
           </p>
+        )}
+        {/*
+          Beside the period, because both describe how to read the figures below rather than what
+          they are. A statement, not a form: this is a link rather than a switch, and it says what
+          is true now and what pressing it will do.
+        */}
+        {!loading && !loadError && (
+          <button
+            type="button"
+            className={styles.zeroToggle}
+            onClick={() => setShowZeros((current) => !current)}
+            aria-pressed={showZeros}
+          >
+            {showZeros ? 'Nil balances shown · hide' : 'Nil balances hidden · show'}
+          </button>
         )}
       </div>
 

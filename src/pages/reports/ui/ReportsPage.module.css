@@ -27,6 +27,26 @@
   margin: 0;
 }
 
+/*
+  Whether nil figures are written out. A quiet link under the period, not a control in a toolbar:
+  it changes how the statement reads rather than what it covers.
+*/
+.zeroToggle {
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.zeroToggle:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .error {
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
@@ -229,8 +249,22 @@
 }
 
 /* Wide statements scroll inside the panel rather than pushing the page sideways. */
+/*
+  The grid's frame.
+
+  `overflow-x: auto` alone made this the scroll container in one axis and not the other, which is
+  why the sticky heading below had nothing to stick to: it was pinned inside a box that never
+  scrolled vertically, and scrolled off the top of the page with everything else. Bounding the
+  height makes this the scroller in both axes — the rows move inside the frame while the heading
+  and the totals stay on it, which is what a statement on a screen should do.
+
+  70dvh rather than a figure worked back from the height of the chrome: that arithmetic is wrong on
+  the first screen that does not match it, and this holds on any of them. A statement shorter than
+  the frame never reaches the limit and is left exactly as it was.
+*/
 .tableWrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70dvh;
 }
 
 .table {
@@ -265,6 +299,34 @@
   text-align: right;
 }
 
+/*
+  The column labels stay put while the rows go past.
+
+  A chart of accounts runs to hundreds of ledgers, and eight columns of figures are unreadable the
+  moment the heading that names them has scrolled off. The pane is the scroll container, so this
+  sticks against that.
+
+  The rule underneath is a shadow rather than a border: with `border-collapse: collapse` the border
+  belongs to the collapsed grid and stays behind while the cell travels, which prints as a hairline
+  adrift in the middle of the table.
+*/
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/*
+  The totals stay put too. A statement is read for the figure at its foot as often as for the rows
+  above it, and on a long one that figure was a scroll away from the rows it totals.
+*/
+.table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
 .table td {
   padding: 0.25rem 0.625rem;
   border-bottom: 1px solid var(--border-soft);
@@ -288,7 +350,9 @@
 */
 .table tfoot td {
   border-bottom: none;
-  border-top: 2px solid var(--ink);
+  /* Drawn on the cell, not on the collapsed grid, so it travels with the row it belongs to. */
+  border-top: none;
+  box-shadow: inset 0 2px 0 var(--ink);
   background-color: var(--paper-sunken);
   font-weight: 700;
 }
@@ -655,6 +719,7 @@
   }
 
   .tableWrap {
+    max-height: none;
     overflow: visible;
   }
 
@@ -664,6 +729,12 @@
 
   .table thead {
     display: table-header-group;
+  }
+
+  /* Nothing sticks to a sheet of paper; the header repeats per page instead, above. */
+  .table thead th,
+  .table tfoot td {
+    position: static;
   }
 
   .table tr {
@@ -731,4 +802,13 @@
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--ink-faint);
+}
+
+/* A stacked card list is not a grid; it reads as a page and must not be boxed into a scroller. */
+@media screen and (max-width: 48rem) {
+  .tableWrap {
+    max-height: none;
+    overflow: visible;
+    overflow-x: auto;
+  }
 }
