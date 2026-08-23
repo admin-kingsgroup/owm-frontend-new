@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
+import { VOUCHER_FUNCTION_KEYS } from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
@@ -25,41 +26,6 @@ import { ShortcutSheet } from './ShortcutSheet';
 import { CompanySwitcher } from './CompanySwitcher';
 import { UserMenu } from './UserMenu';
 import styles from './AppShell.module.css';
-
-/**
- * Tally's voucher keys, against the codes the server seeds a company with.
- *
- * Named by code rather than by position: voucher types are the user's own masters and can be
- * renamed or reordered, and binding F5 to "whatever is third" would quietly point it somewhere
- * else. The label is the conventional name for the key; the vouchers screen shows the company's
- * own name for the type once the form opens.
- */
-/**
- * Tally's keys, unchanged, because anyone who has used it already has them in their fingers.
- *
- * All eight seeded voucher types, not the four that happen to be the commonest: a product that can
- * post a sale but offers no way to reach the form is a product that looks broken.
- */
-const VOUCHER_KEYS = [
-  { key: 'F4', code: 'CONTRA', label: 'Contra' },
-  { key: 'F5', code: 'PAYMENT', label: 'Payment' },
-  { key: 'F6', code: 'RECEIPT', label: 'Receipt' },
-  { key: 'F7', code: 'JOURNAL', label: 'Journal' },
-  { key: 'F8', code: 'SALES', label: 'Sales' },
-  { key: 'F9', code: 'PURCHASE', label: 'Purchase' },
-  { key: 'Ctrl+F8', code: 'CREDIT_NOTE', label: 'Credit Note' },
-  { key: 'Ctrl+F9', code: 'DEBIT_NOTE', label: 'Debit Note' },
-  /*
-    F8 and F9 again, for the books that have no Sales and no Purchase.
-
-    They are the same two keys deliberately: in Tally F8 raises what the business earned and F9
-    what it cost, and that is exactly what Income and Expense are to a household. The pair can
-    never collide, because a company is either trading or personal and the filter below binds only
-    what its masters actually hold.
-  */
-  { key: 'F8', code: 'INCOME', label: 'Income' },
-  { key: 'F9', code: 'EXPENSE', label: 'Expense' },
-] as const;
 
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
@@ -222,12 +188,14 @@ export function AppShell() {
     const base = `/companies/${companyId}`;
     const held = new Set(voucherTypes.map((type) => type.code));
 
-    return VOUCHER_KEYS.filter(({ code }) => held.has(code)).map(({ key, code, label }) => ({
-      group: 'Data entry',
-      key,
-      label,
-      onSelect: () => navigate(`${base}/vouchers?new=${code}`),
-    }));
+    return VOUCHER_FUNCTION_KEYS.filter(({ code }) => held.has(code)).map(
+      ({ key, code, label }) => ({
+        group: 'Data entry',
+        key,
+        label,
+        onSelect: () => navigate(`${base}/vouchers?new=${code}`),
+      }),
+    );
   }, [companyId, company?.type, navigate, voucherTypes]);
 
   /*

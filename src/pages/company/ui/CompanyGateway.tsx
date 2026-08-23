@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Company } from '@/entities/company';
 import { getBalanceSheet } from '@/entities/report';
 import type { BalanceSheetReport } from '@/entities/report';
-import type { VoucherType } from '@/entities/voucher-type';
+import { functionKeyFor, inFunctionKeyOrder, type VoucherType } from '@/entities/voucher-type';
 import { formatMoney, formatCalendarDay, getErrorMessage } from '@/shared/lib';
 import { useCompanyReadout } from '@/widgets/app-shell';
 
@@ -74,7 +74,11 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
     ? (Number(balanceSheet.totals.assets) - Number(balanceSheet.totals.liabilities)).toFixed(2)
     : null;
 
-  const activeTypes = voucherTypes.filter((type) => type.isActive);
+  /*
+    In key order — F4, F5, F6 — not the alphabetical order the server answers in. A reader scanning
+    this list is reading down the keys, and Credit Note sitting second breaks that before it starts.
+  */
+  const activeTypes = inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
   const drafts = context?.draftVouchers ?? null;
 
   /*
@@ -160,7 +164,13 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                   to={`${base}/vouchers?new=${type.code}`}
                 >
                   <span>{type.name}</span>
-                  <span className={styles.code}>{type.code}</span>
+                  {/*
+                    The key that raises it, where the database code used to sit. CREDIT_NOTE is a
+                    column in a collection, not a word anyone says — and this is the one place a
+                    reader learns the key without opening the Help sheet, exactly as Tally's
+                    Gateway teaches them. A type the company invented has no key and shows none.
+                  */}
+                  <span className={styles.key}>{functionKeyFor(type.code)}</span>
                 </Link>
               ))}
               <Link className={styles.item} to={`${base}/vouchers`}>

@@ -1,5 +1,5 @@
 import type { Company } from '@/entities/company';
-import type { VoucherType } from '@/entities/voucher-type';
+import { functionKeyFor, inFunctionKeyOrder, type VoucherType } from '@/entities/voucher-type';
 
 export interface MenuItem {
   label: string;
@@ -52,48 +52,6 @@ export function periodQuery(here: string): string {
  * depend on a company feature are dropped when the feature is off, exactly as the screens behind
  * them already do.
  */
-/**
- * The function keys the shell binds, by voucher type — Tally's, unchanged.
- *
- * Only the seeded eight have one. A type a company invents is reachable from the menu and from the
- * vouchers screen, but gets no key: inventing a binding for it would eventually collide with a
- * real one, and a key that does the wrong thing is worse than no key.
- */
-const VOUCHER_HINTS: Record<string, string> = {
-  CONTRA: 'F4',
-  PAYMENT: 'F5',
-  RECEIPT: 'F6',
-  JOURNAL: 'F7',
-  SALES: 'F8',
-  PURCHASE: 'F9',
-  CREDIT_NOTE: 'Ctrl+F8',
-  DEBIT_NOTE: 'Ctrl+F9',
-  // The same two keys, for the books that have no Sales and no Purchase to put on them. A company
-  // is either trading or personal, so only one of each pair is ever present to be listed.
-  INCOME: 'F8',
-  EXPENSE: 'F9',
-};
-
-/**
- * The seeded types in key order, then anything the company added, alphabetically.
- *
- * The server hands them back alphabetically, which puts Credit Note second in a list somebody
- * reads as F4, F5, F6, F7 — the order the keys are in their fingers. A type with no key has no
- * place in that sequence, so it follows the ones that do.
- */
-function inKeyOrder(types: VoucherType[]): VoucherType[] {
-  const keyed = Object.keys(VOUCHER_HINTS);
-
-  return [...types].sort((a, b) => {
-    const left = keyed.indexOf(a.code);
-    const right = keyed.indexOf(b.code);
-    if (left !== -1 && right !== -1) return left - right;
-    if (left !== -1) return -1;
-    if (right !== -1) return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
 export function buildMenus(
   companyId: string | undefined,
   company: Company | null,
@@ -116,7 +74,7 @@ export function buildMenus(
   voucherTypes: VoucherType[] = [],
 ): Menu[] {
   const period = periodQuery(here);
-  const orderedTypes = inKeyOrder(voucherTypes);
+  const orderedTypes = inFunctionKeyOrder(voucherTypes);
 
   if (!companyId) {
     return [
@@ -200,7 +158,7 @@ export function buildMenus(
             ...orderedTypes.map((type, index) => ({
               label: type.name,
               to: `${base}/vouchers?new=${type.code}`,
-              ...(VOUCHER_HINTS[type.code] ? { hint: VOUCHER_HINTS[type.code] } : {}),
+              ...(functionKeyFor(type.code) ? { hint: functionKeyFor(type.code) } : {}),
               ...(index === 0 ? { section: 'Create' } : {}),
             })),
           ],
