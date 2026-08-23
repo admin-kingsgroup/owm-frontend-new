@@ -473,5 +473,10 @@ export interface ExceptionLine {
 export interface ExceptionReport {
   period: ReportPeriod;
   exceptions: ExceptionLine[];
-  totals: { errors: number; warnings: number };
+  totals: {
+    errors: number;
+    warnings: number;
+    /** Questions found but not listed. Counted, because a list that stops silently reads as clean. */
+    omitted: number;
+  };
 }

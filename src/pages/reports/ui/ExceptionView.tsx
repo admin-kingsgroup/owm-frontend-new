@@ -77,6 +77,14 @@ export function ExceptionView({ report }: ExceptionViewProps) {
           </table>
         </div>
       )}
+
+      {report.totals.omitted > 0 && (
+        <p className={styles.hint}>
+          {report.totals.omitted} more question{report.totals.omitted === 1 ? '' : 's'} of the same
+          kinds are not listed. Every error is, always — this only holds back the ones that grow
+          with the number of vouchers, which would otherwise bury the handful worth reading.
+        </p>
+      )}
     </section>
   );
 }

@@ -80,8 +80,9 @@ export function AuditTrailView({ trail }: AuditTrailViewProps) {
 
       {trail.total > trail.rows.length && (
         <p className={styles.hint}>
-          Showing the {trail.rows.length} most recent of {trail.total}. Narrow the period to see
-          further back.
+          Showing the {trail.rows.length} most recent of {trail.total}. The trail is ordered by when
+          a change was made, which is not the period the reports are showing, so it is not narrowed
+          by one.
         </p>
       )}
     </section>

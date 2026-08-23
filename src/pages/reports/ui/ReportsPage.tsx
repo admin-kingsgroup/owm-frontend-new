@@ -192,6 +192,22 @@ const SUBJECT_TABS = new Set<Tab>([
   'exceptions',
 ]);
 
+/**
+ * Whether the period boxes apply to this report at all.
+ *
+ * Only the audit trail does not take one: it is ordered by when a change was made rather than by
+ * the dates of the vouchers changed, and offering the same From/To boxes would be one control
+ * meaning two different things depending on which tab is open.
+ */
+function usesPeriod(tab: Tab): boolean {
+  return tab !== 'audit';
+}
+
+/** The reports that can be written out. The rest disable Export rather than doing nothing. */
+function canExport(tab: Tab): boolean {
+  return tab !== 'cash-book' && tab !== 'bank-book' && tab !== 'group-summary';
+}
+
 function isComparable(tab: Tab): boolean {
   return (
     tab === 'balance-sheet' ||
@@ -445,7 +461,13 @@ export function ReportsPage() {
             ),
           );
         } else if (tab === 'audit') {
-          setAudit(await getAuditTrail(id, { ...params, limit: 200 }));
+          /*
+            Deliberately not `params`. The period every other report takes is a range of voucher
+            dates; the trail is ordered by when a change was made, which is a different axis
+            entirely — asking it for a 2027 financial year returned nothing at all, because the
+            changes to that year's vouchers were made today.
+          */
+          setAudit(await getAuditTrail(id, { limit: 200 }));
         } else if (tab === 'statement-of-account' && subjectLedgerId) {
           setSoa(await getStatementOfAccount(id, subjectLedgerId, params));
         } else if (tab === 'funds-flow') {
@@ -667,6 +689,155 @@ export function ReportsPage() {
           ],
         ],
       );
+    } else if (tab === 'register' && register) {
+      downloadCsv(
+        name(`${subjectType.toLowerCase()}-register`),
+        ['Date', 'Number', 'Type', 'Narration', 'Status', 'Amount'],
+        register.rows.map((row) => [
+          toCalendarDay(row.voucherDate),
+          row.voucherNumber,
+          row.voucherTypeCode,
+          row.narration ?? '',
+          row.status,
+          row.amount,
+        ]),
+      );
+    } else if (tab === 'ledger' && ledgerReport) {
+      downloadCsv(
+        name(`ledger-${ledgerReport.ledger.code.toLowerCase()}`),
+        ['Date', 'Number', 'Narration', 'Debit', 'Credit', 'Running balance'],
+        ledgerReport.lines.map((line) => [
+          toCalendarDay(line.voucherDate),
+          line.voucherNumber,
+          line.narration ?? '',
+          line.debit,
+          line.credit,
+          line.runningBalance,
+        ]),
+      );
+    } else if (tab === 'bank-reconciliation' && reconciliation) {
+      downloadCsv(
+        name(`bank-reconciliation-${reconciliation.ledger.code.toLowerCase()}`),
+        ['Date', 'Number', 'Type', 'Instrument', 'Narration', 'Debit', 'Credit'],
+        [
+          ...reconciliation.unreconciled.map((row) => [
+            toCalendarDay(row.voucherDate),
+            row.voucherNumber,
+            row.voucherTypeCode,
+            row.instrumentNumber ?? '',
+            row.narration ?? '',
+            row.debit,
+            row.credit,
+          ]),
+          ['', 'Balance as per books', '', '', '', reconciliation.balanceAsPerBooks, ''],
+          ['', 'Balance as per bank', '', '', '', reconciliation.totals.balanceAsPerBank, ''],
+        ],
+      );
+    } else if (tab === 'monthly-summary' && monthly) {
+      downloadCsv(
+        name(`monthly-${monthly.subject.code.toLowerCase()}`),
+        ['Month', 'Debit', 'Credit', 'Closing', 'Side'],
+        [
+          ['Opening', '', '', monthly.opening, monthly.openingSide],
+          ...monthly.months.map((month) => [
+            month.month,
+            month.debit,
+            month.credit,
+            month.closing,
+            month.closingSide,
+          ]),
+          [
+            'Total',
+            monthly.totals.debit,
+            monthly.totals.credit,
+            monthly.totals.closing,
+            monthly.totals.closingSide,
+          ],
+        ],
+      );
+    } else if (tab === 'audit' && audit) {
+      downloadCsv(
+        name('audit-trail'),
+        ['When', 'Entity', 'Id', 'Action', 'By', 'Summary', 'Before', 'After'],
+        audit.rows.map((row) => [
+          row.at,
+          row.entity,
+          row.entityId,
+          row.action,
+          // Blank, not "system": the trail records that it does not know, and so does the file.
+          row.userId ?? '',
+          row.summary,
+          row.before ? JSON.stringify(row.before) : '',
+          row.after ? JSON.stringify(row.after) : '',
+        ]),
+      );
+    } else if (tab === 'statement-of-account' && soa) {
+      downloadCsv(
+        name(`statement-${soa.party.code.toLowerCase()}`),
+        ['Section', 'Date', 'Reference', 'Narration', 'Debit', 'Credit', 'Outstanding'],
+        [
+          ...soa.statement.lines.map((line) => [
+            'Movement',
+            toCalendarDay(line.voucherDate),
+            line.voucherNumber,
+            line.narration ?? '',
+            line.debit,
+            line.credit,
+            '',
+          ]),
+          ...soa.openBills.map((bill) => [
+            'Open invoice',
+            toCalendarDay(bill.billDate),
+            bill.reference,
+            bill.dueDate ? `due ${toCalendarDay(bill.dueDate)}` : '',
+            bill.amount,
+            bill.settled,
+            bill.outstanding,
+          ]),
+          ['Total', '', '', '', '', '', soa.totals.openTotal],
+        ],
+      );
+    } else if (tab === 'funds-flow' && fundsFlow) {
+      downloadCsv(
+        name('funds-flow'),
+        ['Side', 'Code', 'Name', 'Amount'],
+        [
+          ...fundsFlow.sources.map((line) => ['Source', line.code, line.name, line.amount]),
+          ...fundsFlow.applications.map((line) => [
+            'Application',
+            line.code,
+            line.name,
+            line.amount,
+          ]),
+          ['Total', '', 'Sources', fundsFlow.totals.sources],
+          ['Total', '', 'Applications', fundsFlow.totals.applications],
+        ],
+      );
+    } else if (tab === 'ratios' && ratios) {
+      downloadCsv(
+        name('ratios'),
+        ['Ratio', 'Value', 'Unit', 'From', 'Over'],
+        ratios.ratios.map((line) => [
+          line.label,
+          // Empty, not zero: a ratio with nothing to divide by is unanswerable, not nil.
+          line.value ?? '',
+          line.unit,
+          line.numerator,
+          line.denominator,
+        ]),
+      );
+    } else if (tab === 'exceptions' && exceptions) {
+      downloadCsv(
+        name('exceptions'),
+        ['Severity', 'Kind', 'What it is', 'Entity', 'Id'],
+        exceptions.exceptions.map((line) => [
+          line.severity,
+          line.kind,
+          line.message,
+          line.entity ?? '',
+          line.entityId ?? '',
+        ]),
+      );
     } else if (tab === 'day-book' && dayBook) {
       downloadCsv(
         name('day-book'),
@@ -850,7 +1021,9 @@ export function ReportsPage() {
       key: 'Ctrl+E',
       label: 'Export CSV',
       onSelect: exportCurrentTab,
-      disabled: loading,
+      // Off rather than silent on the few reports with no writer: a button that does nothing when
+      // pressed is worse than one that shows it will not.
+      disabled: loading || !canExport(tab),
     },
     {
       group: 'This report',
@@ -941,12 +1114,14 @@ export function ReportsPage() {
         />
       )}
 
-      <PeriodControls
-        key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
-        applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
-        canCompare={isComparable(tab)}
-        onApply={applyPeriod}
-      />
+      {usesPeriod(tab) && (
+        <PeriodControls
+          key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
+          applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
+          canCompare={isComparable(tab)}
+          onApply={applyPeriod}
+        />
+      )}
     </div>
   );
 
