@@ -285,6 +285,48 @@ test.describe('the frame', () => {
     question. Every other number in the product opens the working behind it; these did not, and the
     reader had to go and find the report themselves.
   */
+
+  /*
+    The same screen with the dark theme chosen.
+
+    Nothing here had ever been drawn dark, though the checks are meant to cover "layout, theme, and
+    the shell". Every colour on this page comes from a token and both themes define every token, so
+    the two should differ only in palette — which is exactly the sort of claim that stays true until
+    one rule hardcodes a colour and only one theme notices.
+
+    The gateway rather than a statement because it carries the most kinds of surface at once: the
+    menu bar, the context strip, two panels, a table with its own hover, and the status strip.
+  */
+  test('the gateway reads in the dark theme too', async ({ page }) => {
+    const faults: string[] = [];
+    page.on('pageerror', (error) => faults.push(error.message));
+
+    await signIn(page);
+    // Stamped before the first paint, the same way the app's own pre-paint script does it.
+    await page.addInitScript(() => window.localStorage.setItem('owm.theme', 'dark'));
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    // The balances are still balances, and still open the working behind them.
+    await expect(page.getByRole('link', { name: 'Current Assets' })).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `the dark gateway scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
+
+    expect(faults, `the dark gateway reported ${faults.length} fault(s)`).toEqual([]);
+
+    await expect(page).toHaveScreenshot('gateway-dark.png', {
+      fullPage: true,
+      mask: [page.locator('[data-print="hide"]')],
+      maxDiffPixelRatio: 0.01,
+    });
+  });
+
   test('opens the working behind a balance on the gateway', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
