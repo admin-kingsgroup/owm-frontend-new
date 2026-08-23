@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
-import { VOUCHER_FUNCTION_KEYS } from '@/entities/voucher-type';
+import { VOUCHER_FUNCTION_KEYS, ALWAYS_SEEDED_VOUCHER_CODES } from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
@@ -182,13 +182,19 @@ export function AppShell() {
    * four documents it cannot raise and hid the two it can. Pressing one did not fail either: the
    * vouchers screen falls back to the first active type, so it quietly opened the wrong kind of
    * document. An analytics workspace posts nothing, so it gets none of them.
+   *
+   * Until that list arrives, the four every set of books has — see ALWAYS_SEEDED_VOUCHER_CODES.
+   * Filtering on the company's own types alone left the bar empty whenever the request for them
+   * had not come back, which includes failing, and a bar with no way to raise a voucher is a worse
+   * answer than one offering four that certainly exist.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
     if (!companyId || company?.type === 'ANALYTICS') return [];
     const base = `/companies/${companyId}`;
     const held = new Set(voucherTypes.map((type) => type.code));
+    const offered = held.size > 0 ? held : ALWAYS_SEEDED_VOUCHER_CODES;
 
-    return VOUCHER_FUNCTION_KEYS.filter(({ code }) => held.has(code)).map(
+    return VOUCHER_FUNCTION_KEYS.filter(({ code }) => offered.has(code)).map(
       ({ key, code, label }) => ({
         group: 'Data entry',
         key,

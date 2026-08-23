@@ -31,6 +31,26 @@ export const VOUCHER_FUNCTION_KEYS = [
   { key: 'F9', code: 'EXPENSE', label: 'Expense' },
 ] as const;
 
+/**
+ * The types every posting company is seeded with, whatever kind of books it keeps.
+ *
+ * A stand-in for the company's own list while that list is not known. `useVoucherTypes` returns an
+ * empty array both while its request is in flight and if the request fails — deliberately, since
+ * the menus treat voucher types as chrome — so a caller filtering on it alone offers nothing at
+ * all in either case, and the bar loses every way to enter a voucher whenever that one request
+ * does not come back.
+ *
+ * These four are safe to offer unconditionally: money moving between accounts, in, out, or
+ * adjusted exists in a trading company and a household alike. The four that differ — Sales and
+ * Purchase against Income and Expense — wait until it is known which of them the company has.
+ */
+export const ALWAYS_SEEDED_VOUCHER_CODES: ReadonlySet<string> = new Set([
+  'CONTRA',
+  'PAYMENT',
+  'RECEIPT',
+  'JOURNAL',
+]);
+
 /** The key that raises this voucher type, or undefined for a type a company invented. */
 export function functionKeyFor(code: string): string | undefined {
   return VOUCHER_FUNCTION_KEYS.find((entry) => entry.code === code)?.key;

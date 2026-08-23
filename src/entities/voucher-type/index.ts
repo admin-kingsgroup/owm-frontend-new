@@ -10,4 +10,9 @@ export type {
 } from './model/types';
 export * from './api/voucher-type-api';
 export { previewVoucherNumber } from './lib/preview-number';
-export { VOUCHER_FUNCTION_KEYS, functionKeyFor, inFunctionKeyOrder } from './lib/function-keys';
+export {
+  VOUCHER_FUNCTION_KEYS,
+  ALWAYS_SEEDED_VOUCHER_CODES,
+  functionKeyFor,
+  inFunctionKeyOrder,
+} from './lib/function-keys';

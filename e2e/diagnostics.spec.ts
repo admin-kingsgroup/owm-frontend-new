@@ -251,6 +251,39 @@ test.describe('the household voucher types', () => {
     ]);
   });
 
+  test('keeps a way in when the voucher types cannot be read', async ({ page }) => {
+    /*
+      The shell asks for the company's types once and treats the answer as chrome — a failure is
+      swallowed and the hook returns an empty list, exactly as it does while the request is still
+      in flight. Filtering the bar on that list alone therefore emptied it whenever the request did
+      not come back, leaving no way to raise a voucher at all: a regression introduced by the fix
+      for the phantom buttons, and invisible unless the failure is forced.
+
+      Contra, Payment, Receipt and Journal are seeded for every posting company, so they stand in.
+      Income and Expense do not, because whether they exist is the thing that is not known.
+    */
+    await signIn(page);
+    await page.route('**/voucher-types*', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, message: 'The database is unavailable' }),
+      }),
+    );
+
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+
+    const entry = page.getByRole('button', { name: /^(Contra|Payment|Receipt|Journal)/ });
+    await expect(entry.first(), 'no way to enter a voucher at all').toBeVisible();
+    expect(await entry.count()).toBe(4);
+
+    // Not these: whether the company has them is precisely what could not be read.
+    await expect(page.getByRole('button', { name: /^(Income|Expense|Sales|Purchase)/ })).toHaveCount(
+      0,
+    );
+  });
+
   test('each type gets a register of its own', async ({ page }) => {
     /*
       Registers are listed per voucher type, so adding two types adds two registers. This is the
