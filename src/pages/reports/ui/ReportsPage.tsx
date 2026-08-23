@@ -171,6 +171,9 @@ export function ReportsPage() {
   const [company, setCompany] = useState<Company | null>(null);
   /* Depended on by name rather than through `company`, whose identity changes on every read. */
   const multiCurrency = company?.features.multiCurrency ?? false;
+  /* Whether the company has arrived, as a boolean: the fetch below waits for it, and depending on
+     the object itself would re-fire the read on any change of identity. */
+  const companyLoaded = company !== null;
   /*
     False until the company is known, which is what keeps the fetch below from firing at a report
     the company may not keep. `isAvailable` deliberately gives a loading company the benefit of the
@@ -259,9 +262,16 @@ export function ReportsPage() {
    * Each branch writes its own state and leaves the rest alone, so a report already read stays on
    * screen when you come back to it — the second visit is instant without the first having asked
    * for eleven reports nobody wanted.
+   *
+   * Nothing is asked for until the company is known. Three of this effect's dependencies are read
+   * off it — the two feature flags, and `tab` itself, whose availability depends on them — so
+   * firing before it arrives fetched the report once against the placeholder values and again
+   * against the real ones. Measured in a production build that was three requests for one
+   * statement, which is most of what fetching per tab was meant to save. `loading` starts true, so
+   * the wait shows as the spinner it already was.
    */
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId || !companyLoaded) return;
     const id = companyId;
     let cancelled = false;
 
@@ -388,6 +398,8 @@ export function ReportsPage() {
     subjectGroupId,
     multiCurrency,
     billWise,
+    // Only that it has arrived; every field this effect reads is already listed above.
+    companyLoaded,
   ]);
 
   /* The pickers' contents. Read once per company: neither list changes while a screen is open. */
@@ -522,7 +534,11 @@ export function ReportsPage() {
   const period = periodOf(tab, loaded);
 
   function exportCurrentTab() {
-    exportReport(tab, loaded, { subjectType, periodLabel: period?.financialYearLabel ?? '' });
+    exportReport(tab, loaded, {
+      subjectType,
+      periodLabel: period?.financialYearLabel ?? '',
+      asOf: appliedTo,
+    });
   }
 
   /**

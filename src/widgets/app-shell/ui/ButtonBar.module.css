@@ -122,6 +122,11 @@
     align-items: center;
     gap: var(--space-1);
     width: auto;
+    /* A flex item defaults to `min-width: auto`, which is its content — so the row of actions
+       widened the page instead of scrolling inside itself, and the whole screen scrolled sideways
+       by the overshoot. This is what makes `overflow-x` above actually contain anything. */
+    min-width: 0;
+    max-width: 100%;
     border-left: none;
     /* It sits above the content now, so the rule that separates them belongs underneath it. */
     border-bottom: 1px solid var(--border);

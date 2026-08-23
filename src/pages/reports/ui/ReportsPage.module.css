@@ -400,6 +400,27 @@
   text-decoration: underline;
 }
 
+/*
+  A thumb needs a bigger target than a mouse does.
+
+  The tight row is right for a desktop grid and wrong for a phone: at 20px these drill-down names
+  sat under WCAG 2.5.8's 24px floor, and the global 44px rule in globals.css could not reach them —
+  it sets a min-height, and this button carries no padding of its own to grow into. Keyed on the
+  pointer rather than the width, because what decides it is what you are pointing with.
+*/
+@media (pointer: coarse) {
+  .linkCell {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0;
+  }
+
+  .table td {
+    padding-top: 0.4375rem;
+    padding-bottom: 0.4375rem;
+  }
+}
+
 .statement {
   display: flex;
   flex-direction: column;

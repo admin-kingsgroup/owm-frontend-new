@@ -1,5 +1,12 @@
 .wrapper {
   position: relative;
+  /*
+    A flex item will not shrink below its content unless told to, so on a phone the switcher and
+    the account menu together were wider than the end of the topbar and pushed the page sideways
+    by the difference. This is the one that gives: the company name already ellipsises, and the
+    avatar beside it has nothing to trim.
+  */
+  min-width: 0;
 }
 
 .trigger {
@@ -13,6 +20,8 @@
   border-radius: var(--radius-full);
   background-color: var(--sidebar-hover);
   font-family: inherit;
+  /* So the name inside can ellipsise rather than widening the trigger. */
+  min-width: 0;
   cursor: pointer;
   transition:
     border-color 0.15s ease,

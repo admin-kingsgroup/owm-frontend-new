@@ -61,6 +61,15 @@ interface ExportContext {
   subjectType: string;
   /** The financial year the open report covers, for the file's name. Empty when it has none. */
   periodLabel: string;
+  /**
+   * The date the as-at reports were run to, for their file's name.
+   *
+   * Ageing and forex answer a single date rather than a span, so they have no financial year to be
+   * named after — and named after nothing they saved as "receivables-report.csv", which is the
+   * same undated file the year stamp exists to prevent. Empty when no date was applied, in which
+   * case the server used the year's end and the file falls back to "report".
+   */
+  asOf: string;
 }
 
 /**
@@ -161,15 +170,23 @@ export function exportReport(tab: Tab, reports: LoadedReports, context: ExportCo
     ratios,
     exceptions,
   } = reports;
-  const { subjectType, periodLabel } = context;
+  const { subjectType, periodLabel, asOf } = context;
 
   /*
     The year in the file's name comes from the report being written, not from the balance sheet.
     It used to read the balance sheet's period, which is no longer loaded unless somebody is
     looking at it — every other report would have been saved as "…-report.csv" with no year in it,
     and a saved file with no year is the one thing nobody can put back in order later.
+
+    The reports that answer a single date rather than a span carry that date instead, for the same
+    reason: they have no financial year to be named after, and three of them were saving undated.
+
+    The audit trail is not one of them. It is ordered by when a change was made and ignores the
+    period entirely, so stamping it with the date the boxes happen to hold would put a claim on the
+    file that its contents do not support.
   */
-  const stamp = periodLabel || 'report';
+  const asAtReport = tab === 'receivables' || tab === 'payables' || tab === 'forex';
+  const stamp = periodLabel || (asAtReport ? asOf : '') || 'report';
   const name = (label: string) => `${label}-${stamp}.csv`;
   const base = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
   /*

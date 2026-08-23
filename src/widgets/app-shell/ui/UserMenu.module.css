@@ -1,5 +1,7 @@
 .wrapper {
   position: relative;
+  /* An avatar and a chevron have nothing to trim, so this keeps its size and the switcher gives. */
+  flex-shrink: 0;
 }
 
 .trigger {
