@@ -1,4 +1,3 @@
-import type { Company } from '@/entities/company';
 
 /**
  * Which reports exist, what they are called, and what each of them takes.
@@ -67,22 +66,6 @@ export const TAB_LABELS: Record<Tab, string> = {
   forex: 'Forex Gain/Loss',
 };
 
-/**
- * Whether this company can produce a report at all.
- *
- * Three of them exist only behind a company feature, and now that the open report comes from the
- * URL the answer matters for more than which tabs to draw: a bookmark kept after bill-wise was
- * switched off, or an address typed by hand, would otherwise open an outstandings report the
- * company no longer keeps. A company still loading is given the benefit of the doubt — bouncing off
- * a report that turns out to be perfectly valid is worse than a moment's wait.
- */
-
-export function isAvailable(tab: Tab, company: Company | null): boolean {
-  if (!company) return true;
-  if (tab === 'receivables' || tab === 'payables') return company.features.billWiseDetails;
-  if (tab === 'forex') return company.features.multiCurrency;
-  return true;
-}
 
 /**
  * The two statements the server answers a comparison for. The flag rides along on every report

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 
 import { useStackedTables } from '@/shared/hooks';
@@ -79,7 +79,7 @@ import { ForexView } from './ForexView';
 import { ProfitLossView } from './ProfitLossView';
 import { CashFlowView } from './CashFlowView';
 import { exportReport, periodOf, type LoadedReports } from './export-report';
-import { TAB_LABELS, isTab, isAvailable, usesPeriod, isComparable, type Tab } from './tabs';
+import { TAB_LABELS, isTab, usesPeriod, isComparable, type Tab } from './tabs';
 import { OutstandingsView } from './OutstandingsView';
 import styles from './ReportsPage.module.css';
 
@@ -185,8 +185,7 @@ export function ReportsPage() {
 
   /* Derived here rather than beside the raw search param, because whether a report is available
      at all depends on the company's features — see isAvailable. */
-  const tab: Tab =
-    isTab(requested) && isAvailable(requested, company) ? requested : 'balance-sheet';
+  const tab: Tab = isTab(requested) ? requested : 'balance-sheet';
 
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
@@ -939,6 +938,32 @@ export function ReportsPage() {
       )}
 
       {tab === 'forex' && forex && <ForexView forex={forex} money={money} day={day} />}
+
+      {/*
+        A report behind a company feature, asked for on a company that has not switched it on.
+
+        Nothing is fetched, so nothing draws, and the reader was left on a titled page with an empty
+        space under it. Told by the report itself would read better, but the report is exactly what
+        is absent — so it is said here, where the decision not to fetch was taken.
+
+        Keyed on the feature rather than on the report being missing, so a company that does have it
+        is not told this while its figures are still arriving.
+      */}
+      {(tab === 'receivables' || tab === 'payables') && !billWise && (
+        <p className={styles.empty}>
+          These books are not kept bill by bill, so there is nothing to age. Switch on bill-wise
+          details in <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link>{' '}
+          to track invoices one by one.
+        </p>
+      )}
+
+      {tab === 'forex' && !multiCurrency && (
+        <p className={styles.empty}>
+          These books are kept in one currency, so there is nothing to revalue. Switch on multi
+          currency in <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link>{' '}
+          to hold balances in more than one.
+        </p>
+      )}
 
       <Modal
         open={statement !== null}

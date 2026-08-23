@@ -468,10 +468,19 @@
   color: inherit;
   cursor: pointer;
   text-align: left;
+  /*
+   * Dotted, in the faintest ink, so the name carries a cue at rest without becoming a link colour.
+   * Hover alone was the affordance, and a touch screen has no hover — on a phone these names looked
+   * exactly like the text beside them and there was nothing to suggest tapping one did anything.
+   */
+  text-decoration: underline dotted;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 3px;
 }
 
 .linkCell:hover {
-  text-decoration: underline;
+  text-decoration: underline solid;
+  text-decoration-color: currentColor;
 }
 
 .linkCell:focus-visible {

@@ -130,13 +130,21 @@
 
 .figureLink {
   color: inherit;
-  text-decoration: none;
   /* Fills the cell, so the pointer finds it anywhere along the name rather than only on the word. */
   display: block;
+  /*
+   * Dotted, in the faintest ink, so the name carries a cue at rest without becoming a link colour.
+   * Hover alone was the affordance, and a touch screen has no hover — on a phone these names looked
+   * exactly like the text beside them and there was nothing to suggest tapping one did anything.
+   */
+  text-decoration: underline dotted;
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 3px;
 }
 
 .figureLink:hover {
-  text-decoration: underline;
+  text-decoration: underline solid;
+  text-decoration-color: currentColor;
 }
 
 .figureLink:focus-visible {
@@ -179,7 +187,9 @@
   color: var(--ink-faint);
 }
 
-/* The row heading is a th now, so both cells need the footing treatment. */
+/* The row heading is a th now, so both cells need the footing treatment — the padding included.
+   Without it the th was the one cell in the table with none, and "Net worth" sat hard against the
+   card's edge while every figure above it was indented. */
 .total th,
 .total td {
   padding: 0.4375rem 0.875rem;

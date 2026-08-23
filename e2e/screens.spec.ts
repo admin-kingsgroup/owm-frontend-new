@@ -456,6 +456,19 @@ test.describe('the frame', () => {
   }) => {
     await signIn(page);
 
+    /*
+      Nothing may be logged while it happens. The server answers these reports empty rather than
+      refusing them, and a screen that asked anyway would put a failure in front of a reader who
+      only followed a link.
+    */
+    const faults: string[] = [];
+    page.on('pageerror', (error) => faults.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !IGNORED_TRANSPORT.test(message.text())) {
+        faults.push(message.text());
+      }
+    });
+
     await page.goto(`/companies/${companyId}/reports?report=receivables`);
     await expect(page.getByRole('heading', { name: 'Receivables' })).toBeVisible();
     await expect(page.getByText(/not kept bill by bill/)).toBeVisible();
@@ -472,6 +485,9 @@ test.describe('the frame', () => {
     await page.goto(`/companies/${featuredId}/reports?report=receivables`);
     await expect(page.getByRole('heading', { name: 'Receivables' })).toBeVisible();
     await expect(page.getByText(/not kept bill by bill/)).toHaveCount(0);
+
+    await page.waitForLoadState('networkidle');
+    expect(faults, `opening these reported ${faults.length} fault(s)`).toEqual([]);
   });
 
   test('opens the working behind a balance on the gateway', async ({ page }) => {
@@ -495,33 +511,6 @@ test.describe('the frame', () => {
     // option, which is never visible and matched first.
     await expect(page.getByRole('heading', { level: 2, name: /Current Assets/ })).toBeVisible();
     await expect(page.locator('tbody tr')).not.toHaveCount(0);
-  });
-
-  /*
-    A report that only exists behind a company feature, asked for by address on a company that does
-    not have it. The frame must stay up and land somewhere real: the server refuses these outright
-    now, so a screen that asked anyway would show a failure for a report the reader never chose.
-  */
-  test('falls back to a real report when the address names one the company does not keep', async ({
-    page,
-  }) => {
-    const faults: string[] = [];
-    page.on('pageerror', (error) => faults.push(error.message));
-    page.on('console', (message) => {
-      if (message.type() === 'error' && !IGNORED_TRANSPORT.test(message.text())) {
-        faults.push(message.text());
-      }
-    });
-
-    await signIn(page);
-    // The plain company keeps no bills; the featured one is the company these reports belong to.
-    await page.goto(`/companies/${companyId}/reports?report=receivables`);
-
-    await expect(page.getByRole('heading', { name: 'Balance Sheet' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Receivables' })).toHaveCount(0);
-    await page.waitForLoadState('networkidle');
-
-    expect(faults, `the fallback reported ${faults.length} fault(s)`).toEqual([]);
   });
 
   test('raises a voucher from a function key, on any screen', async ({ page }) => {
