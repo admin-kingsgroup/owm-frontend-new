@@ -92,6 +92,48 @@ test.describe('reading what was reported', () => {
     await expect(page.getByLabel('Filter by company')).toBeVisible();
   });
 
+  test('the kind filter actually narrows the list, not just the address', async ({ page }) => {
+    /*
+      The test above proves the filter reaches the URL and survives a reload. It does not prove the
+      list obeys it — a screen that put the parameter in the address and went on showing
+      everything would pass it, which is the same way of being wrong as searching a report for a
+      heading that is on every report.
+
+      This raises one of each kind and then asks for one of them, so the whole chain is exercised:
+      the select, the URL, the query the page sends, the filter the service applies, and the rows
+      that come back.
+    */
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+
+    const rejection = `filter-check rejection ${Date.now()}`;
+    const uncaught = `filter-check uncaught ${Date.now()}`;
+
+    await page.evaluate((text) => {
+      void Promise.reject(new Error(text));
+    }, rejection);
+    await page.evaluate((text) => {
+      setTimeout(() => {
+        throw new Error(text);
+      }, 0);
+    }, uncaught);
+    await page.waitForTimeout(1_500);
+
+    // Unfiltered: both are there, so anything missing below is the filter and not the reporting.
+    await page.goto('/reported-errors');
+    await expect(page.getByText(rejection)).toBeVisible();
+    await expect(page.getByText(uncaught)).toBeVisible();
+
+    await page.getByLabel('Filter by kind').selectOption('UNHANDLED_REJECTION');
+    await expect(page.getByText(rejection)).toBeVisible();
+    await expect(page.getByText(uncaught), 'the other kind survived the filter').toHaveCount(0);
+
+    await page.getByLabel('Filter by kind').selectOption('UNCAUGHT');
+    await expect(page.getByText(uncaught)).toBeVisible();
+    await expect(page.getByText(rejection), 'the other kind survived the filter').toHaveCount(0);
+  });
+
   test('the button bar clears them, from the keyboard', async ({ page }) => {
     await signIn(page);
     await page.goto('/reported-errors?kind=RENDER');
