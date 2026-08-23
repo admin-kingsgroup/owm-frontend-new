@@ -296,6 +296,16 @@ test.describe('the frame', () => {
     await expect(page).toHaveURL(/report=monthly-summary/);
     await expect(page).toHaveURL(/groupId=/);
     await expect(page.getByRole('heading', { name: 'Monthly Summary' })).toBeVisible();
+
+    /*
+      And on the group that was clicked, with figures under it. A link that opens the right report
+      about the wrong subject — or about the right one with nothing in it — passes a heading check
+      and fails the reader, which is the whole fault this link was added to fix.
+    */
+    // The report's own title, not the picker above it — the picker holds the same words in an
+    // option, which is never visible and matched first.
+    await expect(page.getByRole('heading', { level: 2, name: /Current Assets/ })).toBeVisible();
+    await expect(page.locator('tbody tr')).not.toHaveCount(0);
   });
 
   /*

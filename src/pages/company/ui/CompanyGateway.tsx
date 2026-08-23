@@ -217,7 +217,18 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                           <td>
                             <Link
                               className={styles.figureLink}
-                              to={`${base}/reports?report=monthly-summary&groupId=${node.id}`}
+                              to={
+                                /*
+                                  A row is usually a group and occasionally an account — the node
+                                  says which, and the two are asked for by different parameters.
+                                  Sending an account's id as a group's was the first version of
+                                  this, and it would have opened a summary of nothing on any
+                                  company whose chart puts an account at the top level.
+                                */
+                                node.kind === 'ledger'
+                                  ? `${base}/reports?report=ledger&ledgerId=${node.id}`
+                                  : `${base}/reports?report=monthly-summary&groupId=${node.id}`
+                              }
                             >
                               {node.name}
                             </Link>

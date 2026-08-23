@@ -29,6 +29,21 @@ const balanceSheet = {
       balance: '1842650.00',
       balanceSide: 'DEBIT' as const,
     },
+    /*
+      An account rather than a group, which a chart is free to put at this level. It is here because
+      the two are opened by different reports and the row has to tell them apart — the first version
+      of that link sent every row's id as a group's.
+    */
+    {
+      kind: 'ledger' as const,
+      id: 'a2',
+      code: 'PETTY',
+      name: 'Petty Cash',
+      debit: '0',
+      credit: '0',
+      balance: '5000.00',
+      balanceSide: 'DEBIT' as const,
+    },
   ],
   liabilities: [
     {
@@ -152,10 +167,23 @@ describe('CompanyGateway', () => {
     expect(await screen.findByText('Current Assets')).toBeTruthy();
     expect(screen.getByText('Assets')).toBeTruthy();
     expect(screen.getByText('Liabilities')).toBeTruthy();
-    // The side is stated, not left to the sign in front of the figure.
-    expect(screen.getByText('Dr')).toBeTruthy();
-    expect(screen.getByText('Cr')).toBeTruthy();
+    // The side is stated on every row, not left to the sign in front of the figure. Counted rather
+    // than matched once: the holdings side now carries more than one row.
+    expect(screen.getAllByText('Dr').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cr').length).toBeGreaterThan(0);
     expect(screen.getByText('Net worth')).toBeTruthy();
+  });
+
+  it('opens each balance in the report that can actually show it', async () => {
+    renderGateway();
+
+    expect((await screen.findByRole('link', { name: 'Current Assets' })).getAttribute('href')).toBe(
+      '/companies/c1/reports?report=monthly-summary&groupId=a1',
+    );
+    // An account has no group summary; its statement is the ledger report.
+    expect(screen.getByRole('link', { name: 'Petty Cash' }).getAttribute('href')).toBe(
+      '/companies/c1/reports?report=ledger&ledgerId=a2',
+    );
   });
 
   it('stays quiet when there is nothing outstanding', async () => {
