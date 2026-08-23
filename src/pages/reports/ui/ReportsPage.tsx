@@ -79,7 +79,7 @@ import { ForexView } from './ForexView';
 import { ProfitLossView } from './ProfitLossView';
 import { CashFlowView } from './CashFlowView';
 import { exportReport, periodOf, type LoadedReports } from './export-report';
-import { TAB_LABELS, isTab, usesPeriod, isComparable, type Tab } from './tabs';
+import { TAB_LABELS, isTab, usesPeriod, isComparable, showsMoney, type Tab } from './tabs';
 import { OutstandingsView } from './OutstandingsView';
 import styles from './ReportsPage.module.css';
 
@@ -672,7 +672,7 @@ export function ReportsPage() {
           they are. A statement, not a form: this is a link rather than a switch, and it says what
           is true now and what pressing it will do.
         */}
-        {!loading && !loadError && (
+        {!loading && !loadError && showsMoney(tab) && (
           <button
             type="button"
             className={styles.zeroToggle}

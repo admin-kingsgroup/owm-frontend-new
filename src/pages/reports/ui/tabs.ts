@@ -1,4 +1,3 @@
-
 /**
  * Which reports exist, what they are called, and what each of them takes.
  *
@@ -66,7 +65,6 @@ export const TAB_LABELS: Record<Tab, string> = {
   forex: 'Forex Gain/Loss',
 };
 
-
 /**
  * The two statements the server answers a comparison for. The flag rides along on every report
  * request, but the rest ignore it, so offering the control on those reports would be offering a
@@ -81,6 +79,22 @@ export const TAB_LABELS: Record<Tab, string> = {
  * the dates of the vouchers changed, and offering the same From/To boxes would be one control
  * meaning two different things depending on which tab is open.
  */
+/**
+ * Whether this report writes any money at all.
+ *
+ * Two of them do not. The audit trail is a list of who changed what and when, and the exception
+ * report is a list of sentences — neither has a figure that could be nil, so the control offering
+ * to reveal nil figures does nothing on either. A control that cannot change anything is worse
+ * than no control: it teaches the reader that the controls on this screen are decorative.
+ *
+ * Everywhere else it stays, even where today's data happens to hold no zeros — whether a statement
+ * has a nil row is a property of the books, not of the report, and a control that came and went
+ * with the figures would be its own kind of confusing.
+ */
+export function showsMoney(tab: Tab): boolean {
+  return tab !== 'audit' && tab !== 'exceptions';
+}
+
 export function usesPeriod(tab: Tab): boolean {
   return tab !== 'audit';
 }

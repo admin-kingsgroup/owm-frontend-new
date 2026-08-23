@@ -3,6 +3,53 @@
   flex-direction: column;
   gap: 1.25rem;
   width: 100%;
+  /*
+    Fills the pane it sits in, so the grid below can reach the bottom of the frame rather than
+    leaving a third of the screen blank under a short statement. `min-height` rather than `height`:
+    a statement longer than the pane still grows past it and scrolls, as it always did.
+  */
+  min-height: 100%;
+}
+
+/*
+  The last panel on the page takes the room left over.
+
+  A single-grid report — a trial balance, a register, a day book — was a small card floating in an
+  empty pane, which is what made the screen read as unfinished. It now reaches the bottom, and the
+  grid inside it reaches the bottom of the card, so the rules and the totals line sit where the eye
+  expects the foot of a statement to be.
+
+  Deliberately `> .panel:last-child`, so it matches only a panel that is a direct child of the page.
+  The reports that stack two columns or put a chart above the figures wrap those in a container of
+  their own, and are left exactly as they were.
+*/
+/*
+  `:last-of-type` alongside `:last-child` because the drill-down modal renders inline at the end of
+  the page when it opens. On `:last-child` alone the statement behind it would shrink back to its
+  natural height the moment the modal appeared, and grow again when it closed — a shift visible
+  through a backdrop that is only part opaque. The modal is a div; these are sections.
+*/
+.page > section.panel:last-child,
+.page > section.panel:last-of-type {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The two-column statements — Balance Sheet, Profit & Loss — reach the bottom too, and their two
+   cards match each other rather than ending wherever their own rows happen to stop. */
+.page > .twoColumn:last-child,
+.page > div.twoColumn:last-of-type {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.page > section.panel:last-child > .tableWrap,
+.page > section.panel:last-of-type > .tableWrap {
+  flex: 1;
+  min-height: 0;
+  /* It is bounded by the panel now, so the blanket cap below would only re-introduce the gap. */
+  max-height: none;
 }
 
 .header {
