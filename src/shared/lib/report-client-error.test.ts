@@ -286,3 +286,54 @@ describe('client error reporting', () => {
     }
   });
 });
+
+/**
+ * The reference is what a person is told to quote, so minting it is the one step that must survive
+ * anything. `randomUUID` needs a secure context and `getRandomValues` does not, so the two are not
+ * interchangeable and the guard has to cover both.
+ */
+describe('minting a reference', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('falls back to random bytes where randomUUID is unavailable', async () => {
+    // Plain HTTP: crypto is there, the secure-context-only method is not.
+    vi.stubGlobal('crypto', { getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) });
+    const { reportClientError } = await freshReporter();
+
+    const reference = reportClientError({ kind: 'UNCAUGHT', error: new Error('no randomUUID') });
+
+    expect(reference).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('still returns a usable reference with no crypto at all', async () => {
+    /*
+      This threw before, out of a function documented as never throwing — which would have turned
+      one fault into two, from inside a window handler where the second has nowhere to go.
+    */
+    vi.stubGlobal('crypto', undefined);
+    const { reportClientError } = await freshReporter();
+
+    const reference = reportClientError({ kind: 'RENDER', error: new Error('no crypto') });
+
+    expect(reference).toBeTruthy();
+    expect(reference.length).toBeGreaterThan(8);
+  });
+
+  it('does not throw when the fault itself is what broke crypto', async () => {
+    vi.stubGlobal('crypto', undefined);
+    const { reportClientError } = await freshReporter();
+
+    expect(() => reportClientError({ kind: 'UNHANDLED_REJECTION', error: 'boom' })).not.toThrow();
+  });
+});

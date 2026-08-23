@@ -57,18 +57,33 @@ function refill(now: number): void {
 }
 
 function uuid(): string {
-  // Available in every secure context, which the app always is — the fallback is only so that a
+  // Available in every secure context, which the app always is — the fallbacks are only so that a
   // missing API degrades to a usable reference rather than to no report at all.
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
 
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  /*
+    Guarded the same way as the call above, which it was not: `randomUUID` needs a secure context
+    while `getRandomValues` does not, so plain HTTP lands here — but where `crypto` was missing
+    altogether this threw, out of a function whose whole contract is that reporting a fault never
+    raises a second one.
+  */
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  /*
+    No crypto at all. `Math.random` is the wrong tool for a secret and the right one here: this is
+    a correlation id, quoted back by someone saying "it broke, here is the code", and a reference
+    nobody can quote is worth less than one that repeats every few million faults.
+  */
+  return `r-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 12)}`;
 }
 
 function describe(error: unknown): { message: string; stack?: string } {

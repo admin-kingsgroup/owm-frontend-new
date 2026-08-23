@@ -45,15 +45,25 @@ export default defineConfig({
       env: { PORT: String(API_PORT), NODE_ENV: 'development' },
       url: `http://localhost:${API_PORT}/api/v1/health`,
       /*
-        Reused when one is already listening. A run that aborts part-way leaves this process behind
-        — Playwright kills what it spawned, but not always the grandchild a package runner starts —
-        and refusing to reuse it made the next run fail on the port rather than on anything real.
+        Never inherited, and this is the more painful half of a real trade.
 
-        Reuse is safe because the seed is idempotent both ways: against a database this harness
-        already seeded the account exists and simply signs in, and against a fresh one the first
-        account bootstraps as administrator.
+        Reuse was here because an aborted run leaves this process behind — Playwright kills what it
+        spawned, but not always the grandchild a package runner starts — so the next run would fail
+        on the port rather than on anything real. What that bought was worse: the run inherits a
+        server it does not own, and when the aborted run's process tree is finally reaped, that
+        server dies *mid-suite*. Every request after it fails, the app treats an unreachable API as
+        nobody being signed in, and the rest of the run fails as a missing button or a heading that
+        never appeared. It reads exactly like an application bug. It cost three separate diagnoses
+        before the cause was the harness both times.
+
+        Refusing to inherit turns that into "port already in use" before a single test runs — which
+        is the same underlying problem, said out loud, one process to kill. A failure at start-up
+        that names itself beats a failure halfway through that blames the product.
+
+        It also gives every run its own database rather than the last run's, so what a screen shows
+        is what this run seeded.
       */
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
       // The in-memory replica set downloads a mongod on first use.
       timeout: 240_000,
@@ -64,7 +74,8 @@ export default defineConfig({
       command: 'npm run dev -- --port 5173 --strictPort',
       env: { VITE_API_BASE_URL: `http://localhost:${API_PORT}/api/v1` },
       url: 'http://localhost:5173',
-      reuseExistingServer: true,
+      // Same reasoning as the API above: owned by this run, or not used.
+      reuseExistingServer: false,
       timeout: 120_000,
       stdout: 'ignore',
       stderr: 'pipe',

@@ -66,8 +66,33 @@ export function KgPage() {
   }, [companyId]);
 
   if (!companyId) return null;
-  if (loading) return <Loading label="Loading KG Business…" />;
-  if (error) return <p className={styles.error}>{error}</p>;
+
+  /*
+    "KG Business", not "Portfolio", until the company is known to be one.
+
+    The screen used to replace itself with a bare spinner, then a bare message, so whichever the
+    reader got there was nothing naming what they had opened. The menu's own wording is the honest
+    heading here: it names the screen without claiming anything about the company, which this state
+    has not yet read.
+  */
+  if (loading || error)
+    return (
+      <div className={styles.page}>
+        <div className={styles.header}>
+          <div>
+            <h1 className={styles.title}>KG Business</h1>
+          </div>
+        </div>
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : (
+          <Loading label="Loading KG Business…" />
+        )}
+      </div>
+    );
+
   if (!company) return null;
 
   /**
