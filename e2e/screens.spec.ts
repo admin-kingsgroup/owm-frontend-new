@@ -142,6 +142,63 @@ test.describe('the frame', () => {
     await expect(page.getByRole('heading', { name: 'Trial Balance' })).toBeVisible();
   });
 
+  /*
+    The ageing on this screen moves every day a bill goes unpaid, and roughly four times a year one
+    crosses a band and a five-figure sum jumps from one bucket to the next. The visual check has a
+    one percent pixel tolerance, so it absorbs that quietly — which means it is not what is holding
+    these figures up, and something has to be.
+
+    These two invariants hold whatever today's date is: the bands are a partition of the same bills
+    the table lists, so they must add up to the total; and a bill's outstanding is what is left of
+    it after what has been settled. Either one breaking is a real fault in the report rather than
+    the calendar moving.
+  */
+  test('adds up: the ageing bands total the bills, and each bill nets off its settlement', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${featuredId}/reports?report=receivables`);
+    await expect(page.getByRole('heading', { name: 'Receivables' })).toBeVisible();
+
+    // Read the way a person reads them, so this checks the screen rather than the API behind it.
+    const amount = (text: string | null) => Number((text ?? '').replace(/[^0-9.-]/g, ''));
+
+    const total = amount(await page.locator('[class*="bucketTotal"]').first().textContent());
+    expect(total, 'the total is missing or zero').toBeGreaterThan(0);
+
+    /*
+      The figures themselves, not the tiles around them. Matching the tile swept up the element that
+      wraps all of them, whose text is every band run together — which parses to nothing and reads
+      as though the report were broken when it was the selector.
+    */
+    const figures = await page.locator('[class*="bucketAmount"]').allTextContents();
+    expect(figures.length, 'the ageing bands are missing').toBeGreaterThan(1);
+
+    // The last is the total tile, which is what the bands are being checked against.
+    const banded = figures.slice(0, -1).reduce((sum, figure) => sum + amount(figure), 0);
+    expect(banded, 'the ageing bands do not add up to the total').toBeCloseTo(total, 2);
+
+    const rows = page.locator('tbody tr');
+    const count = await rows.count();
+    expect(count, 'no bills to check').toBeGreaterThan(0);
+
+    let outstanding = 0;
+    for (let index = 0; index < count; index += 1) {
+      const cells = rows.nth(index).locator('td');
+      const billed = amount(await cells.nth(3).textContent());
+      const settled = amount(await cells.nth(4).textContent());
+      const left = amount(await cells.nth(5).textContent());
+
+      expect(left, `bill ${index + 1} does not net off what was settled`).toBeCloseTo(
+        billed - settled,
+        2,
+      );
+      outstanding += left;
+    }
+
+    expect(outstanding, 'the bills do not add up to the total').toBeCloseTo(total, 2);
+  });
+
   test('opens a menu with its mnemonic and goes where the item points', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);

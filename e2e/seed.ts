@@ -196,7 +196,21 @@ export async function seedFeatured(token: string): Promise<string> {
   const already = existing.body?.data?.find(
     (company: { code: string }) => company.code === 'SHOT02',
   );
-  if (already) return already.id as string;
+  /*
+    Reusing an existing company is what makes a re-run cheap, but only if that company is actually
+    finished. A run that fails partway now throws, which leaves the company created and its books
+    half written — and the next run would hand that back and report success over it, which is the
+    same silence this seeding was just fixed for. So the reuse is conditional on it having books.
+  */
+  if (already) {
+    const vouchers = await call(`/companies/${already.id}/vouchers?page=1&limit=1`, { token });
+    const total = (vouchers.body?.data as { total?: number } | undefined)?.total ?? 0;
+    if (total > 0) return already.id as string;
+
+    throw new Error(
+      `Company SHOT02 exists but has no vouchers — a previous run failed partway. Drop it and run again.`,
+    );
+  }
 
   const year = new Date().getUTCFullYear();
   const created = await call('/companies', {
