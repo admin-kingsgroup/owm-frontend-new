@@ -830,7 +830,7 @@ export function ReportsPage() {
 
       {/*
         No tab strip. Nine of them across the top was the thing that made this screen unreadable,
-        and the menu bar now lists every report under a heading, with Alt+B, Alt+P and Alt+D for the
+        and the menu bar now lists every report under a heading, with Alt+B, Alt+P and Alt+K for the
         three reached most often. The heading above says which one is open.
       */}
 

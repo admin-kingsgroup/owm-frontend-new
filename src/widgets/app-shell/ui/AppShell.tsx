@@ -101,6 +101,14 @@ export function AppShell() {
   /* The seed version re-reads the list after a masters sync — see useVoucherTypes. */
   const voucherTypes = useVoucherTypes(companyId, company?.seedVersion);
 
+  /**
+   * Whether this company measures other people's businesses rather than keeping its own books.
+   *
+   * Read once and shared: the menus, the strip and the data-entry keys all turn on it, and three
+   * separate `company?.type === 'ANALYTICS'` checks is three places for the answer to drift.
+   */
+  const isPortfolio = company?.type === 'ANALYTICS';
+
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const menus = useMemo(
     () => buildMenus(companyId, company, here, isAdmin, voucherTypes),
@@ -151,34 +159,60 @@ export function AppShell() {
       },
 
       { group: 'Go to', key: 'Alt+O', label: 'Dashboard', onSelect: go(base) },
-      ...(company?.type === 'ANALYTICS'
-        ? [{ group: 'Go to', key: 'Alt+V', label: 'Portfolio', onSelect: go(`${base}/kg`) }]
-        : [{ group: 'Go to', key: 'Alt+V', label: 'Vouchers', onSelect: go(`${base}/vouchers`) }]),
-      {
-        group: 'Go to',
-        key: 'Alt+B',
-        label: 'Balance Sheet',
-        onSelect: go(`${base}/reports?report=balance-sheet${reportPeriod}`),
-      },
-      {
-        group: 'Go to',
-        key: 'Alt+P',
-        label: 'Profit & Loss',
-        onSelect: go(`${base}/reports?report=profit-loss${reportPeriod}`),
-      },
-      {
-        /*
-          Alt+K, not Alt+D. Alt+D opens the Dashboards menu — every menu on the bar answers to its
-          own initial, and the menu bar claims the combination first, so leaving Day Book on Alt+D
-          left two handlers racing for one key. K is the free letter in the name.
-        */
-        group: 'Go to',
-        key: 'Alt+K',
-        label: 'Day Book',
-        onSelect: go(`${base}/reports?report=day-book${reportPeriod}`),
-      },
+      ...(isPortfolio
+        ? [
+            {
+              group: 'Go to' as const,
+              key: 'Alt+V',
+              label: 'Portfolio',
+              onSelect: go(`${base}/kg`),
+            },
+          ]
+        : [
+            {
+              group: 'Go to' as const,
+              key: 'Alt+V',
+              label: 'Vouchers',
+              onSelect: go(`${base}/vouchers`),
+            },
+          ]),
+      /*
+        The three statements, for a company that keeps books.
+
+        An analytics workspace posts nothing and never will — no voucher reaches it, so its balance
+        sheet, its profit and loss and its day book are permanently empty. Offering all three from
+        the strip on every screen was three keys that could only ever open a blank statement, and
+        a shortcut that reliably shows nothing teaches that the strip is not worth reading.
+      */
+      ...(isPortfolio
+        ? []
+        : [
+            {
+              group: 'Go to' as const,
+              key: 'Alt+B',
+              label: 'Balance Sheet',
+              onSelect: go(`${base}/reports?report=balance-sheet${reportPeriod}`),
+            },
+            {
+              group: 'Go to' as const,
+              key: 'Alt+P',
+              label: 'Profit & Loss',
+              onSelect: go(`${base}/reports?report=profit-loss${reportPeriod}`),
+            },
+            {
+              /*
+                Alt+K, not Alt+D. Alt+D opens the Dashboards menu — every menu on the bar answers to
+                its own initial, and the menu bar claims the combination first, so leaving Day Book
+                on Alt+D left two handlers racing for one key. K is the free letter in the name.
+              */
+              group: 'Go to' as const,
+              key: 'Alt+K',
+              label: 'Day Book',
+              onSelect: go(`${base}/reports?report=day-book${reportPeriod}`),
+            },
+          ]),
     ];
-  }, [companyId, company, navigate, reportPeriod]);
+  }, [companyId, isPortfolio, navigate, reportPeriod]);
 
   /**
    * Every document this company can raise, from wherever you are.
@@ -209,7 +243,7 @@ export function AppShell() {
    * it gets none of them.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
-    if (!companyId || company?.type === 'ANALYTICS') return [];
+    if (!companyId || isPortfolio) return [];
     const base = `/companies/${companyId}`;
     const raise = (code: string) => () => navigate(`${base}/vouchers?new=${code}`);
 
@@ -240,7 +274,7 @@ export function AppShell() {
         onSelect: raise(type.code),
       };
     });
-  }, [companyId, company?.type, navigate, voucherTypes]);
+  }, [companyId, isPortfolio, navigate, voucherTypes]);
 
   /*
     The page keeps first claim on a key: a screen that binds F8 to its own meaning must not have the

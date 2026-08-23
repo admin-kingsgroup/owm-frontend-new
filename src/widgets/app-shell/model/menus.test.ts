@@ -148,3 +148,63 @@ describe("menus built from the company's voucher types", () => {
     expect(links).toContain('/companies/c1/reports?report=register&type=SALES&from=2027-04-01');
   });
 });
+
+/**
+ * An analytics workspace measures other people's businesses and keeps no books of its own — no
+ * voucher can ever reach it. Every accounting statement it could be offered is therefore one that
+ * will be blank forever, and a menu bar that reliably opens blank screens is one nobody reads.
+ */
+describe('the menus an analytics workspace gets', () => {
+  const portfolio = company({ type: 'ANALYTICS' as CompanyType });
+  const menus = buildMenus('c1', portfolio, '/companies/c1', false, []);
+  const ids = menus.map((menu) => menu.id);
+  const every = menus.flatMap((menu) => menu.items);
+
+  it('has no Reports menu at all', () => {
+    expect(ids).not.toContain('reports');
+    // And the bar is still a bar — dropping one menu must not drop the rest.
+    expect(ids).toEqual(expect.arrayContaining(['dashboards', 'company', 'masters', 'help']));
+  });
+
+  it('offers the portfolio under Analysis, and nothing derived from statements it does not have', () => {
+    const analysis = menus.find((menu) => menu.id === 'analysis')?.items ?? [];
+
+    expect(analysis.map((item) => item.label)).toEqual(['Portfolio valuation']);
+  });
+
+  it('does not offer to verify books that do not exist', () => {
+    const labels = every.map((item) => item.label);
+
+    expect(labels).not.toContain('Verify books — trial balance');
+    expect(labels).not.toContain('Opening balances');
+  });
+
+  it('opens no statement from anywhere on the bar', () => {
+    // The whole bar, not just Reports — the same links used to be reachable from three menus.
+    const reports = every
+      .map((item) => /[?&]report=([^&]+)/.exec(item.to)?.[1])
+      .filter((id): id is string => id !== undefined);
+
+    /*
+      The audit trail is the exception, and it earns it: it records account groups and financial
+      years as well as vouchers, and an analytics workspace is seeded with both. Everything else is
+      drawn from postings it will never have.
+    */
+    expect(reports).toEqual(['audit']);
+  });
+
+  it('still names the dashboard for what it is', () => {
+    const dashboards = menus.find((menu) => menu.id === 'dashboards')?.items ?? [];
+
+    expect(dashboards[0]?.label).toBe('Portfolio dashboard');
+  });
+
+  it('leaves a company that does keep books with every one of them', () => {
+    const books = buildMenus('c1', company(), '/companies/c1', false, []);
+
+    expect(books.map((menu) => menu.id)).toContain('reports');
+    expect(
+      books.flatMap((menu) => menu.items).filter((item) => item.to.includes('report=')).length,
+    ).toBeGreaterThan(8);
+  });
+});

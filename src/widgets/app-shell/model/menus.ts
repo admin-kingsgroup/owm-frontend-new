@@ -182,82 +182,95 @@ export function buildMenus(
             })),
           ],
     },
-    {
-      id: 'reports',
-      label: 'Reports',
-      mnemonic: 'R',
-      items: [
-        {
-          label: 'Balance Sheet',
-          to: `${base}/reports?report=balance-sheet${period}`,
-          hint: 'Alt+B',
-        },
-        {
-          label: 'Profit & Loss',
-          to: `${base}/reports?report=profit-loss${period}`,
-          hint: 'Alt+P',
-        },
-        { label: 'Trial Balance', to: `${base}/reports?report=trial-balance${period}` },
-        { label: 'Cash Flow', to: `${base}/reports?report=cash-flow${period}` },
-        {
-          label: 'Receipts & Payments',
-          to: `${base}/reports?report=receipts-payments${period}`,
-        },
-        {
-          label: 'Day Book',
-          to: `${base}/reports?report=day-book${period}`,
-          hint: 'Alt+K',
-          section: 'Books & registers',
-        },
-        /*
+    /*
+      Statements, for a company that keeps books.
+
+      Dropped whole for an analytics workspace. Nothing is ever posted there — no voucher reaches
+      it, by design — so every one of the twenty-odd entries below would open a statement that is
+      permanently empty. The note at the top of this file rules out a menu that lists destinations
+      the product does not have; a menu that lists destinations which exist and can only ever be
+      blank is the same lesson learnt more slowly.
+    */
+    ...(isPortfolio
+      ? []
+      : [
+          {
+            id: 'reports',
+            label: 'Reports',
+            mnemonic: 'R',
+            items: [
+              {
+                label: 'Balance Sheet',
+                to: `${base}/reports?report=balance-sheet${period}`,
+                hint: 'Alt+B',
+              },
+              {
+                label: 'Profit & Loss',
+                to: `${base}/reports?report=profit-loss${period}`,
+                hint: 'Alt+P',
+              },
+              { label: 'Trial Balance', to: `${base}/reports?report=trial-balance${period}` },
+              { label: 'Cash Flow', to: `${base}/reports?report=cash-flow${period}` },
+              {
+                label: 'Receipts & Payments',
+                to: `${base}/reports?report=receipts-payments${period}`,
+              },
+              {
+                label: 'Day Book',
+                to: `${base}/reports?report=day-book${period}`,
+                hint: 'Alt+K',
+                section: 'Books & registers',
+              },
+              /*
           A register per voucher type, from the company's own list rather than a written-out eight:
           a fixed list would offer registers for types a company has deleted and hide any it has
           added. The reports screen keeps its picker, which is what answers while these load.
         */
-        ...orderedTypes.map((type, index) => ({
-          label: `${type.name} Register`,
-          to: `${base}/reports?report=register&type=${type.code}${period}`,
-          ...(index === 0 ? { section: 'Registers' } : {}),
-        })),
-        { label: 'Ledger — account statement', to: `${base}/reports?report=ledger${period}` },
-        { label: 'Cash Book', to: `${base}/reports?report=cash-book${period}` },
-        { label: 'Bank Book', to: `${base}/reports?report=bank-book${period}` },
-        { label: 'Group Summary', to: `${base}/reports?report=group-summary${period}` },
-        { label: 'Monthly Summary', to: `${base}/reports?report=monthly-summary${period}` },
-        {
-          label: 'Bank Reconciliation',
-          to: `${base}/reports?report=bank-reconciliation${period}`,
-          section: 'Reconcile',
-        },
-        ...(features?.billWiseDetails
-          ? [
+              ...orderedTypes.map((type, index) => ({
+                label: `${type.name} Register`,
+                to: `${base}/reports?report=register&type=${type.code}${period}`,
+                ...(index === 0 ? { section: 'Registers' } : {}),
+              })),
+              { label: 'Ledger — account statement', to: `${base}/reports?report=ledger${period}` },
+              { label: 'Cash Book', to: `${base}/reports?report=cash-book${period}` },
+              { label: 'Bank Book', to: `${base}/reports?report=bank-book${period}` },
+              { label: 'Group Summary', to: `${base}/reports?report=group-summary${period}` },
+              { label: 'Monthly Summary', to: `${base}/reports?report=monthly-summary${period}` },
               {
-                label: 'Statement of Account',
-                to: `${base}/reports?report=statement-of-account${period}`,
+                label: 'Bank Reconciliation',
+                to: `${base}/reports?report=bank-reconciliation${period}`,
+                section: 'Reconcile',
               },
-            ]
-          : []),
-        ...(features?.billWiseDetails
-          ? [
-              {
-                label: 'Receivables',
-                to: `${base}/reports?report=receivables${period}`,
-                section: 'Outstanding',
-              },
-              { label: 'Payables', to: `${base}/reports?report=payables${period}` },
-            ]
-          : []),
-        ...(features?.multiCurrency
-          ? [
-              {
-                label: 'Forex Gain/Loss',
-                to: `${base}/reports?report=forex${period}`,
-                section: 'Currency',
-              },
-            ]
-          : []),
-      ],
-    },
+              ...(features?.billWiseDetails
+                ? [
+                    {
+                      label: 'Statement of Account',
+                      to: `${base}/reports?report=statement-of-account${period}`,
+                    },
+                  ]
+                : []),
+              ...(features?.billWiseDetails
+                ? [
+                    {
+                      label: 'Receivables',
+                      to: `${base}/reports?report=receivables${period}`,
+                      section: 'Outstanding',
+                    },
+                    { label: 'Payables', to: `${base}/reports?report=payables${period}` },
+                  ]
+                : []),
+              ...(features?.multiCurrency
+                ? [
+                    {
+                      label: 'Forex Gain/Loss',
+                      to: `${base}/reports?report=forex${period}`,
+                      section: 'Currency',
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]),
     {
       id: 'analysis',
       label: 'Analysis',
@@ -268,13 +281,20 @@ export function buildMenus(
           These read across the statements rather than being one of them — funds flow sets the
           balance sheet's two ends against each other, ratios divide it by the profit and loss, and
           the exception list walks the lot. Reports is already the longest menu in the product.
+
+          All three are derived from statements an analytics workspace does not have, so it gets
+          the portfolio above and nothing else here.
         */
-        { label: 'Funds Flow', to: `${base}/reports?report=funds-flow${period}` },
-        { label: 'Ratios', to: `${base}/reports?report=ratios${period}` },
-        {
-          label: 'Exceptions — what to check before signing',
-          to: `${base}/reports?report=exceptions${period}`,
-        },
+        ...(isPortfolio
+          ? []
+          : [
+              { label: 'Funds Flow', to: `${base}/reports?report=funds-flow${period}` },
+              { label: 'Ratios', to: `${base}/reports?report=ratios${period}` },
+              {
+                label: 'Exceptions — what to check before signing',
+                to: `${base}/reports?report=exceptions${period}`,
+              },
+            ]),
         /*
           The group view — every company's cash, profit and draft backlog side by side — is the
           selection screen, so it is reached the way every company is: the switcher, top right.
@@ -294,11 +314,20 @@ export function buildMenus(
         looks.
       */
       items: [
-        {
-          label: 'Verify books — trial balance',
-          to: `${base}/reports?report=trial-balance${period}`,
-        },
-        { label: 'Opening balances', to: `${base}?tab=accounts` },
+        /*
+          Both of these are about ledgers, and an analytics workspace is seeded with the group tree
+          and no ledgers at all — there is no trial balance to verify and nothing to open a balance
+          on. What follows applies to any company.
+        */
+        ...(isPortfolio
+          ? []
+          : [
+              {
+                label: 'Verify books — trial balance',
+                to: `${base}/reports?report=trial-balance${period}`,
+              },
+              { label: 'Opening balances', to: `${base}?tab=accounts` },
+            ]),
         { label: 'Import & export masters', to: `${base}?tab=import-export` },
         { label: 'Close or reopen a financial year', to: `${base}?tab=financial-years` },
         {
