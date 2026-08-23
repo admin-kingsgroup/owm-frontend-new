@@ -203,8 +203,25 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                       </tr>
                     ) : (
                       section.nodes.map((node) => (
-                        <tr key={node.id}>
-                          <td>{node.name}</td>
+                        <tr key={node.id} className={styles.figureRow}>
+                          {/*
+                            Every other figure in this product opens the working behind it, and
+                            these were the exception — the one place a reader could see a number
+                            they wanted to question and had to go and find the report themselves.
+
+                            The link sits on the name rather than the amount: it is the reliable
+                            place to click, it reads as a link, and it keeps the amount column
+                            scanning as a column of figures. The row lights up so the whole line
+                            still reads as the thing being opened.
+                          */}
+                          <td>
+                            <Link
+                              className={styles.figureLink}
+                              to={`${base}/reports?report=monthly-summary&groupId=${node.id}`}
+                            >
+                              {node.name}
+                            </Link>
+                          </td>
                           <td className={styles.amount}>
                             {money(node.balance)}{' '}
                             <span className={styles.side}>

@@ -280,6 +280,51 @@ test.describe('the frame', () => {
     }
   });
 
+  /*
+    The balances on the gateway are the one place a reader meets a figure they might want to
+    question. Every other number in the product opens the working behind it; these did not, and the
+    reader had to go and find the report themselves.
+  */
+  test('opens the working behind a balance on the gateway', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+
+    const row = page.getByRole('link', { name: 'Current Assets' });
+    await expect(row).toBeVisible();
+    await row.click();
+
+    await expect(page).toHaveURL(/report=monthly-summary/);
+    await expect(page).toHaveURL(/groupId=/);
+    await expect(page.getByRole('heading', { name: 'Monthly Summary' })).toBeVisible();
+  });
+
+  /*
+    A report that only exists behind a company feature, asked for by address on a company that does
+    not have it. The frame must stay up and land somewhere real: the server refuses these outright
+    now, so a screen that asked anyway would show a failure for a report the reader never chose.
+  */
+  test('falls back to a real report when the address names one the company does not keep', async ({
+    page,
+  }) => {
+    const faults: string[] = [];
+    page.on('pageerror', (error) => faults.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !IGNORED_TRANSPORT.test(message.text())) {
+        faults.push(message.text());
+      }
+    });
+
+    await signIn(page);
+    // The plain company keeps no bills; the featured one is the company these reports belong to.
+    await page.goto(`/companies/${companyId}/reports?report=receivables`);
+
+    await expect(page.getByRole('heading', { name: 'Balance Sheet' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Receivables' })).toHaveCount(0);
+    await page.waitForLoadState('networkidle');
+
+    expect(faults, `the fallback reported ${faults.length} fault(s)`).toEqual([]);
+  });
+
   test('raises a voucher from a function key, on any screen', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}/reports`);

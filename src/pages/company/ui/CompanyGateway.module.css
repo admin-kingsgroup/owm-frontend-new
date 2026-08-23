@@ -126,6 +126,35 @@
   border-bottom: none;
 }
 
+/*
+ * A balance that opens the working behind it.
+ *
+ * The link takes the row's own colour rather than a link colour: a column of group names all in
+ * blue would read as a list of links rather than as a statement, which is the wrong emphasis for
+ * the one panel meant to be scanned for figures. The row lighting up on hover is what says it can
+ * be opened, and the focus ring is what says so to a keyboard.
+ */
+.figureRow:hover {
+  background-color: var(--hover-tint);
+}
+
+.figureLink {
+  color: inherit;
+  text-decoration: none;
+  /* Fills the cell, so the pointer finds it anywhere along the name rather than only on the word. */
+  display: block;
+}
+
+.figureLink:hover {
+  text-decoration: underline;
+}
+
+.figureLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .amount {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
