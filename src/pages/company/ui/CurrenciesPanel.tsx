@@ -132,8 +132,8 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
       <div>
         <h2 className={styles.title}>Currencies</h2>
         <p className={styles.hint}>
-          Everything is reported in {baseCurrency}, this company&apos;s base currency. Add the
-          other currencies it transacts in, then a rate for each date you post on.
+          Everything is reported in {baseCurrency}, this company&apos;s base currency. Add the other
+          currencies it transacts in, then a rate for each date you post on.
         </p>
       </div>
       {!loading && !addingCurrency && (

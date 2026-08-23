@@ -24,6 +24,7 @@ import {
   getCashBook,
   getBankBook,
   getGroupSummary,
+  type GroupSummaryReport,
 } from '@/entities/report';
 import type {
   BalanceSheetReport,
@@ -54,10 +55,9 @@ import { reconcileEntry } from '@/entities/voucher';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Loading, Modal } from '@/shared/ui';
-import { cn, formatMoney, getErrorMessage, localeFor, toCalendarDay } from '@/shared/lib';
+import { formatMoney, getErrorMessage, localeFor, toCalendarDay } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
-import { ReportTree } from './ReportTree';
 import { LedgerStatement } from './LedgerStatement';
 import { SubjectPicker } from './SubjectPicker';
 import { BankReconciliationView } from './BankReconciliationView';
@@ -71,18 +71,15 @@ import { TrialBalanceView } from './TrialBalanceView';
 import { ReceiptsAndPaymentsView } from './ReceiptsAndPaymentsView';
 import { PeriodControls } from './PeriodControls';
 import { BalanceSheetView } from './BalanceSheetView';
+import { CashBankBookView } from './CashBankBookView';
+import { GroupSummaryView } from './GroupSummaryView';
+import { RegisterView } from './RegisterView';
+import { DayBookView } from './DayBookView';
+import { ForexView } from './ForexView';
 import { ProfitLossView } from './ProfitLossView';
 import { CashFlowView } from './CashFlowView';
-import { exportReport } from './export-report';
-import {
-  TAB_LABELS,
-  SUBJECT_TABS,
-  isTab,
-  isAvailable,
-  usesPeriod,
-  isComparable,
-  type Tab,
-} from './tabs';
+import { exportReport, periodOf, type LoadedReports } from './export-report';
+import { TAB_LABELS, isTab, isAvailable, usesPeriod, isComparable, type Tab } from './tabs';
 import { OutstandingsView } from './OutstandingsView';
 import styles from './ReportsPage.module.css';
 
@@ -172,6 +169,16 @@ export function ReportsPage() {
   }
 
   const [company, setCompany] = useState<Company | null>(null);
+  /* Depended on by name rather than through `company`, whose identity changes on every read. */
+  const multiCurrency = company?.features.multiCurrency ?? false;
+  /*
+    False until the company is known, which is what keeps the fetch below from firing at a report
+    the company may not keep. `isAvailable` deliberately gives a loading company the benefit of the
+    doubt so the screen does not bounce off a valid report — right for what is rendered, but it
+    means the open tab can briefly be one the company has no data for, and the server refuses those
+    outright rather than answering with bills left over from before the feature was switched off.
+  */
+  const billWise = company?.features.billWiseDetails ?? false;
 
   /* Derived here rather than beside the raw search param, because whether a report is available
      at all depends on the company's features — see isAvailable. */
@@ -189,7 +196,7 @@ export function ReportsPage() {
   const [forex, setForex] = useState<ForexGainLossReport | null>(null);
   const [cashBook, setCashBook] = useState<LedgerStatementReport[] | null>(null);
   const [bankBook, setBankBook] = useState<LedgerStatementReport[] | null>(null);
-  const [groupSummary, setGroupSummary] = useState<ReportNode[] | null>(null);
+  const [groupSummary, setGroupSummary] = useState<GroupSummaryReport | null>(null);
 
   /*
     The five subject reports are fetched on their own, by the effect below, rather than joining the
@@ -205,7 +212,6 @@ export function ReportsPage() {
   const [fundsFlow, setFundsFlow] = useState<FundsFlowReport | null>(null);
   const [ratios, setRatios] = useState<RatioReport | null>(null);
   const [exceptions, setExceptions] = useState<ExceptionReport | null>(null);
-  const [subjectLoading, setSubjectLoading] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
   /** For the pickers. Small, unchanging within a session, and needed by four of the tabs. */
@@ -219,67 +225,170 @@ export function ReportsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * The company itself. Read once per company rather than with every report: nothing about it
+   * changes when the period does, and `money` and the tab list both need it before anything else
+   * can be drawn.
+   */
   useEffect(() => {
     if (!companyId) return;
     const id = companyId;
     let cancelled = false;
 
+    getCompany(id)
+      .then((result) => {
+        if (!cancelled) setCompany(result);
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(getErrorMessage(err, 'Could not load this company'));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
+
+  /**
+   * The open report, and only the open report.
+   *
+   * This used to ask for twelve at once, on the theory that switching tabs should then be instant.
+   * It made every change of date twelve requests to draw one statement, and on books of any size
+   * the eleven nobody was looking at were the slow ones. A tab now costs the report it opens,
+   * which is the request that had to happen anyway.
+   *
+   * Each branch writes its own state and leaves the rest alone, so a report already read stays on
+   * screen when you come back to it — the second visit is instant without the first having asked
+   * for eleven reports nobody wanted.
+   */
+  useEffect(() => {
+    if (!companyId) return;
+    const id = companyId;
+    let cancelled = false;
+
+    const params = {
+      from: appliedFrom || undefined,
+      to: appliedTo || undefined,
+      compare: appliedCompare || undefined,
+    };
+    // `asOf` for the ageing reports is the end of the period being looked at.
+    const asOf = appliedTo || undefined;
+
     async function load() {
       setLoading(true);
       setLoadError(null);
       try {
-        const params = {
-          from: appliedFrom || undefined,
-          to: appliedTo || undefined,
-          compare: appliedCompare || undefined,
-        };
-        // `asOf` for the ageing reports is the end of the period being looked at.
-        const asOf = appliedTo || undefined;
-
-        const [companyResult, bs, pl, tb, db, rp, cf, rec, pay, cash, bank, groups] =
-          await Promise.all([
-            getCompany(id),
-            getBalanceSheet(id, params),
-            getProfitAndLoss(id, params),
-            getTrialBalance(id, params),
-            getDayBook(id, params),
-            getReceiptsAndPayments(id, params),
-            getCashFlow(id, params),
-            getReceivables(id, asOf),
-            getPayables(id, asOf),
-            getCashBook(id, params),
-            getBankBook(id, params),
-            getGroupSummary(id, params),
-          ]);
-        if (cancelled) return;
-
-        setCompany(companyResult);
-        setBalanceSheet(bs);
-        setProfitLoss(pl);
-        setTrialBalance(tb);
-        setDayBook(db);
-        setReceiptsPayments(rp);
-        setCashFlow(cf);
-        setReceivables(rec);
-        setPayables(pay);
-        setCashBook(cash);
-        setBankBook(bank);
-        setGroupSummary(groups);
-
-        // Only meaningful once the company transacts in more than one currency.
-        setForex(companyResult.features.multiCurrency ? await getForexGainLoss(id, asOf) : null);
+        switch (tab) {
+          case 'balance-sheet':
+            setBalanceSheet(await getBalanceSheet(id, params));
+            break;
+          case 'profit-loss':
+            setProfitLoss(await getProfitAndLoss(id, params));
+            break;
+          case 'trial-balance':
+            setTrialBalance(await getTrialBalance(id, params));
+            break;
+          case 'day-book':
+            setDayBook(await getDayBook(id, params));
+            break;
+          case 'receipts-payments':
+            setReceiptsPayments(await getReceiptsAndPayments(id, params));
+            break;
+          case 'cash-flow':
+            setCashFlow(await getCashFlow(id, params));
+            break;
+          case 'cash-book':
+            setCashBook(await getCashBook(id, params));
+            break;
+          case 'bank-book':
+            setBankBook(await getBankBook(id, params));
+            break;
+          case 'group-summary':
+            setGroupSummary(await getGroupSummary(id, params));
+            break;
+          case 'receivables':
+            // Only meaningful once the company keeps its books bill by bill.
+            setReceivables(billWise ? await getReceivables(id, asOf) : null);
+            break;
+          case 'payables':
+            setPayables(billWise ? await getPayables(id, asOf) : null);
+            break;
+          case 'register':
+            if (subjectType) {
+              setRegister(await getRegister(id, { ...params, voucherTypeCodes: [subjectType] }));
+            }
+            break;
+          case 'ledger':
+            if (subjectLedgerId) {
+              setLedgerReport(await getLedgerStatement(id, subjectLedgerId, params));
+            }
+            break;
+          case 'bank-reconciliation':
+            if (subjectLedgerId) {
+              setReconciliation(await getBankReconciliation(id, subjectLedgerId, params));
+            }
+            break;
+          case 'monthly-summary':
+            if (subjectLedgerId || subjectGroupId) {
+              setMonthly(
+                await getMonthlySummary(
+                  id,
+                  subjectLedgerId ? { ledgerId: subjectLedgerId } : { groupId: subjectGroupId },
+                  params,
+                ),
+              );
+            }
+            break;
+          case 'statement-of-account':
+            if (subjectLedgerId) {
+              setSoa(await getStatementOfAccount(id, subjectLedgerId, params));
+            }
+            break;
+          case 'funds-flow':
+            setFundsFlow(await getFundsFlow(id, params));
+            break;
+          case 'ratios':
+            setRatios(await getRatios(id, params));
+            break;
+          case 'exceptions':
+            setExceptions(await getExceptions(id, params));
+            break;
+          case 'audit':
+            /*
+              No period. The trail is ordered by when a change was made, not by the dates of the
+              vouchers changed — asking it for a financial year returns nothing at all, because the
+              changes to that year's vouchers were made today.
+            */
+            setAudit(await getAuditTrail(id, { limit: 200 }));
+            break;
+          case 'forex':
+            // Only meaningful once the company transacts in more than one currency.
+            setForex(multiCurrency ? await getForexGainLoss(id, asOf) : null);
+            break;
+        }
       } catch (err) {
-        if (!cancelled) setLoadError(getErrorMessage(err, 'Could not load reports'));
+        if (!cancelled) setLoadError(getErrorMessage(err, 'Could not load this report'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    load();
+    void load();
+
     return () => {
       cancelled = true;
     };
-  }, [companyId, appliedFrom, appliedTo, appliedCompare]);
+  }, [
+    companyId,
+    tab,
+    appliedFrom,
+    appliedTo,
+    appliedCompare,
+    subjectType,
+    subjectLedgerId,
+    subjectGroupId,
+    multiCurrency,
+    billWise,
+  ]);
 
   /* The pickers' contents. Read once per company: neither list changes while a screen is open. */
   useEffect(() => {
@@ -302,72 +411,6 @@ export function ReportsPage() {
       cancelled = true;
     };
   }, [companyId]);
-
-  /**
-   * The report that is about one subject, fetched only when its tab is open and a subject chosen.
-   *
-   * Kept apart from the load above deliberately. That one asks for twelve reports at once because
-   * every one of them is reachable from the tab strip without another request; these five each
-   * need a ledger or a voucher type picked first, and folding them in would mean asking for five
-   * more reports on every period change whether or not anyone is looking at them.
-   */
-  useEffect(() => {
-    if (!companyId) return;
-    const id = companyId;
-    let cancelled = false;
-
-    const params = {
-      from: appliedFrom || undefined,
-      to: appliedTo || undefined,
-    };
-
-    async function loadSubject() {
-      setSubjectLoading(true);
-      try {
-        if (tab === 'register' && subjectType) {
-          setRegister(await getRegister(id, { ...params, voucherTypeCodes: [subjectType] }));
-        } else if (tab === 'ledger' && subjectLedgerId) {
-          setLedgerReport(await getLedgerStatement(id, subjectLedgerId, params));
-        } else if (tab === 'bank-reconciliation' && subjectLedgerId) {
-          setReconciliation(await getBankReconciliation(id, subjectLedgerId, params));
-        } else if (tab === 'monthly-summary' && (subjectLedgerId || subjectGroupId)) {
-          setMonthly(
-            await getMonthlySummary(
-              id,
-              subjectLedgerId ? { ledgerId: subjectLedgerId } : { groupId: subjectGroupId },
-              params,
-            ),
-          );
-        } else if (tab === 'audit') {
-          /*
-            Deliberately not `params`. The period every other report takes is a range of voucher
-            dates; the trail is ordered by when a change was made, which is a different axis
-            entirely — asking it for a 2027 financial year returned nothing at all, because the
-            changes to that year's vouchers were made today.
-          */
-          setAudit(await getAuditTrail(id, { limit: 200 }));
-        } else if (tab === 'statement-of-account' && subjectLedgerId) {
-          setSoa(await getStatementOfAccount(id, subjectLedgerId, params));
-        } else if (tab === 'funds-flow') {
-          setFundsFlow(await getFundsFlow(id, params));
-        } else if (tab === 'ratios') {
-          setRatios(await getRatios(id, params));
-        } else if (tab === 'exceptions') {
-          setExceptions(await getExceptions(id, params));
-        }
-      } catch (err) {
-        if (!cancelled) setError(getErrorMessage(err, 'Could not load this report'));
-      } finally {
-        if (!cancelled) setSubjectLoading(false);
-      }
-    }
-
-    void loadSubject();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [companyId, tab, subjectType, subjectLedgerId, subjectGroupId, appliedFrom, appliedTo]);
 
   /* Not memoized: every tree this is handed to is a plain component, so a stable identity saved
      no render, while the compiler could not preserve the wrapper across the await and gave up on
@@ -436,34 +479,50 @@ export function ReportsPage() {
               ? cashFlow?.comparison
               : null) ?? null;
 
+  /**
+   * Everything the screen has read so far, in one bag.
+   *
+   * Built once because two things need it and they must agree: the period printed above the
+   * statement and the period stamped into the exported file's name. Two hand-written lists of the
+   * same twenty-one reports would drift the first time one was added to only one of them.
+   */
+  const loaded: LoadedReports = {
+    balanceSheet,
+    profitLoss,
+    trialBalance,
+    dayBook,
+    receiptsPayments,
+    cashFlow,
+    receivables,
+    payables,
+    forex,
+    cashBook,
+    bankBook,
+    groupSummary,
+    register,
+    ledgerReport,
+    reconciliation,
+    monthly,
+    audit,
+    soa,
+    fundsFlow,
+    ratios,
+    exceptions,
+  };
+
+  /**
+   * The period the statement on screen was actually built from.
+   *
+   * Taken from the open report rather than from the balance sheet, which is no longer read unless
+   * somebody is looking at it — and from the *open* one rather than from whichever happens to be
+   * loaded, because a report left in state from an earlier range would otherwise print its period
+   * over a statement covering a different one. The dates above a set of figures either belong to
+   * those figures or they are worse than absent.
+   */
+  const period = periodOf(tab, loaded);
+
   function exportCurrentTab() {
-    exportReport(
-      tab,
-      {
-        balanceSheet,
-        profitLoss,
-        trialBalance,
-        dayBook,
-        receiptsPayments,
-        cashFlow,
-        receivables,
-        payables,
-        forex,
-        cashBook,
-        bankBook,
-        groupSummary,
-        register,
-        ledgerReport,
-        reconciliation,
-        monthly,
-        audit,
-        soa,
-        fundsFlow,
-        ratios,
-        exceptions,
-      },
-      { subjectType },
-    );
+    exportReport(tab, loaded, { subjectType, periodLabel: period?.financialYearLabel ?? '' });
   }
 
   /**
@@ -531,8 +590,6 @@ export function ReportsPage() {
   ]);
 
   if (!companyId) return null;
-
-  const period = balanceSheet?.period;
 
   const outstandings = tab === 'receivables' ? receivables : payables;
 
@@ -662,7 +719,7 @@ export function ReportsPage() {
     return (
       <div className={styles.page} ref={pageRef}>
         {header}
-        <Loading label="Loading reports…" />
+        <Loading label="Loading…" />
       </div>
     );
 
@@ -728,73 +785,26 @@ export function ReportsPage() {
         by the same component the drill-down uses — see LedgerStatement.
       */}
       {(tab === 'cash-book' || tab === 'bank-book') && (
-        <section className={styles.panel}>
-          {(tab === 'cash-book' ? cashBook : bankBook)?.length === 0 ? (
-            <p className={styles.empty}>
-              This company has no {tab === 'cash-book' ? 'cash' : 'bank'} account yet.
-            </p>
-          ) : (
-            (tab === 'cash-book' ? cashBook : bankBook)?.map((entry) => (
-              <LedgerStatement key={entry.ledger.id} statement={entry} money={money} heading />
-            ))
-          )}
-        </section>
+        <CashBankBookView
+          books={tab === 'cash-book' ? cashBook : bankBook}
+          kind={tab === 'cash-book' ? 'cash' : 'bank'}
+          money={money}
+        />
       )}
 
       {tab === 'group-summary' && groupSummary && (
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>Every group, with its closing position</span>
-          </div>
-          {groupSummary.length === 0 ? (
-            <p className={styles.empty}>This company has no account groups yet.</p>
-          ) : (
-            <ReportTree nodes={groupSummary} onSelectLedger={openLedger} formatAmount={money} />
-          )}
-        </section>
+        <GroupSummaryView groups={groupSummary.groups} money={money} openLedger={openLedger} />
       )}
 
-      {/*
-        Each waits for its subject rather than showing an empty frame: a table of nothing looks
-        like an account with no movement, which is a different and much more alarming statement.
-      */}
       {tab === 'register' && !subjectType && (
         <p className={styles.empty}>Choose a voucher type to see its register.</p>
       )}
       {tab === 'register' && subjectType && register && (
-        <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>
-            {voucherTypes.find((type) => type.code === subjectType)?.name ?? subjectType}
-            <span className={styles.panelTotal}>{money(register.total)}</span>
-          </h2>
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-stack>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Number</th>
-                  <th>Narration</th>
-                  <th>Status</th>
-                  <th className={styles.num}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {register.rows.map((row) => (
-                  <tr key={row.voucherId}>
-                    <td>{toCalendarDay(row.voucherDate)}</td>
-                    <td>{row.voucherNumber}</td>
-                    <td>{row.narration ?? '—'}</td>
-                    <td>{row.status}</td>
-                    <td className={styles.num}>{money(row.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {register.rows.length === 0 && (
-            <p className={styles.empty}>Nothing of this type in the period.</p>
-          )}
-        </section>
+        <RegisterView
+          register={register}
+          title={voucherTypes.find((type) => type.code === subjectType)?.name ?? subjectType}
+          money={money}
+        />
       )}
 
       {tab === 'ledger' && !subjectLedgerId && (
@@ -836,43 +846,7 @@ export function ReportsPage() {
       {tab === 'ratios' && ratios && <RatioView report={ratios} money={money} />}
       {tab === 'exceptions' && exceptions && <ExceptionView report={exceptions} />}
 
-      {subjectLoading && SUBJECT_TABS.has(tab) && <Loading label="Loading…" />}
-
-      {tab === 'day-book' && dayBook && (
-        <section className={styles.panel}>
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-stack>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Number</th>
-                  <th>Type</th>
-                  <th>Narration</th>
-                  <th className={styles.num}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dayBook.rows.map((row) => (
-                  <tr key={row.voucherId}>
-                    <td>{toCalendarDay(row.voucherDate)}</td>
-                    <td>{row.voucherNumber}</td>
-                    <td>{row.voucherTypeCode}</td>
-                    <td>{row.narration ?? '—'}</td>
-                    <td className={styles.num}>{money(row.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4}>Total</td>
-                  <td className={styles.num}>{dayBook.total}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          {dayBook.rows.length === 0 && <p className={styles.empty}>No vouchers in this period.</p>}
-        </section>
-      )}
+      {tab === 'day-book' && dayBook && <DayBookView dayBook={dayBook} money={money} />}
 
       {tab === 'receipts-payments' && receiptsPayments && (
         <ReceiptsAndPaymentsView report={receiptsPayments} money={money} />
@@ -891,78 +865,7 @@ export function ReportsPage() {
         <OutstandingsView outstandings={outstandings} money={money} />
       )}
 
-      {tab === 'forex' && forex && (
-        <section className={styles.panel}>
-          <div className={styles.buckets}>
-            <div className={styles.bucket}>
-              <span className={styles.bucketLabel}>Realised</span>
-              <span className={styles.bucketAmount}>{money(forex.totals.realised)}</span>
-            </div>
-            <div className={styles.bucket}>
-              <span className={styles.bucketLabel}>Unrealised</span>
-              <span className={styles.bucketAmount}>{money(forex.totals.unrealised)}</span>
-            </div>
-            <div className={cn(styles.bucket, styles.bucketTotal)}>
-              <span className={styles.bucketLabel}>Unadjusted</span>
-              <span className={styles.bucketAmount}>{money(forex.totals.unadjusted)}</span>
-            </div>
-          </div>
-
-          <p className={styles.hint}>
-            Nothing is posted automatically. Pass a journal moving this from{' '}
-            <strong>Unadjusted Forex Gain/Loss</strong> to <strong>Forex Gain</strong> or{' '}
-            <strong>Forex Loss</strong> once you accept the figures.
-          </p>
-
-          {forex.skippedForMissingRate.length > 0 && (
-            <p className={styles.warning}>
-              Left out for want of a rate on {toCalendarDay(forex.asOf)}:{' '}
-              {forex.skippedForMissingRate.join(', ')}
-            </p>
-          )}
-
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-stack>
-              <thead>
-                <tr>
-                  <th>Party</th>
-                  <th>Reference</th>
-                  <th>Currency</th>
-                  {/* In the party's own currency — the column beside it names which. */}
-                  <th className={styles.num}>FC open</th>
-                  <th className={styles.num}>Booked</th>
-                  <th className={styles.num}>Revalued</th>
-                  <th className={styles.num}>Gain / loss</th>
-                  <th>Kind</th>
-                </tr>
-              </thead>
-              <tbody>
-                {forex.lines.map((line) => (
-                  <tr key={line.billId}>
-                    <td>{line.ledgerName}</td>
-                    <td>{line.reference}</td>
-                    <td>{line.currencyCode}</td>
-                    <td className={styles.num}>{formatMoney(line.fcOutstanding)}</td>
-                    <td className={styles.num}>{money(line.bookedBase)}</td>
-                    <td className={styles.num}>
-                      {line.revaluedBase ? money(line.revaluedBase) : '—'}
-                    </td>
-                    <td className={cn(styles.num, Number(line.gainLoss) < 0 && styles.overdue)}>
-                      {money(line.gainLoss)}
-                    </td>
-                    <td>{line.kind === 'REALISED' ? 'Realised' : 'Unrealised'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {forex.lines.length === 0 && (
-            <p className={styles.empty}>
-              No exchange differences as at {toCalendarDay(forex.asOf)}.
-            </p>
-          )}
-        </section>
-      )}
+      {tab === 'forex' && forex && <ForexView forex={forex} money={money} />}
 
       <Modal
         open={statement !== null}

@@ -4,6 +4,7 @@ export type {
   ReportComparison,
   BalanceSide,
   TrialBalanceRow,
+  GroupSummaryReport,
   TrialBalanceReport,
   CompanyContext,
   BalanceSheetReport,

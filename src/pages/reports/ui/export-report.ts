@@ -5,6 +5,7 @@ import type {
   CashFlowReport,
   DayBookReport,
   ExceptionReport,
+  GroupSummaryReport,
   FundsFlowReport,
   LedgerStatementReport,
   MonthlySummaryReport,
@@ -12,7 +13,7 @@ import type {
   RatioReport,
   ReceiptsAndPaymentsReport,
   CashMovementRow,
-  ReportNode,
+  ReportPeriod,
   StatementOfAccountReport,
   TrialBalanceReport,
 } from '@/entities/report';
@@ -43,7 +44,7 @@ export interface LoadedReports {
   forex: ForexGainLossReport | null;
   cashBook: LedgerStatementReport[] | null;
   bankBook: LedgerStatementReport[] | null;
-  groupSummary: ReportNode[] | null;
+  groupSummary: GroupSummaryReport | null;
   register: DayBookReport | null;
   ledgerReport: LedgerStatementReport | null;
   reconciliation: BankReconciliationReport | null;
@@ -58,6 +59,8 @@ export interface LoadedReports {
 interface ExportContext {
   /** Which voucher type the register is showing, for the file's name. */
   subjectType: string;
+  /** The financial year the open report covers, for the file's name. Empty when it has none. */
+  periodLabel: string;
 }
 
 /**
@@ -71,6 +74,69 @@ interface ExportContext {
  * Lifted out of the page because it was a quarter of it and shares nothing with rendering: it
  * reads the same reports and answers a different question.
  */
+/**
+ * The period the open report was built from, or undefined when it has not been read yet.
+ *
+ * Keyed on the open tab rather than picking the first report that happens to be loaded. Reports
+ * stay in state once read, so a "first non-null" rule would print the balance sheet's period above
+ * the funds flow — and if the reader had changed the dates since, it would be the wrong period,
+ * stated with the same confidence as the right one.
+ *
+ * Cash Book and Bank Book are lists of statements and take theirs from the first; each covers the
+ * same span, since they are all cut from one request. Reports that are only ever about a subject
+ * return undefined until that subject is chosen, which is when there is genuinely nothing to state.
+ */
+export function periodOf(tab: Tab, reports: LoadedReports): ReportPeriod | undefined {
+  switch (tab) {
+    case 'balance-sheet':
+      return reports.balanceSheet?.period;
+    case 'profit-loss':
+      return reports.profitLoss?.period;
+    case 'trial-balance':
+      return reports.trialBalance?.period;
+    case 'day-book':
+      return reports.dayBook?.period;
+    case 'receipts-payments':
+      return reports.receiptsPayments?.period;
+    case 'cash-flow':
+      return reports.cashFlow?.period;
+    case 'cash-book':
+      return reports.cashBook?.[0]?.period;
+    case 'bank-book':
+      return reports.bankBook?.[0]?.period;
+    case 'group-summary':
+      return reports.groupSummary?.period;
+    case 'register':
+      return reports.register?.period;
+    case 'ledger':
+      return reports.ledgerReport?.period;
+    case 'bank-reconciliation':
+      return reports.reconciliation?.period;
+    case 'monthly-summary':
+      return reports.monthly?.period;
+    case 'statement-of-account':
+      return reports.soa?.period;
+    case 'funds-flow':
+      return reports.fundsFlow?.period;
+    case 'ratios':
+      return reports.ratios?.period;
+    case 'exceptions':
+      return reports.exceptions?.period;
+    case 'receivables':
+    case 'payables':
+    case 'forex':
+      /*
+        Ageing and forex are as at a single date, not across a span, and each states that date in
+        its own heading. A financial year printed above them would describe something they do not
+        show.
+      */
+      return undefined;
+    case 'audit':
+      // Ordered by when a change was made, not by the dates of what was changed.
+      return undefined;
+  }
+}
+
 export function exportReport(tab: Tab, reports: LoadedReports, context: ExportContext): void {
   const {
     balanceSheet,
@@ -95,9 +161,15 @@ export function exportReport(tab: Tab, reports: LoadedReports, context: ExportCo
     ratios,
     exceptions,
   } = reports;
-  const { subjectType } = context;
+  const { subjectType, periodLabel } = context;
 
-  const stamp = balanceSheet ? balanceSheet.period.financialYearLabel : 'report';
+  /*
+    The year in the file's name comes from the report being written, not from the balance sheet.
+    It used to read the balance sheet's period, which is no longer loaded unless somebody is
+    looking at it — every other report would have been saved as "…-report.csv" with no year in it,
+    and a saved file with no year is the one thing nobody can put back in order later.
+  */
+  const stamp = periodLabel || 'report';
   const name = (label: string) => `${label}-${stamp}.csv`;
   const base = ['Name', 'Code', 'Kind', 'Debit', 'Credit', 'Balance', 'Side'];
   /*
@@ -264,7 +336,7 @@ export function exportReport(tab: Tab, reports: LoadedReports, context: ExportCo
       ]),
     );
   } else if (tab === 'group-summary' && groupSummary) {
-    downloadCsv(name('group-summary'), base, flattenNodes(groupSummary));
+    downloadCsv(name('group-summary'), base, flattenNodes(groupSummary.groups));
   } else if (tab === 'register' && register) {
     downloadCsv(
       name(`${subjectType.toLowerCase()}-register`),

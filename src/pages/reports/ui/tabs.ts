@@ -90,23 +90,6 @@ export function isAvailable(tab: Tab, company: Company | null): boolean {
  * tick box that does nothing — worse than not offering it, because the reader is left to wonder
  * whether the two years really did match.
  */
-/**
- * The reports fetched on their own rather than with the twelve that load with the screen.
- *
- * Named once so the loading state and the fetch below cannot come to disagree about which they
- * are — a spinner that never clears, or one that never appears, both come from that drifting.
- */
-export const SUBJECT_TABS = new Set<Tab>([
-  'register',
-  'ledger',
-  'bank-reconciliation',
-  'monthly-summary',
-  'audit',
-  'statement-of-account',
-  'funds-flow',
-  'ratios',
-  'exceptions',
-]);
 
 /**
  * Whether the period boxes apply to this report at all.

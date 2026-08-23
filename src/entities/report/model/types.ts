@@ -77,6 +77,18 @@ export interface TrialBalanceRow {
   priorClosingCredit?: string;
 }
 
+/**
+ * Every account group with its closing position, and the period those balances are as at.
+ *
+ * The period is not decoration: these are balances at a date, and the screen prints that date above
+ * them. The endpoint used to answer the groups alone, which left the one report on the screen that
+ * could not say which year it counted.
+ */
+export interface GroupSummaryReport {
+  period: ReportPeriod;
+  groups: ReportNode[];
+}
+
 export interface TrialBalanceReport {
   period: ReportPeriod;
   /** Null when not asked for, or when there is no prior year. */

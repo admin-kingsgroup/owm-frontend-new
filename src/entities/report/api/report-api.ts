@@ -9,7 +9,7 @@ import type {
   ProfitAndLossReport,
   TrialBalanceReport,
   CompanyContext,
-  ReportNode,
+  GroupSummaryReport,
   ReceiptsAndPaymentsReport,
   CashFlowReport,
   BankReconciliationReport,
@@ -50,7 +50,7 @@ export const getBankBook = (companyId: string, params: ReportParams = {}) =>
 
 /** Every account group with its closing position, as a tree. */
 export const getGroupSummary = (companyId: string, params: ReportParams = {}) =>
-  fetchReport<ReportNode[]>(endpoints.reports.groupSummary(companyId), params);
+  fetchReport<GroupSummaryReport>(endpoints.reports.groupSummary(companyId), params);
 
 export const getCompanyContext = (companyId: string) =>
   fetchReport<CompanyContext>(endpoints.reports.context(companyId), {});
