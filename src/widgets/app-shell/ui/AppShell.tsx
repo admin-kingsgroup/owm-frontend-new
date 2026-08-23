@@ -3,7 +3,12 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
-import { VOUCHER_FUNCTION_KEYS, ALWAYS_SEEDED_VOUCHER_CODES } from '@/entities/voucher-type';
+import {
+  VOUCHER_FUNCTION_KEYS,
+  ALWAYS_SEEDED_VOUCHER_CODES,
+  functionKeyFor,
+  inFunctionKeyOrder,
+} from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
@@ -93,7 +98,8 @@ export function AppShell() {
   // Checked against the Role union, so a typo is a compile error rather than a menu that is
   // silently never offered.
   /* Declared before the menus, which name a register and a Create entry for each of them. */
-  const voucherTypes = useVoucherTypes(companyId);
+  /* The seed version re-reads the list after a masters sync — see useVoucherTypes. */
+  const voucherTypes = useVoucherTypes(companyId, company?.seedVersion);
 
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const menus = useMemo(
@@ -175,38 +181,65 @@ export function AppShell() {
   }, [companyId, company, navigate, reportPeriod]);
 
   /**
-   * Raising a voucher from wherever you are, which is the whole point of the function keys.
+   * Every document this company can raise, from wherever you are.
    *
    * Drawn at the top of the bar rather than bound invisibly, because in Tally this is the first
    * thing the right-hand strip shows and entering a voucher is the commonest thing anyone does —
    * having to go back to the Gateway first is the trip the bar exists to save. The Transactions
    * menu still lists them; the bar is the fast path, not a replacement.
    *
-   * Only the types the company actually holds. The bar used to draw all eight whatever the books
-   * were, so a personal company — which has no Sales, Purchase, Credit Note or Debit Note — offered
-   * four documents it cannot raise and hid the two it can. Pressing one did not fail either: the
-   * vouchers screen falls back to the first active type, so it quietly opened the wrong kind of
-   * document. An analytics workspace posts nothing, so it gets none of them.
+   * The company's own list, in full. The bar used to be built from the fixed table of function
+   * keys instead, which meant it could only ever offer the eight types that table names: a company
+   * that added a voucher type of its own — a second sales series, a petty-cash payment book — got
+   * a strip that silently left it out, and the only way to raise one was to go to the Gateway and
+   * find it. So the types decide what is drawn and the table only decides what a key is bound to;
+   * a type it does not name is a button without a key rather than no button at all.
+   *
+   * Names are the company's, not the table's, because a type can be renamed and the strip has to
+   * agree with the register and the Transactions menu about what a document is called.
+   *
+   * In function-key order — F4, F5, F6 … — with anything the company invented after them,
+   * alphabetically. See inFunctionKeyOrder: read down, the keys are in the order they sit under
+   * the hand rather than in the order the server happens to answer in.
    *
    * Until that list arrives, the four every set of books has — see ALWAYS_SEEDED_VOUCHER_CODES.
    * Filtering on the company's own types alone left the bar empty whenever the request for them
    * had not come back, which includes failing, and a bar with no way to raise a voucher is a worse
-   * answer than one offering four that certainly exist.
+   * answer than one offering four that certainly exist. An analytics workspace posts nothing, so
+   * it gets none of them.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
     if (!companyId || company?.type === 'ANALYTICS') return [];
     const base = `/companies/${companyId}`;
-    const held = new Set(voucherTypes.map((type) => type.code));
-    const offered = held.size > 0 ? held : ALWAYS_SEEDED_VOUCHER_CODES;
+    const raise = (code: string) => () => navigate(`${base}/vouchers?new=${code}`);
 
-    return VOUCHER_FUNCTION_KEYS.filter(({ code }) => offered.has(code)).map(
-      ({ key, code, label }) => ({
+    if (voucherTypes.length === 0) {
+      return VOUCHER_FUNCTION_KEYS.filter(({ code }) => ALWAYS_SEEDED_VOUCHER_CODES.has(code)).map(
+        ({ key, code, label }) => ({ group: 'Data entry', key, label, onSelect: raise(code) }),
+      );
+    }
+
+    /*
+      One key, one action. Income and Expense deliberately share F8 and F9 with Sales and Purchase
+      — a company is either trading or personal, so the pair can never both be seeded. A company is
+      free to create a voucher type of its own under either code though, and then the strip would
+      print F8 twice while only the first of them answered it. The second keeps its button and
+      loses the key it does not own.
+    */
+    const taken = new Set<string>();
+
+    return inFunctionKeyOrder(voucherTypes).map((type) => {
+      const key = functionKeyFor(type.code);
+      const free = key !== undefined && !taken.has(key);
+      if (free) taken.add(key);
+
+      return {
         group: 'Data entry',
-        key,
-        label,
-        onSelect: () => navigate(`${base}/vouchers?new=${code}`),
-      }),
-    );
+        key: free ? key : undefined,
+        label: type.name,
+        onSelect: raise(type.code),
+      };
+    });
   }, [companyId, company?.type, navigate, voucherTypes]);
 
   /*
@@ -234,7 +267,8 @@ export function AppShell() {
       if (hasOpenDialog()) return;
 
       for (const action of actions) {
-        if (action.disabled) continue;
+        /* Not every action carries a key — see ButtonBarAction.key. */
+        if (action.disabled || !action.key) continue;
         if (!matchesBinding(action.key, event)) continue;
         if (isLetterBinding(action.key) && isTypingTarget(event.target)) return;
 

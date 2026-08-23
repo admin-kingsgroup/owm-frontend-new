@@ -15,8 +15,18 @@ import type { VoucherType } from '@/entities/voucher-type';
  * never blocks a screen and never raises an error of its own. Every destination it produces is
  * also reachable from the reports screen's own picker, so a short menu is a smaller menu rather
  * than a dead end.
+ *
+ * `mastersVersion` is the company's `seedVersion`, and it is here for one reason: syncing the
+ * default masters is the only thing that adds voucher types from outside this list's own screen.
+ * The shell does not remount when it happens, so without a dependency on the version the menus and
+ * the button bar would go on offering the old set for the rest of the session — a sync that
+ * appears to have done nothing. It is `undefined` until the company record arrives, which costs a
+ * second read of a small list on a cold load and is the price of the strip being right.
  */
-export function useVoucherTypes(companyId: string | undefined): VoucherType[] {
+export function useVoucherTypes(
+  companyId: string | undefined,
+  mastersVersion?: number,
+): VoucherType[] {
   const [state, setState] = useState<{ companyId: string; types: VoucherType[] } | null>(null);
 
   useEffect(() => {
@@ -35,7 +45,7 @@ export function useVoucherTypes(companyId: string | undefined): VoucherType[] {
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [companyId, mastersVersion]);
 
   // Tagged with the company it describes, so switching cannot leave the previous one's types up.
   return state && state.companyId === companyId ? state.types : EMPTY;

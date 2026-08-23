@@ -14,6 +14,21 @@ export interface SeedPreview {
   voucherTypes: Array<{ code: string; name: string; prefix: string }>;
 }
 
+/**
+ * What syncing the default masters actually inserted.
+ *
+ * Every count is zero when the company is already on the current set — the server answers that
+ * rather than refusing, so the screen can say "nothing to add" instead of reporting an error for
+ * the ordinary case. `seedVersion` is the version the company is on afterwards.
+ */
+export interface SeedResult {
+  accountGroups: number;
+  ledgers: number;
+  voucherTypes: number;
+  numberSeries: number;
+  seedVersion: number;
+}
+
 /** Tally's F11 company features, all off until switched on. */
 export interface CompanyFeatures {
   billWiseDetails: boolean;

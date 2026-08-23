@@ -1,7 +1,13 @@
 import { apiClient, endpoints } from '@/shared/api';
 import type { ApiSuccessResponse } from '@/shared/types';
 
-import type { Company, CreateCompanyInput, SeedPreview, UpdateCompanyInput } from '../model/types';
+import type {
+  Company,
+  CreateCompanyInput,
+  SeedPreview,
+  SeedResult,
+  UpdateCompanyInput,
+} from '../model/types';
 
 export async function listCompanies(): Promise<Company[]> {
   const { data } = await apiClient.get<ApiSuccessResponse<Company[]>>(endpoints.companies.list());
@@ -23,6 +29,21 @@ export async function getCompany(companyId: string): Promise<Company> {
 export async function getSeedPreview(type: string): Promise<SeedPreview> {
   const { data } = await apiClient.get<ApiSuccessResponse<SeedPreview>>(
     endpoints.companies.seedPreview(type),
+  );
+  return data.data;
+}
+
+/**
+ * Gives a company the default groups, ledgers and voucher types added to the product since it was
+ * created — Income and Expense for a personal book, the forex ledgers, and whatever comes next.
+ *
+ * Insert-only and idempotent on the server: it never updates and never deletes, so a group that
+ * was renamed or switched off here survives it, and running it twice adds nothing the second time.
+ * A company already on the current set is answered with zeroes rather than an error.
+ */
+export async function syncDefaultMasters(companyId: string): Promise<SeedResult> {
+  const { data } = await apiClient.post<ApiSuccessResponse<SeedResult>>(
+    endpoints.companies.syncDefaultMasters(companyId),
   );
   return data.data;
 }

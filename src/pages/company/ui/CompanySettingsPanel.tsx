@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-import { updateCompany } from '@/entities/company';
-import type { Company, CompanyFeatures } from '@/entities/company';
-import { Checkbox } from '@/shared/ui';
+import { syncDefaultMasters, updateCompany } from '@/entities/company';
+import type { Company, CompanyFeatures, SeedResult } from '@/entities/company';
+import { Button, Checkbox } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './CompanySettingsPanel.module.css';
@@ -10,6 +10,13 @@ import styles from './CompanySettingsPanel.module.css';
 export interface CompanySettingsPanelProps {
   company: Company;
   onChanged: (company: Company) => void;
+  /**
+   * A sync inserted masters. The account groups, ledgers, voucher types and number series it
+   * created are the same lists the panels beside this one are showing, and they were read once
+   * when the screen opened — so without this the panel reports "added 3 account groups" and the
+   * chart of accounts one tab away still shows the chart from before.
+   */
+  onMastersSynced: () => void;
 }
 
 /**
@@ -50,19 +57,89 @@ const FEATURES: Array<{
   },
 ];
 
-export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPanelProps) {
+/**
+ * What a sync inserted, in words.
+ *
+ * Counted from the server's own answer rather than assumed, because what a company is missing
+ * depends on when it was created and what kind of books it keeps — two companies syncing on the
+ * same day can receive different things, and a fixed sentence would be wrong for one of them.
+ */
+function describeSync(result: SeedResult): string {
+  const added = [
+    { count: result.accountGroups, one: 'account group', many: 'account groups' },
+    { count: result.ledgers, one: 'ledger', many: 'ledgers' },
+    { count: result.voucherTypes, one: 'voucher type', many: 'voucher types' },
+    { count: result.numberSeries, one: 'number series', many: 'number series' },
+  ]
+    .filter((row) => row.count > 0)
+    .map((row) => `${row.count} ${row.count === 1 ? row.one : row.many}`);
+
+  if (added.length === 0) {
+    return `Nothing to add — this company is already on version ${result.seedVersion}.`;
+  }
+
+  const list =
+    added.length === 1 ? added[0] : `${added.slice(0, -1).join(', ')} and ${added[added.length - 1]}`;
+  return `Added ${list}. Now on version ${result.seedVersion}.`;
+}
+
+export function CompanySettingsPanel({
+  company,
+  onChanged,
+  onMastersSynced,
+}: CompanySettingsPanelProps) {
   const [saving, setSaving] = useState<FeatureKey | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   async function toggle(key: FeatureKey, value: boolean) {
     setSaving(key);
     setError(null);
+    /* It described the last sync, not this switch, and left standing it reads as its result. */
+    setSyncResult(null);
     try {
       onChanged(await updateCompany(company.id, { features: { [key]: value } }));
     } catch (err) {
       setError(getErrorMessage(err, 'Could not update this setting'));
     } finally {
       setSaving(null);
+    }
+  }
+
+  /**
+   * Brings this company up to the current default master set.
+   *
+   * The version it lands on comes back from the server, and is published to the shared company
+   * record — which is what makes the new voucher types reach the Transactions menu and the button
+   * bar without a reload. See useVoucherTypes, which re-reads when that version moves.
+   */
+  async function sync() {
+    setSyncing(true);
+    setError(null);
+    setSyncResult(null);
+    try {
+      const result = await syncDefaultMasters(company.id);
+      setSyncResult(describeSync(result));
+      /*
+        Seeding touches nothing else on the company record, so the version is patched in rather
+        than the whole company read back — one round trip instead of two for one number.
+      */
+      if (result.seedVersion !== company.seedVersion) {
+        onChanged({ ...company, seedVersion: result.seedVersion });
+      }
+
+      /*
+        Only when something was actually inserted. A no-op sync has nothing for the other panels to
+        re-read, and re-reading five master lists to show the same rows back is a cost for nothing.
+      */
+      if (result.accountGroups + result.ledgers + result.voucherTypes + result.numberSeries > 0) {
+        onMastersSynced();
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not sync the default masters'));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -107,13 +184,38 @@ export function CompanySettingsPanel({ company, onChanged }: CompanySettingsPane
         </div>
         <div>
           <dt>Default masters</dt>
-          <dd>version {company.seedVersion}</dd>
+          <dd className={styles.masters}>
+            version {company.seedVersion}
+            <Button type="button" variant="secondary" onClick={sync} disabled={syncing}>
+              {syncing ? 'Syncing…' : 'Sync'}
+            </Button>
+          </dd>
         </div>
       </dl>
+      {/*
+        Each note under the row it explains, in the order the row states them. Putting the sync
+        paragraph first pushed the base-currency note three blocks below the words "Base currency",
+        which is far enough that it reads as a note about the sync.
+      */}
       <p className={styles.hint}>
         The base currency is fixed when the company is created — every report totals in it, and
         vouchers already posted are denominated in it.
       </p>
+      {/*
+        Said plainly, because "sync" is the one word here that could be read as two-way. It is not:
+        the server only ever inserts.
+      */}
+      <p className={styles.hint}>
+        Syncing gives this company any default account groups, ledgers and voucher types added to
+        the product since it was created — a personal book created before Income and Expense
+        existed, for instance. It only ever adds: anything renamed, edited or switched off here is
+        left exactly as it is, and syncing twice adds nothing the second time.
+      </p>
+      {syncResult && (
+        <p className={styles.result} role="status">
+          {syncResult}
+        </p>
+      )}
 
       {/*
         Company status is deliberately not shown or changed here. Retiring a set of books is not a

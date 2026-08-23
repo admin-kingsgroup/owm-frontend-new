@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useCompanyStore } from '@/entities/company';
 import type { Company, CompanyType } from '@/entities/company';
+import type { VoucherType } from '@/entities/voucher-type';
 
 import { useButtonBar } from '../model/button-bar';
 import { AppShell } from './AppShell';
@@ -52,6 +53,53 @@ vi.mock('@/entities/report', async (importOriginal) => ({
     difference: '0.00',
     draftVouchers: 0,
   })),
+}));
+
+/**
+ * The company's voucher types, which the Transactions menu and the button bar are both built from.
+ *
+ * Deliberately not the eight the function-key table names: a personal book keeps six, and one of
+ * those is a type this company invented, which has no key and is exactly the case the bar used to
+ * leave out altogether.
+ */
+const voucherType = (code: string, name: string): VoucherType => ({
+  id: `vt-${code}`,
+  companyId: 'c1',
+  code,
+  name,
+  category: 'PAYMENT',
+  numberingMethod: 'AUTO',
+  numbering: {
+    prefix: '',
+    suffix: '',
+    numberLength: 6,
+    prefillWithZero: true,
+    numberFormat: 'TALLY_STYLE',
+    resetFrequency: 'YEARLY',
+    startingNumber: 1,
+  },
+  isSystem: true,
+  isActive: true,
+  configuration: {},
+});
+
+/** Alphabetical, as the server answers — so the ordering the bar applies is actually exercised. */
+const PERSONAL_TYPES = [
+  voucherType('CONTRA', 'Contra'),
+  voucherType('EXPENSE', 'Expense'),
+  voucherType('INCOME', 'Income'),
+  voucherType('JOURNAL', 'Journal'),
+  voucherType('PAYMENT', 'Payment'),
+  voucherType('PETTY_CASH', 'Petty Cash'),
+  voucherType('RECEIPT', 'Receipt'),
+];
+
+/** Reassigned by the one test that needs a different set of books. */
+let heldTypes = PERSONAL_TYPES;
+
+vi.mock('@/entities/voucher-type', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/voucher-type')>()),
+  listVoucherTypes: vi.fn(async () => heldTypes),
 }));
 
 const company = (patch: Partial<Company> = {}): Company => ({
@@ -107,6 +155,9 @@ function renderShell(options: { companies?: Company[] | null; screen?: React.Rea
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/companies/:companyId/reports" element={options.screen ?? <Here />} />
+          {/* Where the data-entry actions point. Without it, following one lands on no route at
+              all and the assertion reads as the action having done nothing. */}
+          <Route path="/companies/:companyId/vouchers" element={<Here />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -123,6 +174,7 @@ const openMenu = (name: string) => fireEvent.click(screen.getByRole('button', { 
  */
 describe('AppShell', () => {
   beforeEach(() => {
+    heldTypes = PERSONAL_TYPES;
     useCompanyStore.setState({ companies: null, loaded: false, error: null, loading: false });
   });
 
@@ -303,6 +355,62 @@ describe('AppShell', () => {
 
       expect(screen.getByTestId('here').textContent).toBe(
         '/companies/c1/reports?report=balance-sheet',
+      );
+    });
+
+    /*
+      The bar is the only way into data entry that is on screen wherever you are, so a document
+      missing from it is a document you have to go to the Gateway to raise. It used to be built
+      from the fixed function-key table, which meant a type the company created was silently
+      absent — the fault this covers.
+    */
+    it("offers every voucher type the company holds, in the order the keys run", async () => {
+      renderShell();
+
+      const group = await screen.findByRole('group', { name: 'Data entry' });
+      const rows = [...group.querySelectorAll('button')].map((button) => button.textContent);
+
+      // Label then key, as the markup writes them; the strip prints the key first with `order`.
+      expect(rows).toEqual([
+        'ContraF4',
+        'PaymentF5',
+        'ReceiptF6',
+        'JournalF7',
+        'IncomeF8',
+        'ExpenseF9',
+        // The company's own type: no key to give it, and a button all the same.
+        'Petty Cash',
+      ]);
+    });
+
+    /*
+      Income and Expense share F8 and F9 with Sales and Purchase deliberately — a company is either
+      trading or personal, so seeding can never produce both. A company is free to create its own
+      type under either code, and then the strip would print F8 twice while only the first of them
+      answered the key.
+    */
+    it('never prints the same key twice, whatever the company holds', async () => {
+      heldTypes = [
+        voucherType('SALES', 'Sales'),
+        voucherType('INCOME', 'Consulting income'),
+        voucherType('PAYMENT', 'Payment'),
+      ];
+      renderShell();
+
+      const group = await screen.findByRole('group', { name: 'Data entry' });
+      const rows = [...group.querySelectorAll('button')].map((button) => button.textContent);
+
+      // Sales holds F8 because it comes first in key order; the invented type keeps its button.
+      expect(rows).toEqual(['PaymentF5', 'SalesF8', 'Consulting income']);
+    });
+
+    it('raises the company’s own voucher type from the bar', async () => {
+      renderShell();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Petty Cash' }));
+
+      expect(screen.getByTestId('here').textContent).toBe(
+        '/companies/c1/vouchers?new=PETTY_CASH',
       );
     });
   });

@@ -415,7 +415,13 @@ export function CompanyDashboardPage() {
       )}
 
       {tab === 'settings' && (
-        <CompanySettingsPanel company={company} onChanged={handleCompanyChanged} />
+        <CompanySettingsPanel
+          company={company}
+          onChanged={handleCompanyChanged}
+          /* Syncing default masters creates groups, ledgers and voucher types the other
+             panels are already showing, so they re-read what it made. */
+          onMastersSynced={() => setReloadKey((key) => key + 1)}
+        />
       )}
 
       {tab === 'accounts' && (

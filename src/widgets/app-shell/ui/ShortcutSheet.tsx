@@ -29,6 +29,10 @@ export function ShortcutSheet({ open, onClose, actions, menus }: ShortcutSheetPr
   ];
 
   for (const action of actions) {
+    /* This sheet documents the keyboard. An action the bar draws without a key has nothing to say
+       here, and listing it with an empty <kbd> would read as a key that failed to print. */
+    if (!action.key) continue;
+
     const existing = groups.find((group) => group.name === action.group);
     const row = { key: action.key, label: action.label };
     if (existing) existing.rows.push(row);

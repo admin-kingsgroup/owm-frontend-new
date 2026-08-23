@@ -4,6 +4,7 @@ export const endpoints = {
     create: () => '/companies',
     byId: (companyId: string) => `/companies/${companyId}`,
     seedPreview: (type: string) => `/companies/seed-preview?type=${encodeURIComponent(type)}`,
+    syncDefaultMasters: (companyId: string) => `/companies/${companyId}/sync-default-masters`,
   },
   financialYears: {
     list: (companyId: string) => `/companies/${companyId}/financial-years`,

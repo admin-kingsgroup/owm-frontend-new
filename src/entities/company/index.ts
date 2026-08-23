@@ -5,6 +5,7 @@ export type {
   CompanyType,
   CreateCompanyInput,
   SeedPreview,
+  SeedResult,
   UpdateCompanyInput,
 } from './model/types';
 export * from './api/company-api';

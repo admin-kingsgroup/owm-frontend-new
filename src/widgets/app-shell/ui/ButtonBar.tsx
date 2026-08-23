@@ -55,10 +55,16 @@ export function ButtonBar({ actions }: ButtonBarProps) {
           <span className={styles.groupName} id={`${idPrefix}-${index}`}>
             {group.name}
           </span>
-          {group.actions.map((action) => (
+          {group.actions.map((action, position) => (
             <button
               type="button"
-              key={`${group.name}/${action.key}/${action.label}`}
+              /*
+                Positional, because nothing in an action is reliably unique any more: a voucher type
+                the company invented has no key, and only its *code* is unique per company — two of
+                them may legitimately be named the same. Keying on the label collided the moment
+                they were, which React resolves by reusing the wrong button.
+              */
+              key={`${group.name}/${position}`}
               className={styles.action}
               onClick={action.onSelect}
               disabled={action.disabled}
@@ -66,7 +72,17 @@ export function ButtonBar({ actions }: ButtonBarProps) {
               title={action.label}
             >
               <span className={styles.label}>{action.label}</span>
-              <kbd className={styles.key}>{action.key}</kbd>
+              {/*
+                An action without a key still holds the key column, so the labels beside it stay on
+                the same pixel as every other label in the strip — which is the whole reason the
+                column is a fixed width. Empty and hidden rather than absent: read aloud it would
+                otherwise be an unexplained pause between the label and the next action.
+              */}
+              {action.key ? (
+                <kbd className={styles.key}>{action.key}</kbd>
+              ) : (
+                <span className={styles.key} aria-hidden="true" />
+              )}
             </button>
           ))}
         </div>
