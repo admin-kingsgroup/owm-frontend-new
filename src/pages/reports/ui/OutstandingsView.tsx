@@ -1,5 +1,5 @@
 import type { OutstandingsReport } from '@/entities/outstanding';
-import { cn, toCalendarDay } from '@/shared/lib';
+import { cn, formatMoney, toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
@@ -60,9 +60,28 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
                 <td>{bill.ledgerName}</td>
                 <td>{bill.reference}</td>
                 <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : toCalendarDay(bill.billDate)}</td>
-                <td className={styles.num}>{money(bill.amount)}</td>
+                <td className={styles.num}>
+                  {money(bill.amount)}
+                  {/*
+                    A foreign bill is chased in the currency it was invoiced in. Showing only the
+                    base figure left a New York client owing a rupee amount that appears nowhere on
+                    the invoice, with nothing on the row to say it had been converted at all.
+                  */}
+                  {bill.currencyCode && bill.fcAmount && (
+                    <span className={styles.foreign}>
+                      {bill.currencyCode} {formatMoney(bill.fcAmount)}
+                    </span>
+                  )}
+                </td>
                 <td className={styles.num}>{money(bill.settled)}</td>
-                <td className={styles.num}>{money(bill.outstanding)}</td>
+                <td className={styles.num}>
+                  {money(bill.outstanding)}
+                  {bill.currencyCode && bill.fcOutstanding && (
+                    <span className={styles.foreign}>
+                      {bill.currencyCode} {formatMoney(bill.fcOutstanding)}
+                    </span>
+                  )}
+                </td>
                 <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
                   {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
                 </td>

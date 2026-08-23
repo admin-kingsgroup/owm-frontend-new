@@ -1665,15 +1665,15 @@ export function ReportsPage() {
           <div className={styles.buckets}>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Realised</span>
-              <span className={styles.bucketAmount}>{forex.totals.realised}</span>
+              <span className={styles.bucketAmount}>{money(forex.totals.realised)}</span>
             </div>
             <div className={styles.bucket}>
               <span className={styles.bucketLabel}>Unrealised</span>
-              <span className={styles.bucketAmount}>{forex.totals.unrealised}</span>
+              <span className={styles.bucketAmount}>{money(forex.totals.unrealised)}</span>
             </div>
             <div className={cn(styles.bucket, styles.bucketTotal)}>
               <span className={styles.bucketLabel}>Unadjusted</span>
-              <span className={styles.bucketAmount}>{forex.totals.unadjusted}</span>
+              <span className={styles.bucketAmount}>{money(forex.totals.unadjusted)}</span>
             </div>
           </div>
 
@@ -1697,6 +1697,7 @@ export function ReportsPage() {
                   <th>Party</th>
                   <th>Reference</th>
                   <th>Currency</th>
+                  {/* In the party's own currency — the column beside it names which. */}
                   <th className={styles.num}>FC open</th>
                   <th className={styles.num}>Booked</th>
                   <th className={styles.num}>Revalued</th>
@@ -1710,11 +1711,13 @@ export function ReportsPage() {
                     <td>{line.ledgerName}</td>
                     <td>{line.reference}</td>
                     <td>{line.currencyCode}</td>
-                    <td className={styles.num}>{line.fcOutstanding}</td>
-                    <td className={styles.num}>{line.bookedBase}</td>
-                    <td className={styles.num}>{line.revaluedBase ?? '—'}</td>
+                    <td className={styles.num}>{formatMoney(line.fcOutstanding)}</td>
+                    <td className={styles.num}>{money(line.bookedBase)}</td>
+                    <td className={styles.num}>
+                      {line.revaluedBase ? money(line.revaluedBase) : '—'}
+                    </td>
                     <td className={cn(styles.num, Number(line.gainLoss) < 0 && styles.overdue)}>
-                      {line.gainLoss}
+                      {money(line.gainLoss)}
                     </td>
                     <td>{line.kind === 'REALISED' ? 'Realised' : 'Unrealised'}</td>
                   </tr>

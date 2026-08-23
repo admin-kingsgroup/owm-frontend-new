@@ -15,6 +15,10 @@ export interface OutstandingBill {
   /** Days past due; negative means not yet due. */
   overdueDays: number;
   bucket: AgeingBucket;
+  /** Only on a bill raised in a currency other than the company's own. */
+  currencyCode?: string;
+  fcAmount?: string;
+  fcOutstanding?: string;
 }
 
 export interface OutstandingsReport {

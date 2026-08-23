@@ -477,6 +477,20 @@
 }
 
 /*
+ * The same figure in the currency it was invoiced in, under the base one.
+ *
+ * A block so it takes its own line rather than wrapping unpredictably beside a long amount, and
+ * quiet enough that the column still scans as one number per row — the base figure is what the
+ * ageing bands and the totals are built from, and this is the reference beside it.
+ */
+.foreign {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+/*
  * Printing a statement should produce the statement, not the application around it. The tabs and
  * toolbar are controls, not content, and a table that scrolls on screen has to be allowed to run
  * over as many pages as it needs on paper.

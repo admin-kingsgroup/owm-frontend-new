@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { seed, seedFeatured } from './seed';
 
@@ -182,12 +182,26 @@ test.describe('the frame', () => {
     const count = await rows.count();
     expect(count, 'no bills to check').toBeGreaterThan(0);
 
+    /*
+      A foreign bill carries a second figure in the same cell — the amount in the currency it was
+      invoiced in, under the base one. Read whole, the cell reads as one impossible number, so the
+      foreign line is taken back off before the base figure is parsed. These sums are in the base
+      currency, which is what the bands and the total are built from.
+    */
+    const baseAmount = async (cell: Locator) => {
+      let text = (await cell.textContent()) ?? '';
+      for (const foreign of await cell.locator('[class*="foreign"]').allTextContents()) {
+        text = text.replace(foreign, '');
+      }
+      return amount(text);
+    };
+
     let outstanding = 0;
     for (let index = 0; index < count; index += 1) {
       const cells = rows.nth(index).locator('td');
-      const billed = amount(await cells.nth(3).textContent());
-      const settled = amount(await cells.nth(4).textContent());
-      const left = amount(await cells.nth(5).textContent());
+      const billed = await baseAmount(cells.nth(3));
+      const settled = await baseAmount(cells.nth(4));
+      const left = await baseAmount(cells.nth(5));
 
       expect(left, `bill ${index + 1} does not net off what was settled`).toBeCloseTo(
         billed - settled,
