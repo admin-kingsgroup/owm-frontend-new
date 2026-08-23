@@ -82,8 +82,16 @@ function uuid(): string {
     No crypto at all. `Math.random` is the wrong tool for a secret and the right one here: this is
     a correlation id, quoted back by someone saying "it broke, here is the code", and a reference
     nobody can quote is worth less than one that repeats every few million faults.
+
+    Shaped as a v4 rather than as something obviously improvised, because the server accepts a
+    reference only in that form. A fallback that mints something the endpoint then rejects is not
+    a fallback — it swaps a thrown error for a silently discarded report, which is worse for being
+    quiet.
   */
-  return `r-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 12)}`;
+  const hex = (length: number) =>
+    Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${'89ab'[Math.floor(Math.random() * 4)]}${hex(3)}-${hex(12)}`;
 }
 
 function describe(error: unknown): { message: string; stack?: string } {

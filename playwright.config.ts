@@ -62,6 +62,12 @@ export default defineConfig({
 
         It also gives every run its own database rather than the last run's, so what a screen shows
         is what this run seeded.
+
+        That costs about a minute, and it is worth knowing where: roughly 7s to bring this server
+        up and 1s for the dev server, with the rest being the one full seed a fresh database needs
+        — companies, ledgers and vouchers, created through the API like anything else. The second
+        spec file adds nothing, because the seed returns the company it finds. Individual tests are
+        measurably *quicker* this way, against a database holding one run's data instead of twenty.
       */
       reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },

@@ -308,7 +308,9 @@ describe('minting a reference', () => {
 
   it('falls back to random bytes where randomUUID is unavailable', async () => {
     // Plain HTTP: crypto is there, the secure-context-only method is not.
-    vi.stubGlobal('crypto', { getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto) });
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    });
     const { reportClientError } = await freshReporter();
 
     const reference = reportClientError({ kind: 'UNCAUGHT', error: new Error('no randomUUID') });
@@ -326,8 +328,11 @@ describe('minting a reference', () => {
 
     const reference = reportClientError({ kind: 'RENDER', error: new Error('no crypto') });
 
-    expect(reference).toBeTruthy();
-    expect(reference.length).toBeGreaterThan(8);
+    // The same shape as the other two paths: the endpoint accepts a reference only as a UUID, so
+    // a fallback that mints anything else trades a thrown error for a report quietly refused.
+    expect(reference).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 
   it('does not throw when the fault itself is what broke crypto', async () => {
