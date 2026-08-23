@@ -15,11 +15,14 @@ const updateAccountGroup = vi.fn();
 vi.mock('@/entities/ledger', () => ({
   createLedger: (...args: unknown[]) => createLedger(...args),
   updateLedger: (...args: unknown[]) => updateLedger(...args),
+  // The panel re-reads the chart when an import starts rather than trusting its props.
+  listLedgers: () => Promise.resolve(ledgers),
 }));
 
 vi.mock('@/entities/account-group', () => ({
   createAccountGroup: (...args: unknown[]) => createAccountGroup(...args),
   updateAccountGroup: (...args: unknown[]) => updateAccountGroup(...args),
+  listAccountGroups: () => Promise.resolve(groups),
 }));
 
 const groups = [

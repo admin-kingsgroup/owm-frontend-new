@@ -297,6 +297,109 @@ test.describe('the frame', () => {
     The gateway rather than a statement because it carries the most kinds of surface at once: the
     menu bar, the context strip, two panels, a table with its own hover, and the status strip.
   */
+
+  /*
+    An actual import, against the actual API.
+
+    The panel has unit tests, but every one of them answers the entity layer from a mock — so what
+    they prove is that the panel calls the right function, not that the call is one the server
+    accepts. The parts most likely to be wrong live exactly there: whether a code that exists is
+    found and patched rather than refused, whether the fields sent survive validation, and whether
+    a group whose parent is further down the same file is created at all.
+
+    Written as one test rather than three because each step depends on the last: the group has to
+    exist before a ledger can name it, and the ledger has to exist before re-importing it can
+    update rather than create.
+  */
+
+  /*
+    Moving from one company's books to another's.
+
+    The screen holds what it last loaded while it refreshes, so that a panel reporting on something
+    it just did is not swept away by the reload it triggered. That is right for a refresh and wrong
+    for a change of company: held across a switch it would show one company's figures under the
+    other's name, for as long as the load takes.
+
+    So this asks for the plain company, moves to the featured one, and requires that nothing of the
+    first is still on screen once the second has arrived — the codes are what tell them apart, and
+    they appear in the frame as well as on the page.
+  */
+  test('shows the company asked for, and nothing of the one being left', async ({ page }) => {
+    await signIn(page);
+
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByText('SHOT01').first()).toBeVisible();
+
+    /*
+      Through the switcher rather than by address. Typing an address reloads the page, which throws
+      the held screen away for free and so proves nothing; the switcher moves within the running
+      application, which is where holding it would show.
+    */
+    await page.getByRole('button', { name: /SHOT01/ }).click();
+    await page
+      .getByRole('menu', { name: 'Switch company' })
+      .getByRole('menuitem', { name: /ADB - Multi/ })
+      .click();
+
+    await expect(page.getByText('SHOT02').first()).toBeVisible();
+    await expect(page.getByText('SHOT01')).toHaveCount(0);
+  });
+
+  test('imports a chart through the screen, creating what is new and correcting what is not', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}?tab=import-export`);
+    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+
+    const chooseGroups = page.locator('label', { hasText: 'Account groups CSV' }).locator('input');
+    const chooseLedgers = page.locator('label', { hasText: 'Ledgers CSV' }).locator('input');
+
+    /*
+      The child is written above its parent on purpose. A file exported from another product
+      frequently is, and sent in the order written the child is refused for a parent that is about
+      to exist one line later.
+    */
+    await chooseGroups.setInputFiles({
+      name: 'groups.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        [
+          'code,name,parentCode,nature,groupType',
+          'E2E_CHILD,Imported Child,E2E_PARENT,ASSET,BALANCE_SHEET',
+          'E2E_PARENT,Imported Parent,,ASSET,BALANCE_SHEET',
+          '',
+        ].join('\n'),
+      ),
+    });
+    await expect(page.getByText('2 created')).toBeVisible();
+
+    // A new account under the group just imported, so the two halves are checked against each other.
+    await chooseLedgers.setInputFiles({
+      name: 'ledgers.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('code,name,accountGroupCode\nE2E_LEDGER,Imported Account,E2E_CHILD\n'),
+    });
+    await expect(page.getByText('1 created')).toBeVisible();
+
+    /*
+      The same file again with the name changed. Every row is a duplicate, which is what an edited
+      export is — and refusing those was the fault this screen was rebuilt to fix.
+    */
+    await chooseLedgers.setInputFiles({
+      name: 'ledgers.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        'code,name,accountGroupCode\nE2E_LEDGER,Imported Account renamed,E2E_CHILD\n',
+      ),
+    });
+    await expect(page.getByText('1 updated')).toBeVisible();
+
+    // And it reached the books, not just the panel's own tally.
+    await page.goto(`/companies/${companyId}?tab=accounts`);
+    await expect(page.getByText('Imported Account renamed')).toBeVisible();
+  });
+
   test('the gateway reads in the dark theme too', async ({ page }) => {
     const faults: string[] = [];
     page.on('pageerror', (error) => faults.push(error.message));

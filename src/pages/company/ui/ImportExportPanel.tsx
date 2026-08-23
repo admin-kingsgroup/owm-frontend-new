@@ -2,9 +2,13 @@ import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Download, Upload } from 'lucide-react';
 
-import { createAccountGroup, updateAccountGroup } from '@/entities/account-group';
+import {
+  createAccountGroup,
+  listAccountGroups,
+  updateAccountGroup,
+} from '@/entities/account-group';
 import type { AccountGroup, AccountNature, GroupType } from '@/entities/account-group';
-import { createLedger, updateLedger } from '@/entities/ledger';
+import { createLedger, listLedgers, updateLedger } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
 import { Button } from '@/shared/ui';
 import { downloadCsv, getErrorMessage, parseCsv } from '@/shared/lib';
@@ -231,7 +235,17 @@ export function ImportExportPanel({
         'name',
         'accountGroupCode',
       ]);
-      const existing = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
+      /*
+        Read now rather than taken from the props this panel was given.
+        
+        The props come from the screen around it, which refreshes after an import — so the moment
+        just after one finishes, they describe the chart as it was before. Importing the same file
+        twice in a row, which is what somebody does when they are not sure the first one worked,
+        found none of its own accounts and tried to create them all again.
+      */
+      const existing = new Map(
+        (await listLedgers(companyId)).map((ledger) => [ledger.code, ledger]),
+      );
 
       /*
         Ledgers are independent of one another — each names a group that already exists — so they
@@ -297,7 +311,10 @@ export function ImportExportPanel({
         'nature',
         'groupType',
       ]);
-      const existing = new Map(groups.map((group) => [group.code, group.id]));
+      // Read now, for the same reason as the ledgers above.
+      const existing = new Map(
+        (await listAccountGroups(companyId)).map((group) => [group.code, group.id]),
+      );
 
       /*
         A group names its parent, and a file may well carry both. Sent in the order written, a child

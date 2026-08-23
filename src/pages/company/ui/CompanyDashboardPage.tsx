@@ -179,7 +179,19 @@ export function CompanyDashboardPage() {
   if (!companyId) return null;
   const id = companyId;
 
-  if (loading) {
+  /*
+    Only while there is nothing to show. This screen reloads itself after a panel changes something
+    — an import, an opening balance — and blanking the whole page to a spinner for that took the
+    panel down with it: an import reported what it created and what it refused, and the report
+    vanished in the same instant the numbers it described arrived. A refresh now happens underneath
+    whatever is on screen, which is also what it looks like to anyone watching.
+
+    Against the company being asked for, not merely against having one. Moving between companies
+    also runs this effect, and what is on screen then belongs to the company being left — holding
+    it up while the next one loads would show one company's books under another's name, which is a
+    worse thing to show than a spinner.
+  */
+  if (loading && company?.id !== id) {
     return <Loading label="Loading company…" />;
   }
 
