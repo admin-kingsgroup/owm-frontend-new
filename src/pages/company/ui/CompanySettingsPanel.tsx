@@ -24,9 +24,10 @@ type FeatureKey = keyof CompanyFeatures;
  * this is here so the switch explains itself rather than failing on save.
  */
 /*
-  Cost centres and inventory used to sit here as disabled rows reading "Not built yet". They are
-  gone from the company entirely now — a field in the API that nothing reads is the same lie one
-  layer down from a switch that does nothing. They come back the day something behind them does.
+  Three switches used to sit here that are gone from the company entirely: cost centres and
+  inventory, which nothing read, and GST — OWM does no taxation, so a tax switch was offering a
+  competence the product does not have. A field in the API that nothing reads is the same lie one
+  layer down from a switch that does nothing.
 */
 const FEATURES: Array<{
   key: FeatureKey;
@@ -46,14 +47,6 @@ const FEATURES: Array<{
     label: 'Multi-currency',
     hint: 'Record vouchers in other currencies at a dated exchange rate. Reports still total in the base currency.',
     available: () => true,
-  },
-  {
-    key: 'gst',
-    label: 'GST',
-    hint: 'Indian goods and services tax on vouchers, and the returns that follow from it.',
-    available: (company) => company.country.toUpperCase() === 'IN',
-    unavailableHint: (company) =>
-      `GST is an Indian statute. This company is registered in ${company.country.toUpperCase()}, so it transacts without it — its own country's compliance is a separate feature.`,
   },
 ];
 

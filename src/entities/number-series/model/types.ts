@@ -18,8 +18,4 @@ export interface NumberSeries {
   numbering: NumberingConfig;
   /** What the next number from this counter will be — composed by the server, so authoritative. */
   samplePreview: string;
-  /** Whether numbers from this series could legally appear on a GST invoice. */
-  gstCompliant: boolean;
-  /** Why not, ready to show. Empty when it is compliant. */
-  gstReason: string;
 }
