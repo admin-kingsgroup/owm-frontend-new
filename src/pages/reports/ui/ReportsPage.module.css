@@ -595,6 +595,33 @@
     display: none !important;
   }
 
+  /*
+    The account names are buttons, and on paper they are the statement.
+
+    Every figure in this module is a way into the postings behind it, so a tree row and a ledger
+    name in the trial balance are both <button>. The global print block hides controls as a class,
+    which deleted them: a printed balance sheet was two totals over an empty page, and a printed
+    trial balance had an empty Ledger column. The controls that genuinely cannot be pressed on
+    paper are hidden by name above, so these are put back with the layout they had on screen.
+  */
+  .treeRow {
+    display: flex !important;
+  }
+
+  .linkCell {
+    display: inline !important;
+  }
+
+  .treeRow,
+  .linkCell {
+    color: #000000 !important;
+  }
+
+  /* The chevron opens a group; on paper the group is already open or it is not there. */
+  .treeChevron {
+    display: none !important;
+  }
+
   .page {
     gap: 0.75rem;
   }

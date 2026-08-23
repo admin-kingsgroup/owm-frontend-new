@@ -55,8 +55,16 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
     };
   }, [company.id]);
 
+  /**
+   * How a figure is written on this screen.
+   *
+   * No currency symbol and nil written as nothing, matching the reports: the strip at the foot of
+   * the shell already says which currency the figures are in, and a summary whose ten rows are
+   * eight copies of 0.00 hides the two that are not. The companies list keeps its symbols, because
+   * there the figures sit side by side in different currencies.
+   */
   const money = (value: string) =>
-    formatMoney(value, { currency: company.baseCurrency, country: company.country });
+    formatMoney(value, { country: company.country, blankZero: true });
 
   /**
    * Assets less liabilities. Taken from the statement's own totals rather than by adding the rows
@@ -234,10 +242,19 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                             </Link>
                           </td>
                           <td className={styles.amount}>
-                            {money(node.balance)}{' '}
-                            <span className={styles.side}>
-                              {node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}
-                            </span>
+                            {money(node.balance) ? (
+                              <>
+                                {money(node.balance)}{' '}
+                                <span className={styles.side}>
+                                  {node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}
+                                </span>
+                              </>
+                            ) : (
+                              /* Nil. The side has nothing left to qualify, and printed anyway it
+                                 reads as a figure that failed to load rather than as a group
+                                 holding nothing. */
+                              <span className={styles.nil}>·</span>
+                            )}
                           </td>
                         </tr>
                       ))

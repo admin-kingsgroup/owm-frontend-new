@@ -157,6 +157,24 @@
   color: var(--ink-soft);
 }
 
+/* A figure column. Right-aligned on both the heading and the cells, so the decimal points line up
+   and the label sits over what it names — see the note beside `.table th.num` in the reports. */
+.num,
+.table th.num {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.side {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+/* Nil. The same dot the reports and the gateway draw. */
+.nil {
+  color: var(--ink-faint);
+}
+
 .rowFlags {
   display: flex;
   align-items: center;

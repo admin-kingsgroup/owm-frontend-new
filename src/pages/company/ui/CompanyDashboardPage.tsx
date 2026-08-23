@@ -435,7 +435,7 @@ export function CompanyDashboardPage() {
                     <th>Code</th>
                     <th>Name</th>
                     <th>Type</th>
-                    <th>Opening balance</th>
+                    <th className={styles.num}>Opening balance</th>
                     <th>Currency</th>
                     <th />
                     <th>Actions</th>
@@ -452,12 +452,29 @@ export function CompanyDashboardPage() {
                       </td>
                       <td data-label="Name">{ledger.name}</td>
                       <td data-label="Type">{ledger.ledgerType}</td>
-                      <td className={styles.mono} data-label="Opening balance">
-                        {formatMoney(ledger.openingBalance, {
-                          currency: company.baseCurrency,
-                          country: company.country,
-                        })}{' '}
-                        {ledger.openingBalanceType}
+                      <td className={cn(styles.mono, styles.num)} data-label="Opening balance">
+                        {/*
+                          A figure and the side it falls on, written as the rest of the product
+                          writes them: no symbol (the strip below names the currency), Dr/Cr rather
+                          than DEBIT/CREDIT, and a dot for nil — a chart of accounts is mostly
+                          accounts that have not opened with anything, and forty copies of 0.00
+                          hide the few that have.
+                        */}
+                        {(() => {
+                          const amount = formatMoney(ledger.openingBalance, {
+                            country: company.country,
+                            blankZero: true,
+                          });
+                          if (!amount) return <span className={styles.nil}>·</span>;
+                          return (
+                            <>
+                              {amount}{' '}
+                              <span className={styles.side}>
+                                {ledger.openingBalanceType === 'DEBIT' ? 'Dr' : 'Cr'}
+                              </span>
+                            </>
+                          );
+                        })()}
                       </td>
                       {/*
                         Which accounts are foreign is the question the field exists to answer, so it

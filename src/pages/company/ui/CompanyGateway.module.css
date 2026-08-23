@@ -169,6 +169,11 @@
   font-size: var(--text-xs);
 }
 
+/* A nil balance. The same dot the reports draw, for the same reason. */
+.nil {
+  color: var(--ink-faint);
+}
+
 /* Which half of the sheet the rows under it belong to. */
 .figuresHeading {
   padding: 0.5rem 0.875rem 0.1875rem;

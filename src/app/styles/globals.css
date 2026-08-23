@@ -145,6 +145,17 @@
   --chrome-warn: #e0b45c;
   --chrome-danger: #f0837a;
 
+  /*
+    A chip on the chrome — the company code beside the switcher.
+
+    Its own colour, not --sidebar-dim, which is pitched against the bar itself: over a chip that
+    has already lifted the ground by 11% it measured 3.53:1, below AA on every screen in the
+    product. This is 7.4:1 on the chip in dark and 6.7:1 in light, and still quieter than the
+    company name it sits beside.
+  */
+  --chrome-chip-bg: rgba(255, 255, 255, 0.11);
+  --chrome-chip-fg: #b9bdc3;
+
   /* Charts only. Kept away from the accent hue so a series colour is never
      read as an action. */
   --data-1: #2f7a72;
@@ -420,6 +431,8 @@ textarea:focus-visible {
     --chrome-ok: #000000;
     --chrome-warn: #000000;
     --chrome-danger: #000000;
+    --chrome-chip-bg: transparent;
+    --chrome-chip-fg: #1f1f1f;
     --hover-tint: transparent;
     --chip-bg: transparent;
     --chip-fg: #1f1f1f;

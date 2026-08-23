@@ -62,10 +62,27 @@
   border-bottom: 1px solid var(--border);
 }
 
+/*
+  The amount heading sits over its amounts.
+
+  `.amountHead` already said `text-align: right`, but it is (0,1,0) and `.table th` is (0,1,1), so
+  the heading lost and the column's label sat at the far left of a column of right-aligned figures.
+  The same cascade caught the reports module — see the note beside `.table th.num` there.
+*/
+.table th.amountHead {
+  text-align: right;
+}
+
 .table td {
-  padding: 0.75rem;
+  padding: 0.4375rem 0.75rem;
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
+}
+
+/* A voucher list runs to hundreds of rows; the eye needs a rail to carry one across six columns.
+   Hover is already handled by .row, which every clickable row carries. */
+.table tbody tr:nth-child(even) td {
+  background-color: var(--paper);
 }
 
 .table tr:last-child td {
