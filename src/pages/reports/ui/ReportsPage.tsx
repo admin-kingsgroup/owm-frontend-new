@@ -47,6 +47,8 @@ import type { CashMovementRow } from '@/entities/report';
 import { listVoucherTypes } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { listLedgers } from '@/entities/ledger';
+import { listAccountGroups, partyGroupTest } from '@/entities/account-group';
+import type { AccountGroup } from '@/entities/account-group';
 import type { Ledger } from '@/entities/ledger';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { reconcileEntry } from '@/entities/voucher';
@@ -203,11 +205,6 @@ function usesPeriod(tab: Tab): boolean {
   return tab !== 'audit';
 }
 
-/** The reports that can be written out. The rest disable Export rather than doing nothing. */
-function canExport(tab: Tab): boolean {
-  return tab !== 'cash-book' && tab !== 'bank-book' && tab !== 'group-summary';
-}
-
 function isComparable(tab: Tab): boolean {
   return (
     tab === 'balance-sheet' ||
@@ -335,6 +332,7 @@ export function ReportsPage() {
   /** For the pickers. Small, unchanging within a session, and needed by four of the tabs. */
   const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
+  const [groups, setGroups] = useState<AccountGroup[]>([]);
 
   const [statement, setStatement] = useState<LedgerStatementReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -410,11 +408,12 @@ export function ReportsPage() {
     const id = companyId;
     let cancelled = false;
 
-    void Promise.all([listVoucherTypes(id), listLedgers(id)])
-      .then(([types, accounts]) => {
+    void Promise.all([listVoucherTypes(id), listLedgers(id), listAccountGroups(id)])
+      .then(([types, accounts, accountGroups]) => {
         if (cancelled) return;
         setVoucherTypes(types.filter((type) => type.isActive));
         setLedgers(accounts.filter((ledger) => ledger.isActive));
+        setGroups(accountGroups.filter((group) => group.isActive));
       })
       // A picker that cannot be filled is a degraded screen, not a broken one — the report the
       // reader is already looking at is unaffected, so this must not replace the page.
@@ -541,6 +540,10 @@ export function ReportsPage() {
    * back null — the period was not a whole year, or there is no earlier one. Reading it from the
    * report rather than from the checkbox is what keeps the banner honest.
    */
+  /* Which ledgers are somebody the company deals with — see partyGroupTest. */
+  const isParty = partyGroupTest(groups);
+  const parties = ledgers.filter((ledger) => isParty(ledger.accountGroupId));
+
   const comparison =
     (tab === 'balance-sheet'
       ? balanceSheet?.comparison
@@ -689,6 +692,40 @@ export function ReportsPage() {
           ],
         ],
       );
+    } else if ((tab === 'cash-book' || tab === 'bank-book') && (cashBook || bankBook)) {
+      /*
+        Every cash or bank account's statement, one after another. The account is a column rather
+        than a heading between blocks: a heading row is a spreadsheet's least useful shape, and a
+        column can be filtered and grouped by whoever opens the file.
+      */
+      const books = (tab === 'cash-book' ? cashBook : bankBook) ?? [];
+      downloadCsv(
+        name(tab),
+        ['Account', 'Date', 'Number', 'Narration', 'Debit', 'Credit', 'Running balance'],
+        books.flatMap((book) => [
+          [book.ledger.name, '', 'Opening', '', '', '', book.openingBalance],
+          ...book.lines.map((line) => [
+            book.ledger.name,
+            toCalendarDay(line.voucherDate),
+            line.voucherNumber,
+            line.narration ?? '',
+            line.debit,
+            line.credit,
+            line.runningBalance,
+          ]),
+          [
+            book.ledger.name,
+            '',
+            'Closing',
+            '',
+            book.totals.debit,
+            book.totals.credit,
+            book.closingBalance,
+          ],
+        ]),
+      );
+    } else if (tab === 'group-summary' && groupSummary) {
+      downloadCsv(name('group-summary'), base, flattenNodes(groupSummary));
     } else if (tab === 'register' && register) {
       downloadCsv(
         name(`${subjectType.toLowerCase()}-register`),
@@ -1023,7 +1060,7 @@ export function ReportsPage() {
       onSelect: exportCurrentTab,
       // Off rather than silent on the few reports with no writer: a button that does nothing when
       // pressed is worse than one that shows it will not.
-      disabled: loading || !canExport(tab),
+      disabled: loading,
     },
     {
       group: 'This report',
@@ -1090,7 +1127,53 @@ export function ReportsPage() {
           options={voucherTypes.map((type) => ({ value: type.code, label: type.name }))}
         />
       )}
-      {(tab === 'ledger' || tab === 'monthly-summary') && (
+      {tab === 'statement-of-account' && (
+        <SubjectPicker
+          id="report-party"
+          label="Party"
+          placeholder="Choose a customer or supplier…"
+          value={subjectLedgerId}
+          onChange={(value) => chooseSubject('ledgerId', value)}
+          /*
+            Only the accounts that are somebody. A statement of account for Cash or for Sales is
+            not a thing anyone sends, and offering every ledger buries the few that are parties.
+          */
+          options={parties.map((ledger) => ({ value: ledger.id, label: ledger.name }))}
+        />
+      )}
+      {tab === 'monthly-summary' && (
+        <SubjectPicker
+          id="report-subject"
+          label="Ledger or group"
+          placeholder="Choose an account or a group…"
+          value={
+            subjectGroupId
+              ? `group:${subjectGroupId}`
+              : subjectLedgerId
+                ? `ledger:${subjectLedgerId}`
+                : ''
+          }
+          /* The value carries which kind it is, because the two go into different URL keys. */
+          onChange={(value) => {
+            const [kind, id] = value.split(':');
+            if (!id) chooseSubject('ledgerId', '');
+            else chooseSubject(kind === 'group' ? 'groupId' : 'ledgerId', id);
+          }}
+          options={[
+            ...groups.map((group) => ({
+              value: `group:${group.id}`,
+              label: group.name,
+              group: 'Groups',
+            })),
+            ...ledgers.map((ledger) => ({
+              value: `ledger:${ledger.id}`,
+              label: ledger.name,
+              group: 'Ledgers',
+            })),
+          ]}
+        />
+      )}
+      {tab === 'ledger' && (
         <SubjectPicker
           id="report-ledger"
           label="Ledger"

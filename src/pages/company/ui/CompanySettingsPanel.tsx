@@ -24,10 +24,9 @@ type FeatureKey = keyof CompanyFeatures;
  * this is here so the switch explains itself rather than failing on save.
  */
 /*
-  Cost centres and inventory are not listed. They are flags on the company that nothing reads, so
-  each showed a disabled row saying "Not built yet" — the menu-bar rule broken in another place: a
-  settings screen listing what the product cannot do teaches you not to trust the switches it can.
-  They come back the day something behind them does.
+  Cost centres and inventory used to sit here as disabled rows reading "Not built yet". They are
+  gone from the company entirely now — a field in the API that nothing reads is the same lie one
+  layer down from a switch that does nothing. They come back the day something behind them does.
 */
 const FEATURES: Array<{
   key: FeatureKey;

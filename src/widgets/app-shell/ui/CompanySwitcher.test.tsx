@@ -23,8 +23,6 @@ const company = (patch: Partial<Company> = {}): Company => ({
   features: {
     billWiseDetails: true,
     multiCurrency: true,
-    costCentres: false,
-    inventory: false,
     gst: false,
   },
   ...patch,

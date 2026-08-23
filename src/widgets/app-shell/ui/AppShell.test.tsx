@@ -70,8 +70,6 @@ const company = (patch: Partial<Company> = {}): Company => ({
   features: {
     billWiseDetails: true,
     multiCurrency: true,
-    costCentres: false,
-    inventory: false,
     gst: false,
   },
   ...patch,
@@ -190,8 +188,6 @@ describe('AppShell', () => {
           features: {
             billWiseDetails: false,
             multiCurrency: false,
-            costCentres: false,
-            inventory: false,
             gst: false,
           },
         }),

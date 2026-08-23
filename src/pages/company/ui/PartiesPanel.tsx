@@ -8,7 +8,7 @@ import {
   type Ledger,
   type OpeningBill,
 } from '@/entities/ledger';
-import { listAccountGroups, type AccountGroup } from '@/entities/account-group';
+import { listAccountGroups, partyGroupTest, type AccountGroup } from '@/entities/account-group';
 import { Button, Input, Loading } from '@/shared/ui';
 import { cn, getErrorMessage } from '@/shared/lib';
 
@@ -17,9 +17,6 @@ import styles from './PartiesPanel.module.css';
 interface PartiesPanelProps {
   companyId: string;
 }
-
-/** The groups a party lives under. Anything else is an account, not somebody the company deals with. */
-const PARTY_GROUPS = ['SUNDRY_DEBTORS', 'SUNDRY_CREDITORS'];
 
 interface DraftBill {
   reference: string;
@@ -72,23 +69,8 @@ export function PartiesPanel({ companyId }: PartiesPanelProps) {
       .then(([ledgers, groups]: [Ledger[], AccountGroup[]]) => {
         if (cancelled) return;
 
-        /*
-          Everything under a party group, however deep — a company that has put its customers into
-          sub-groups by region still has customers, and reading only the two top groups would show
-          an empty screen to the people most likely to need this one.
-        */
-        const byId = new Map(groups.map((group) => [group.id, group]));
-        const isPartyGroup = (groupId: string): boolean => {
-          const seen = new Set<string>();
-          let cursor = byId.get(groupId);
-          while (cursor) {
-            if (PARTY_GROUPS.includes(cursor.code)) return true;
-            if (!cursor.parentId || seen.has(cursor.parentId)) return false;
-            seen.add(cursor.parentId);
-            cursor = byId.get(cursor.parentId);
-          }
-          return false;
-        };
+        // Everything under a party group, however deep — see partyGroupTest.
+        const isPartyGroup = partyGroupTest(groups);
 
         setParties(
           ledgers

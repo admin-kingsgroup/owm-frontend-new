@@ -78,8 +78,6 @@ const company: Company = {
   features: {
     billWiseDetails: true,
     multiCurrency: false,
-    costCentres: false,
-    inventory: false,
     gst: false,
   },
 };

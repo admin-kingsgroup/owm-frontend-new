@@ -18,8 +18,6 @@ export interface SeedPreview {
 export interface CompanyFeatures {
   billWiseDetails: boolean;
   multiCurrency: boolean;
-  costCentres: boolean;
-  inventory: boolean;
   gst: boolean;
 }
 

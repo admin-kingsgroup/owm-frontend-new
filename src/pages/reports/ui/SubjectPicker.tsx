@@ -5,7 +5,12 @@ interface SubjectPickerProps {
   id: string;
   label: string;
   value: string;
-  options: Array<{ value: string; label: string }>;
+  /**
+   * `group` puts an option under a heading. Used where one picker offers two kinds of thing — a
+   * monthly summary reads either a ledger or a whole group, and a flat list of both mixed together
+   * gives no way to tell which is which when the names are similar.
+   */
+  options: Array<{ value: string; label: string; group?: string }>;
   /** Shown as the first option while nothing is chosen. */
   placeholder: string;
   onChange: (value: string) => void;
@@ -30,6 +35,15 @@ export function SubjectPicker({
   placeholder,
   onChange,
 }: SubjectPickerProps) {
+  /* Headings in the order they first appear, so the caller decides which kind is listed first. */
+  const grouped: Array<[string, SubjectPickerProps['options']]> = [];
+  for (const option of options) {
+    if (!option.group) continue;
+    const existing = grouped.find(([heading]) => heading === option.group);
+    if (existing) existing[1].push(option);
+    else grouped.push([option.group, [option]]);
+  }
+
   return (
     <div className={styles.periodField}>
       <label className={styles.periodLabel} htmlFor={id}>
@@ -42,11 +56,21 @@ export function SubjectPicker({
         onChange={(event) => onChange(event.target.value)}
       >
         <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {grouped.length === 0
+          ? options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))
+          : grouped.map(([heading, entries]) => (
+              <optgroup key={heading} label={heading}>
+                {entries.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
       </select>
     </div>
   );
