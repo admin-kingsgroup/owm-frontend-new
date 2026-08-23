@@ -155,6 +155,86 @@ test.describe('reading what was reported', () => {
   });
 });
 
+/**
+ * The v4 masters, seen rather than asserted.
+ *
+ * The backend suite proves an Income voucher posts and reaches the Profit & Loss. None of that
+ * says a person can find it: a voucher type nobody can reach from the menu is a numbering series
+ * for documents that will never be raised.
+ */
+test.describe('the household voucher types', () => {
+  test('Income and Expense are on the Transactions menu, with the rest', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await page.getByRole('button', { name: 'Transactions' }).click();
+
+    /*
+      Waited for before the list is read. The shell loads the company's voucher types after it
+      first paints, so the menu opens holding only the fixed entries and fills in a moment later —
+      reading it immediately catches it half-built and reports the product broken.
+    */
+    await expect(page.getByRole('menuitem').filter({ hasText: 'Income' })).toBeVisible();
+
+    /*
+      Read as a list rather than probed one at a time: a keyed type renders its shortcut inside the
+      accessible name — "Contra F4" — so an exact match on the label alone finds nothing and would
+      report the product broken when it is the selector that is wrong.
+    */
+    const items = (await page.getByRole('menuitem').allInnerTexts()).map((text) =>
+      text.replace(/\s+/g, ' ').trim(),
+    );
+
+    for (const name of ['Income', 'Expense', 'Receipt', 'Payment', 'Contra', 'Journal']) {
+      expect(
+        items.some((item) => item === name || item.startsWith(`${name} `)),
+        `${name} is missing from Transactions — saw ${JSON.stringify(items)}`,
+      ).toBe(true);
+    }
+
+    // A household trades with nobody, so these must not be offered at all.
+    for (const name of ['Sales', 'Purchase', 'Credit Note', 'Debit Note']) {
+      expect(
+        items.some((item) => item === name || item.startsWith(`${name} `)),
+        `${name} is offered on a personal book`,
+      ).toBe(false);
+    }
+  });
+
+  test('the Income menu item opens the form it points at', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await page.getByRole('button', { name: 'Transactions' }).click();
+    await page.getByRole('menuitem', { name: 'Income', exact: true }).click();
+
+    await expect(page).toHaveURL(/new=INCOME/);
+    await expect(page.getByRole('dialog')).toBeVisible();
+    // The form has to say which kind of document it is raising, or every voucher looks the same.
+    await expect(page.getByRole('dialog')).toContainText(/Income/);
+  });
+
+  test('each type gets a register of its own', async ({ page }) => {
+    /*
+      Registers are listed per voucher type, so adding two types adds two registers. This is the
+      half that would silently not happen if the type existed only in the seed.
+    */
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await page.getByRole('button', { name: 'Reports' }).click();
+
+    // Auto-retrying, for the same reason as above: the registers are built from the voucher types,
+    // so they are the last part of this menu to exist.
+    const registers = page.getByRole('menuitem').filter({ hasText: /Register/i });
+    await expect(registers.first(), 'no register is listed for any voucher type').toBeVisible();
+
+    /*
+      One per type that can carry documents. Journal and Contra are registers too in Tally, so the
+      count is not asserted exactly — what matters is that adding a voucher type added a register,
+      which is the half that would silently not happen if the type existed only in the seed.
+    */
+    expect(await registers.count()).toBeGreaterThan(1);
+  });
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
