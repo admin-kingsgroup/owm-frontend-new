@@ -96,8 +96,18 @@ test.describe('every screen, drawn', () => {
 
       await signIn(page);
       await page.goto(screen.path());
-      // The frame is on every screen; waiting for it means waiting for the app, not for a spinner.
-      await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+      /*
+        Help, not Reports.
+
+        The frame is on every screen, and waiting for it means waiting for the app rather than for a
+        spinner — but it has to be waited on through something every screen actually has. Reports is
+        no longer that: an analytics workspace keeps no books, so it is not offered statements, and
+        this wait timed out on the one screen in the sweep that has none. Worse, it did so only
+        sometimes — the menu is drawn while the company's type is still unknown and withdrawn once
+        it arrives, so the wait was racing the company list. Help is on the bar whatever the company
+        turns out to be.
+      */
+      await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
       await page.waitForLoadState('networkidle');
 
       /*
