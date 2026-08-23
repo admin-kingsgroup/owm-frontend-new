@@ -68,6 +68,10 @@ const VOUCHER_HINTS: Record<string, string> = {
   PURCHASE: 'F9',
   CREDIT_NOTE: 'Ctrl+F8',
   DEBIT_NOTE: 'Ctrl+F9',
+  // The same two keys, for the books that have no Sales and no Purchase to put on them. A company
+  // is either trading or personal, so only one of each pair is ever present to be listed.
+  INCOME: 'F8',
+  EXPENSE: 'F9',
 };
 
 /**

@@ -49,6 +49,16 @@ const VOUCHER_KEYS = [
   { key: 'F9', code: 'PURCHASE', label: 'Purchase' },
   { key: 'Ctrl+F8', code: 'CREDIT_NOTE', label: 'Credit Note' },
   { key: 'Ctrl+F9', code: 'DEBIT_NOTE', label: 'Debit Note' },
+  /*
+    F8 and F9 again, for the books that have no Sales and no Purchase.
+
+    They are the same two keys deliberately: in Tally F8 raises what the business earned and F9
+    what it cost, and that is exactly what Income and Expense are to a household. The pair can
+    never collide, because a company is either trading or personal and the filter below binds only
+    what its masters actually hold.
+  */
+  { key: 'F8', code: 'INCOME', label: 'Income' },
+  { key: 'F9', code: 'EXPENSE', label: 'Expense' },
 ] as const;
 
 export function AppShell() {
@@ -201,21 +211,24 @@ export function AppShell() {
    * having to go back to the Gateway first is the trip the bar exists to save. The Transactions
    * menu still lists them; the bar is the fast path, not a replacement.
    *
-   * The shell does not hold the company's voucher types, so it names the code and lets the vouchers
-   * screen resolve it — a company whose masters do not include that code opens the form on its own
-   * first active type instead. An analytics workspace posts nothing, so it gets none.
+   * Only the types the company actually holds. The bar used to draw all eight whatever the books
+   * were, so a personal company — which has no Sales, Purchase, Credit Note or Debit Note — offered
+   * four documents it cannot raise and hid the two it can. Pressing one did not fail either: the
+   * vouchers screen falls back to the first active type, so it quietly opened the wrong kind of
+   * document. An analytics workspace posts nothing, so it gets none of them.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
     if (!companyId || company?.type === 'ANALYTICS') return [];
     const base = `/companies/${companyId}`;
+    const held = new Set(voucherTypes.map((type) => type.code));
 
-    return VOUCHER_KEYS.map(({ key, code, label }) => ({
+    return VOUCHER_KEYS.filter(({ code }) => held.has(code)).map(({ key, code, label }) => ({
       group: 'Data entry',
       key,
       label,
       onSelect: () => navigate(`${base}/vouchers?new=${code}`),
     }));
-  }, [companyId, company?.type, navigate]);
+  }, [companyId, company?.type, navigate, voucherTypes]);
 
   /*
     The page keeps first claim on a key: a screen that binds F8 to its own meaning must not have the

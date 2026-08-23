@@ -40,7 +40,16 @@ export default defineConfig({
 
   webServer: [
     {
-      command: 'npx tsx scripts/run-live.mts',
+      /*
+        `node` directly, not through a package runner.
+
+        Playwright kills the process it spawned. Through `npx` that process is the runner, and the
+        server it started is a grandchild that survives — which is the orphan that used to be
+        inherited by the next run and then die in the middle of it. Invoking node itself makes the
+        thing Playwright holds the thing that serves, so shutting the run down shuts the server
+        down. `--import tsx` is what lets it load the TypeScript entry.
+      */
+      command: 'node --import tsx scripts/run-live.mts',
       cwd: backendDir,
       env: { PORT: String(API_PORT), NODE_ENV: 'development' },
       url: `http://localhost:${API_PORT}/api/v1/health`,

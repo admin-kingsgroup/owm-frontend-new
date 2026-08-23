@@ -204,12 +204,51 @@ test.describe('the household voucher types', () => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
     await page.getByRole('button', { name: 'Transactions' }).click();
-    await page.getByRole('menuitem', { name: 'Income', exact: true }).click();
+    /*
+      Matched on the label rather than the whole name: a type with a function key renders the key
+      inside its accessible name, so this is "Income F8" and an exact match on "Income" waits for
+      something that will never appear. It found that out the hard way when F8 was bound.
+    */
+    await page.getByRole('menuitem', { name: 'Income' }).click();
 
     await expect(page).toHaveURL(/new=INCOME/);
     await expect(page.getByRole('dialog')).toBeVisible();
     // The form has to say which kind of document it is raising, or every voucher looks the same.
     await expect(page.getByRole('dialog')).toContainText(/Income/);
+  });
+
+  test('the button bar offers only documents these books can hold', async ({ page }) => {
+    /*
+      The bar used to draw all eight of Tally's keys whatever the company was, so a personal book
+      offered Sales, Purchase, Credit Note and Debit Note — four documents it cannot raise — and
+      hid Income and Expense, which it can. Pressing one did not even fail: the vouchers screen
+      falls back to the first active type, so it opened the wrong kind of document without saying
+      so, which is the failure mode worth a test.
+    */
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    const bar = await page.evaluate(() =>
+      [...document.querySelectorAll('button')]
+        .map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim())
+        .filter((text) =>
+          /^(Sales|Purchase|Credit Note|Debit Note|Income|Expense|Contra|Payment|Receipt|Journal)/.test(
+            text,
+          ),
+        ),
+    );
+
+    // Tally's own keys, and the same two keys carrying earning and spending where there is no trade.
+    expect(bar).toEqual([
+      'ContraF4',
+      'PaymentF5',
+      'ReceiptF6',
+      'JournalF7',
+      'IncomeF8',
+      'ExpenseF9',
+    ]);
   });
 
   test('each type gets a register of its own', async ({ page }) => {
