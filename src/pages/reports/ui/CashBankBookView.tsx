@@ -10,6 +10,8 @@ interface CashBankBookViewProps {
   kind: 'cash' | 'bank';
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
 }
 
 /**
@@ -18,14 +20,20 @@ interface CashBankBookViewProps {
  * One component for both because they differ only in which accounts they gather — and a second
  * copy would be the place the two quietly grow apart.
  */
-export function CashBankBookView({ books, kind, money }: CashBankBookViewProps) {
+export function CashBankBookView({ books, kind, money, day }: CashBankBookViewProps) {
   return (
     <section className={styles.panel}>
       {books?.length === 0 ? (
         <p className={styles.empty}>This company has no {kind} account yet.</p>
       ) : (
         books?.map((entry) => (
-          <LedgerStatement key={entry.ledger.id} statement={entry} money={money} heading />
+          <LedgerStatement
+            key={entry.ledger.id}
+            statement={entry}
+            money={money}
+            day={day}
+            heading
+          />
         ))
       )}
     </section>

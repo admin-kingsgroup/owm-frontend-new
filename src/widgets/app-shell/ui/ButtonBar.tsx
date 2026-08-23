@@ -13,7 +13,14 @@ interface ButtonBarProps {
  * Every action is both a button and a printed shortcut, so the same bar serves someone reaching for
  * the mouse and someone learning the keyboard. Groups appear in the order they are first mentioned,
  * which lets a page order its own bar without having to declare the groups up front.
+ *
+ * Data entry is the exception, and is pinned to the top. It is the commonest thing anyone does and
+ * Tally puts it there — but it cannot simply be listed first, because the order of `actions` is
+ * also the order shortcuts are matched in, and a page has to be able to bind F8 to its own meaning
+ * without the shell's Sales key answering first. So the page keeps precedence and the bar decides
+ * where things are drawn.
  */
+const PINNED_FIRST = 'Data entry';
 export function ButtonBar({ actions }: ButtonBarProps) {
   const idPrefix = useId();
 
@@ -27,6 +34,9 @@ export function ButtonBar({ actions }: ButtonBarProps) {
     if (existing) existing.actions.push(action);
     else groups.push({ name: action.group, actions: [action] });
   }
+
+  const pinned = groups.findIndex((group) => group.name === PINNED_FIRST);
+  if (pinned > 0) groups.unshift(...groups.splice(pinned, 1));
 
   return (
     <aside className={styles.bar} aria-label="Actions for this screen">

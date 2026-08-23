@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ReportNode } from '@/entities/report';
 import { cn } from '@/shared/lib';
 
+import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
 
 export interface ReportTreeProps {
@@ -55,12 +56,11 @@ function TreeRow({
         <span className={styles.treeName}>{node.name}</span>
         {showPrior && (
           <span className={styles.treePriorAmount}>
-            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance)}
+            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance) || '·'}
           </span>
         )}
         <span className={styles.treeAmount}>
-          {formatAmount(node.balance)}
-          <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
+          <Figure amount={formatAmount(node.balance)} side={node.balanceSide} />
         </span>
       </button>
     );
@@ -81,12 +81,11 @@ function TreeRow({
         <span className={styles.treeName}>{node.name}</span>
         {showPrior && (
           <span className={styles.treePriorAmount}>
-            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance)}
+            {node.priorBalance === undefined ? '—' : formatAmount(node.priorBalance) || '·'}
           </span>
         )}
         <span className={styles.treeAmount}>
-          {formatAmount(node.balance)}
-          <span className={styles.treeSide}>{node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
+          <Figure amount={formatAmount(node.balance)} side={node.balanceSide} />
         </span>
       </button>
       {expanded &&

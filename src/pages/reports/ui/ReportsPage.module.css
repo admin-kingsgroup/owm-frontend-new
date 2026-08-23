@@ -13,7 +13,8 @@
 }
 
 .title {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
   font-size: 1.75rem;
   font-weight: 600;
   color: var(--ink);
@@ -251,23 +252,82 @@
   white-space: nowrap;
 }
 
+/*
+  A numeric heading sits over its numbers.
+
+  `.num` already said `text-align: right`, and every view already tags its numeric headers with it
+  — but `.table th` is (0,1,1) and `.num` is (0,1,0), so the heading lost and every figure column
+  in the module carried its label a hundred pixels to the left of the column it named. This is
+  (0,2,1) and settles it, for the headers and for the prior-year column alike.
+*/
+.table th.num,
+.table th.numPrior {
+  text-align: right;
+}
+
 .table td {
-  padding: 0.3125rem 0.625rem;
+  padding: 0.25rem 0.625rem;
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
   white-space: nowrap;
 }
 
+/* Alternating fill, so the eye can carry a row across six columns of figures without losing it. */
+.table tbody tr:nth-child(even) td {
+  background-color: var(--paper);
+}
+
+.table tbody tr:hover td {
+  background-color: var(--hover-tint);
+}
+
+/*
+  The closing rule. Heavier than a divider and in --ink rather than --border, because the line above
+  a total is the one rule on a statement that means something: everything above it adds up to what
+  is below it.
+*/
 .table tfoot td {
   border-bottom: none;
-  border-top: 2px solid var(--border);
+  border-top: 2px solid var(--ink);
+  background-color: var(--paper-sunken);
   font-weight: 700;
+}
+
+/*
+  The chosen date, spelled out under its box.
+
+  A native date input renders in the browser's locale, which the page cannot override — so the box
+  above this may well say 03/31/2027 to a reader who writes 31/3/2027. This says which day it
+  actually is, in the company's own convention.
+*/
+/* A nil balance on a tree row. The same dot the grids draw, for the same reason. */
+.treeNil {
+  color: var(--ink-faint);
+}
+
+.periodEcho {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .num {
   text-align: right;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+  A figure of nil is shown as a dot, not as 0.00.
+
+  A trial balance of eight ledgers has five columns that are entirely zero, and printing forty
+  copies of "0.00" hides the four figures that are not. Tally suppresses them; the dot keeps the
+  cell visibly present, so a blank never reads as a column that failed to load. `money` returns an
+  empty string for nil — see the note where it is built.
+*/
+.num:empty::before {
+  content: '·';
+  color: var(--ink-faint);
 }
 
 /* Last year, in a table. Muted the same amount as .treePriorAmount so a reader's eye lands on
@@ -458,11 +518,44 @@
 }
 
 .bucketAmount {
-  font-size: 0.9375rem;
-  font-weight: 600;
+  /* A headline figure, sized like one. At body size the count of errors read as another label. */
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+}
+
+/*
+  Severity, as a chip rather than a word.
+
+  This is the one report whose whole purpose is "what needs attention", and it was the one screen
+  with no colour on it at all — every row said "Question" in the same grey as the text beside it.
+  The word stays, because a chip that only differs by colour tells a colour-blind reader nothing.
+*/
+.severity {
+  display: inline-block;
+  padding: 1px 0.4375rem;
+  border-radius: var(--radius-full);
+  border: 1px solid;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.severityError {
+  color: var(--danger-fg);
+  background-color: var(--danger-bg-soft);
+  border-color: var(--danger-bd);
+}
+
+.severityQuestion {
+  color: var(--warning-fg);
+  background-color: var(--warning-bg-soft);
+  border-color: var(--warning-bd);
 }
 
 .overdue {
@@ -559,7 +652,8 @@
 
 .chartTitle {
   margin: 0 0 var(--space-3);
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--ink);
@@ -577,7 +671,8 @@
   align-items: baseline;
   gap: var(--space-2);
   margin: 0 0 var(--space-3);
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
   font-size: var(--text-lg);
   font-weight: 600;
   color: var(--ink);

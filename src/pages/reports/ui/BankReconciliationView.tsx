@@ -1,12 +1,17 @@
 import type { BankReconciliationReport } from '@/entities/report';
-import { cn, toCalendarDay } from '@/shared/lib';
+import { cn } from '@/shared/lib';
 
+import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
 
 interface BankReconciliationViewProps {
   report: BankReconciliationReport;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
+  /** What a voucher type is called, in the company's own words, given its code. */
+  typeName: (code: string) => string;
   /**
    * Ticks a line off against the statement, or clears the mark when the date is emptied.
    *
@@ -32,34 +37,39 @@ export function BankReconciliationView({
   money,
   onReconcile,
   saving,
+  day,
+  typeName,
 }: BankReconciliationViewProps) {
-  const side = (value: 'DEBIT' | 'CREDIT') => (value === 'DEBIT' ? 'Dr' : 'Cr');
-
   return (
     <section className={styles.panel}>
       <div className={styles.buckets}>
         <div className={styles.bucket}>
           <span className={styles.bucketLabel}>Balance as per books</span>
           <span className={styles.bucketAmount}>
-            {money(report.balanceAsPerBooks)}
-            <span className={styles.priorSide}>{side(report.balanceAsPerBooksSide)}</span>
+            <Figure amount={money(report.balanceAsPerBooks)} side={report.balanceAsPerBooksSide} />
           </span>
         </div>
         <div className={styles.bucket}>
           <span className={styles.bucketLabel}>Deposits not yet credited</span>
-          <span className={styles.bucketAmount}>{money(report.totals.unreconciledDebits)}</span>
+          <span className={styles.bucketAmount}>
+            <Figure amount={money(report.totals.unreconciledDebits)} />
+          </span>
           <span className={styles.bucketPrior}>lowers the bank&rsquo;s figure</span>
         </div>
         <div className={styles.bucket}>
           <span className={styles.bucketLabel}>Cheques not yet presented</span>
-          <span className={styles.bucketAmount}>{money(report.totals.unreconciledCredits)}</span>
+          <span className={styles.bucketAmount}>
+            <Figure amount={money(report.totals.unreconciledCredits)} />
+          </span>
           <span className={styles.bucketPrior}>raises the bank&rsquo;s figure</span>
         </div>
         <div className={cn(styles.bucket, styles.bucketTotal)}>
           <span className={styles.bucketLabel}>Balance as per bank</span>
           <span className={styles.bucketAmount}>
-            {money(report.totals.balanceAsPerBank)}
-            <span className={styles.priorSide}>{side(report.totals.balanceAsPerBankSide)}</span>
+            <Figure
+              amount={money(report.totals.balanceAsPerBank)}
+              side={report.totals.balanceAsPerBankSide}
+            />
           </span>
         </div>
       </div>
@@ -94,9 +104,9 @@ export function BankReconciliationView({
           <tbody>
             {report.unreconciled.map((row) => (
               <tr key={`${row.voucherId}-${row.instrumentNumber ?? ''}-${row.debit}${row.credit}`}>
-                <td>{toCalendarDay(row.voucherDate)}</td>
+                <td>{day(row.voucherDate)}</td>
                 <td>{row.voucherNumber}</td>
-                <td>{row.voucherTypeCode}</td>
+                <td>{typeName(row.voucherTypeCode)}</td>
                 {/* An em dash, not a blank: a line with no instrument is a fact, not a gap. */}
                 <td>{row.instrumentNumber ?? '—'}</td>
                 <td>{row.narration ?? '—'}</td>
@@ -126,8 +136,8 @@ export function BankReconciliationView({
 
       {report.unreconciled.length === 0 && (
         <p className={styles.empty}>
-          Everything posted to this account up to {toCalendarDay(report.asOf)} has been shown by the
-          bank. The two balances agree.
+          Everything posted to this account up to {day(report.asOf)} has been shown by the bank. The
+          two balances agree.
         </p>
       )}
     </section>

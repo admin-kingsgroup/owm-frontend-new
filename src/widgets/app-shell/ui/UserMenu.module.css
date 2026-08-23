@@ -15,8 +15,9 @@
   transition: background-color 0.15s ease;
 }
 
+/* The trigger is on the chrome; the menu it opens is on paper and keeps its own colours. */
 .trigger:hover {
-  background-color: var(--hover-tint);
+  background-color: var(--sidebar-hover);
 }
 
 .avatar {
@@ -36,11 +37,11 @@
 .name {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--sidebar-text);
 }
 
 .chevron {
-  color: var(--ink-faint);
+  color: var(--sidebar-dim);
   transition: transform 0.15s ease;
 }
 

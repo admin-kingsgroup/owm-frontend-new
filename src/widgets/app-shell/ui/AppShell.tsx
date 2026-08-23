@@ -158,7 +158,6 @@ export function AppShell() {
     if (!companyId) return [];
     const base = `/companies/${companyId}`;
     const go = (to: string) => () => navigate(to);
-    const posts = company?.type !== 'ANALYTICS';
 
     return [
       { group: 'Context', key: 'F1', label: 'Company', onSelect: go('/companies') },
@@ -168,26 +167,6 @@ export function AppShell() {
         label: 'Fin. year',
         onSelect: go(`${base}?tab=financial-years`),
       },
-
-      /*
-        Raising a voucher from wherever you are, which is the point of the function keys. Bound here
-        but drawn in the Transactions menu: entering a voucher is the first thing this product is
-        for, so it belongs on the menu bar at the top rather than in a strip of actions that belongs
-        to whichever report happens to be open. The keys themselves are unchanged.
-
-        The shell does not hold the company's voucher types, so it names the code and lets the
-        vouchers screen resolve it — a company whose masters do not include that code opens the form
-        on its own first active type instead. An analytics workspace posts nothing, so it gets none.
-      */
-      ...(posts
-        ? VOUCHER_KEYS.map(({ key, code, label }) => ({
-            group: 'Create',
-            key,
-            label,
-            keyOnly: true,
-            onSelect: go(`${base}/vouchers?new=${code}`),
-          }))
-        : []),
 
       { group: 'Go to', key: 'Alt+O', label: 'Overview', onSelect: go(base) },
       ...(company?.type === 'ANALYTICS'
@@ -214,7 +193,39 @@ export function AppShell() {
     ];
   }, [companyId, company, navigate, reportPeriod]);
 
-  const actions = useMemo(() => [...pageActions, ...shellActions], [pageActions, shellActions]);
+  /**
+   * Raising a voucher from wherever you are, which is the whole point of the function keys.
+   *
+   * Drawn at the top of the bar rather than bound invisibly, because in Tally this is the first
+   * thing the right-hand strip shows and entering a voucher is the commonest thing anyone does —
+   * having to go back to the Gateway first is the trip the bar exists to save. The Transactions
+   * menu still lists them; the bar is the fast path, not a replacement.
+   *
+   * The shell does not hold the company's voucher types, so it names the code and lets the vouchers
+   * screen resolve it — a company whose masters do not include that code opens the form on its own
+   * first active type instead. An analytics workspace posts nothing, so it gets none.
+   */
+  const dataEntry = useMemo<ButtonBarAction[]>(() => {
+    if (!companyId || company?.type === 'ANALYTICS') return [];
+    const base = `/companies/${companyId}`;
+
+    return VOUCHER_KEYS.map(({ key, code, label }) => ({
+      group: 'Data entry',
+      key,
+      label,
+      onSelect: () => navigate(`${base}/vouchers?new=${code}`),
+    }));
+  }, [companyId, company?.type, navigate]);
+
+  /*
+    The page keeps first claim on a key: a screen that binds F8 to its own meaning must not have the
+    shell's Sales key answer instead. Where the bar *draws* Data entry is a separate question, and
+    the bar answers it — see PINNED_FIRST.
+  */
+  const actions = useMemo(
+    () => [...pageActions, ...dataEntry, ...shellActions],
+    [dataEntry, pageActions, shellActions],
+  );
 
   /**
    * The bar's shortcuts, bound once for all of them.

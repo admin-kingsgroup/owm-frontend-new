@@ -5,10 +5,10 @@
 .bar {
   display: flex;
   flex-direction: column;
-  gap: 0.1875rem;
-  width: 13.25rem;
+  gap: 0;
+  width: 10.75rem;
   flex-shrink: 0;
-  padding: var(--space-2);
+  padding: var(--space-2) 0.4375rem;
   background-color: var(--paper-sunken);
   border-left: 1px solid var(--border);
   overflow-y: auto;
@@ -17,16 +17,30 @@
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0.1875rem;
+  gap: 0;
 }
 
+/*
+  A heading with a rule running off it, rather than a heading floating over a gap. The rule is what
+  separates one group from the next now that the buttons no longer carry borders of their own.
+*/
 .groupName {
-  padding: var(--space-3) var(--space-2) var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: var(--space-3) 0.1875rem var(--space-1);
   font-size: 0.5625rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-faint);
+}
+
+.groupName::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
 }
 
 /* The first heading would otherwise start with a gap the panel edge already provides. */
@@ -34,28 +48,32 @@
   padding-top: var(--space-1);
 }
 
+/*
+  Key first, in a column of its own width, so every label starts on the same pixel — which is what
+  makes Tally's strip readable at a glance rather than a list to be searched.
+
+  No border, no card, no shadow: with twenty actions on screen that is twenty rectangles to look
+  past. The group rules carry the structure and the hover carries the state.
+*/
 .action {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.875rem 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
-  padding: 0.3125rem var(--space-2);
-  border: 1px solid var(--border);
+  padding: 0.1875rem 0.1875rem 0.1875rem var(--space-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background-color: var(--paper-card);
+  background: transparent;
   color: var(--ink);
   font-family: inherit;
   font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
-  transition:
-    background-color 0.12s ease,
-    border-color 0.12s ease;
+  transition: background-color 0.12s ease;
 }
 
 .action:hover:not(:disabled) {
   background-color: var(--hover-tint);
-  border-color: var(--accent);
 }
 
 .action:disabled {
@@ -72,7 +90,8 @@
 }
 
 .key {
-  flex-shrink: 0;
+  /* First in the grid, so it reads "F5 Payment" the way it is spoken. */
+  order: -1;
   font-family: var(--font-mono);
   font-size: 0.625rem;
   font-weight: 600;
@@ -91,27 +110,54 @@
 @media (max-width: 60rem) {
   .bar {
     /* Above the content, not below it: at the foot of a long statement the actions for that
-       statement are a full scroll away, which is the same as not having them. */
+       statement are a full scroll away, which is the same as not having them.
+
+       One row that scrolls sideways, not a block that wraps. Wrapping, the bar grew with every
+       action added to it — nineteen of them pushed the report six hundred pixels down the page,
+       so the first thing on a phone was a palette of keys a phone does not have. Scrolling, its
+       height is one row whatever the screen is showing. */
     order: -1;
     flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-1);
     width: auto;
     border-left: none;
     /* It sits above the content now, so the rule that separates them belongs underneath it. */
     border-bottom: 1px solid var(--border);
+    overflow-x: auto;
     overflow-y: visible;
   }
 
   .group {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--space-1);
   }
 
+  /* Each group keeps its own actions together as the row scrolls past. */
+  .group,
+  .action,
+  .groupName {
+    flex-shrink: 0;
+  }
+
   .groupName {
     padding: 0 var(--space-1);
+  }
+
+  /* Laid out in a row, each action is its own chip again — the fixed key column only aligns
+     anything when the actions are stacked. */
+  .action {
+    display: flex;
+    justify-content: space-between;
+    border-color: var(--border);
+    background-color: var(--paper-card);
+  }
+
+  .groupName::after {
+    content: none;
   }
 
   .group:first-child .groupName {

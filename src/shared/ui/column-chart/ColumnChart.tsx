@@ -68,6 +68,16 @@ export function ColumnChart({
   const barWidth = (groupWidth * 0.62) / series.length;
   const groupPad = (groupWidth - barWidth * series.length) / 2;
 
+  /*
+    A ceiling on how wide one month may be drawn.
+
+    The viewBox is 100 units stretched to the container, so with two months in the books each bar
+    came out about 270px across — three slabs filling a 1,300px panel, which reads as a design
+    accident rather than as data. Twelve months never reach the cap; a short year stops growing and
+    the plot simply ends where the data does.
+  */
+  const plotStyle = { maxWidth: `${labels.length * 116}px` };
+
   return (
     <figure className={styles.figure}>
       <div className={styles.head} aria-hidden="true">
@@ -86,6 +96,7 @@ export function ColumnChart({
 
       <svg
         className={styles.chart}
+        style={plotStyle}
         viewBox={`0 0 100 ${height}`}
         /* Both are needed. preserveAspectRatio="none" lets the 100-unit viewBox stretch to any
            width, but without an explicit height the element still takes its intrinsic ratio and
@@ -156,7 +167,7 @@ export function ColumnChart({
         </g>
       </svg>
 
-      <div className={styles.labels} aria-hidden="true">
+      <div className={styles.labels} style={plotStyle} aria-hidden="true">
         {labels.map((label) => (
           <span key={label} className={styles.label} style={{ width: `${groupWidth}%` }}>
             {label}

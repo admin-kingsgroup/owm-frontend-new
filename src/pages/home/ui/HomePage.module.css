@@ -4,7 +4,7 @@
   flex-direction: column;
   min-height: 100vh;
   overflow: hidden;
-  background-color: #0c0e14;
+  background-color: #111214;
 }
 
 .wrapper::before,
@@ -44,10 +44,10 @@
   margin-top: 1.25rem;
   /* The same face every heading inside the app uses — the login screen is the first thing a
      user sees and should not look like a different product. */
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: 2.375rem;
   font-weight: 700;
-  color: #f4f1ea;
+  color: #f2f3f4;
   letter-spacing: -0.02em;
   line-height: 1;
 }
@@ -56,7 +56,7 @@
   margin-top: 0.75rem;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: #7e8497;
+  color: #8f949b;
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
@@ -66,7 +66,7 @@
   margin-bottom: 1rem;
   font-size: 0.625rem;
   font-weight: 600;
-  color: #7e8497;
+  color: #8f949b;
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
@@ -78,12 +78,12 @@
   z-index: 1;
 }
 
-/* This is fine print, not decoration, so it has to be readable. `opacity: 0.55` over #7e8497
-   computed to about 2.4:1 against this background; the colour alone is 5.2:1. Emphasis is
+/* This is fine print, not decoration, so it has to be readable. `opacity: 0.55` over #8f949b
+   computed to about 2.4:1 against this background; the colour alone is 6.1:1. Emphasis is
    carried by a lighter colour rather than by making the rest fainter. */
 .footer p {
   font-size: 0.59375rem;
-  color: #7e8497;
+  color: #8f949b;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   font-weight: 500;
@@ -91,5 +91,5 @@
 }
 
 .footerConfidential {
-  color: #9ba1b2;
+  color: #b4b8bd;
 }

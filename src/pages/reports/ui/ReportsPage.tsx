@@ -55,7 +55,7 @@ import { reconcileEntry } from '@/entities/voucher';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Loading, Modal } from '@/shared/ui';
-import { formatMoney, getErrorMessage, localeFor, toCalendarDay } from '@/shared/lib';
+import { formatCalendarDay, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
 import { LedgerStatement } from './LedgerStatement';
@@ -526,6 +526,27 @@ export function ReportsPage() {
   }
 
   /**
+   * A date, written the way the company's country writes it.
+   *
+   * Every grid used to print the raw "2026-05-12" while the strip above it said "1/4/2026" and the
+   * status bar said "23/8/2026" — three formats for the same kind of thing on one screen, and the
+   * only one a reader could misread as a different day.
+   */
+  const day = useCallback(
+    (value: string) => formatCalendarDay(value, company?.country),
+    [company?.country],
+  );
+
+  /**
+   * What a voucher type is called, given its code. Falls back to the code, which is the honest
+   * answer for a type that has since been deleted — better than a blank cell.
+   */
+  const typeName = useCallback(
+    (code: string) => voucherTypes.find((type) => type.code === code)?.name ?? code,
+    [voucherTypes],
+  );
+
+  /**
    * "Apr", "May" — short enough that twelve fit across a chart, and in the reader's own language.
    * The day is fixed at the first of the month, which is what the API sends.
    */
@@ -549,10 +570,17 @@ export function ReportsPage() {
    * The CSV export deliberately does NOT use this: a spreadsheet needs the raw decimal, and a
    * grouped, symbol-prefixed string imports as text.
    */
+  /**
+   * How a figure is written on a report.
+   *
+   * No currency symbol: the status strip says which currency the figures are in, and repeating it
+   * on every one of fifty cells only widens the columns. Nil is written as nothing, and the grid
+   * draws a dot in the empty cell — a statement where five of seven columns are entirely zero is
+   * one where the two figures that matter are hidden among forty that do not.
+   */
   const money = useCallback(
     // string from the API, number from the chart — formatMoney takes either.
-    (value: string | number) =>
-      formatMoney(value, { currency: company?.baseCurrency, country: company?.country }),
+    (value: string | number) => formatMoney(value, { country: company?.country, blankZero: true }),
     [company],
   );
 
@@ -608,8 +636,7 @@ export function ReportsPage() {
         <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
         {!loading && !loadError && period && (
           <p className={styles.subtitle}>
-            FY {period.financialYearLabel} · {toCalendarDay(period.from)} to{' '}
-            {toCalendarDay(period.to)}
+            FY {period.financialYearLabel} · {day(period.from)} to {day(period.to)}
           </p>
         )}
       </div>
@@ -709,6 +736,7 @@ export function ReportsPage() {
           key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
           applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
           canCompare={isComparable(tab)}
+          day={day}
           onApply={applyPeriod}
         />
       )}
@@ -789,6 +817,7 @@ export function ReportsPage() {
           books={tab === 'cash-book' ? cashBook : bankBook}
           kind={tab === 'cash-book' ? 'cash' : 'bank'}
           money={money}
+          day={day}
         />
       )}
 
@@ -800,18 +829,14 @@ export function ReportsPage() {
         <p className={styles.empty}>Choose a voucher type to see its register.</p>
       )}
       {tab === 'register' && subjectType && register && (
-        <RegisterView
-          register={register}
-          title={voucherTypes.find((type) => type.code === subjectType)?.name ?? subjectType}
-          money={money}
-        />
+        <RegisterView register={register} title={typeName(subjectType)} money={money} day={day} />
       )}
 
       {tab === 'ledger' && !subjectLedgerId && (
         <p className={styles.empty}>Choose an account to see its statement.</p>
       )}
       {tab === 'ledger' && subjectLedgerId && ledgerReport && (
-        <LedgerStatement statement={ledgerReport} money={money} />
+        <LedgerStatement statement={ledgerReport} money={money} day={day} />
       )}
 
       {tab === 'bank-reconciliation' && !subjectLedgerId && (
@@ -821,6 +846,8 @@ export function ReportsPage() {
         <BankReconciliationView
           report={reconciliation}
           money={money}
+          day={day}
+          typeName={typeName}
           saving={reconciling}
           onReconcile={markReconciled}
         />
@@ -833,20 +860,22 @@ export function ReportsPage() {
         <MonthlySummaryView report={monthly} money={money} monthLabel={monthLabel} />
       )}
 
-      {tab === 'audit' && audit && <AuditTrailView trail={audit} />}
+      {tab === 'audit' && audit && <AuditTrailView trail={audit} day={day} />}
 
       {tab === 'statement-of-account' && !subjectLedgerId && (
         <p className={styles.empty}>Choose a party to see their statement.</p>
       )}
       {tab === 'statement-of-account' && subjectLedgerId && soa && (
-        <StatementOfAccountView report={soa} money={money} />
+        <StatementOfAccountView report={soa} money={money} day={day} />
       )}
 
       {tab === 'funds-flow' && fundsFlow && <FundsFlowView report={fundsFlow} money={money} />}
       {tab === 'ratios' && ratios && <RatioView report={ratios} money={money} />}
       {tab === 'exceptions' && exceptions && <ExceptionView report={exceptions} />}
 
-      {tab === 'day-book' && dayBook && <DayBookView dayBook={dayBook} money={money} />}
+      {tab === 'day-book' && dayBook && (
+        <DayBookView dayBook={dayBook} money={money} day={day} typeName={typeName} />
+      )}
 
       {tab === 'receipts-payments' && receiptsPayments && (
         <ReceiptsAndPaymentsView report={receiptsPayments} money={money} />
@@ -865,7 +894,7 @@ export function ReportsPage() {
         <OutstandingsView outstandings={outstandings} money={money} />
       )}
 
-      {tab === 'forex' && forex && <ForexView forex={forex} money={money} />}
+      {tab === 'forex' && forex && <ForexView forex={forex} money={money} day={day} />}
 
       <Modal
         open={statement !== null}
@@ -874,7 +903,7 @@ export function ReportsPage() {
       >
         {statement && (
           <>
-            <LedgerStatement statement={statement} money={money} />
+            <LedgerStatement statement={statement} money={money} day={day} />
             <button type="button" className={styles.closeLink} onClick={() => setStatement(null)}>
               <X size={14} /> Close
             </button>

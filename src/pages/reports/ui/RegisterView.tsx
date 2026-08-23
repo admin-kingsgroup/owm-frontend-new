@@ -1,5 +1,4 @@
 import type { DayBookReport } from '@/entities/report';
-import { toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
@@ -9,6 +8,8 @@ interface RegisterViewProps {
   title: string;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
 }
 
 /**
@@ -17,7 +18,7 @@ interface RegisterViewProps {
  * The same rows the Day Book shows, which is deliberate: a register that counted differently from
  * the book it is a slice of would be two answers to one question.
  */
-export function RegisterView({ register, title, money }: RegisterViewProps) {
+export function RegisterView({ register, title, money, day }: RegisterViewProps) {
   return (
     <section className={styles.panel}>
       <h2 className={styles.panelTitle}>
@@ -38,7 +39,7 @@ export function RegisterView({ register, title, money }: RegisterViewProps) {
           <tbody>
             {register.rows.map((row) => (
               <tr key={row.voucherId}>
-                <td>{toCalendarDay(row.voucherDate)}</td>
+                <td>{day(row.voucherDate)}</td>
                 <td>{row.voucherNumber}</td>
                 <td>{row.narration ?? '—'}</td>
                 <td>{row.status}</td>

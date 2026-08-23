@@ -1,12 +1,14 @@
 import type { LedgerStatementReport } from '@/entities/report';
-import { toCalendarDay } from '@/shared/lib';
 
+import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
 
 interface LedgerStatementProps {
   statement: LedgerStatementReport;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
   /** Shown above the postings when this is one of several statements on a page. */
   heading?: boolean;
 }
@@ -22,7 +24,7 @@ interface LedgerStatementProps {
  * Movement goes through the same formatter as the balances beside it. Printed raw it read 15000.00
  * next to ₹15,000.00 — one figure, one table, two ways of writing it.
  */
-export function LedgerStatement({ statement, money, heading = false }: LedgerStatementProps) {
+export function LedgerStatement({ statement, money, day, heading = false }: LedgerStatementProps) {
   return (
     <div className={styles.statement}>
       {heading && (
@@ -35,7 +37,7 @@ export function LedgerStatement({ statement, money, heading = false }: LedgerSta
       <div className={styles.statementHead}>
         <span>Opening</span>
         <span>
-          {money(statement.openingBalance)} {statement.openingSide === 'DEBIT' ? 'Dr' : 'Cr'}
+          <Figure amount={money(statement.openingBalance)} side={statement.openingSide} />
         </span>
       </div>
 
@@ -53,7 +55,7 @@ export function LedgerStatement({ statement, money, heading = false }: LedgerSta
           <tbody>
             {statement.lines.map((line, index) => (
               <tr key={`${line.voucherId}-${index}`}>
-                <td>{toCalendarDay(line.voucherDate)}</td>
+                <td>{day(line.voucherDate)}</td>
                 <td>{line.voucherNumber}</td>
                 <td className={styles.num}>{money(line.debit)}</td>
                 <td className={styles.num}>{money(line.credit)}</td>
@@ -69,7 +71,7 @@ export function LedgerStatement({ statement, money, heading = false }: LedgerSta
       <div className={styles.statementHead}>
         <span>Closing</span>
         <span>
-          {money(statement.closingBalance)} {statement.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}
+          <Figure amount={money(statement.closingBalance)} side={statement.closingSide} />
         </span>
       </div>
     </div>

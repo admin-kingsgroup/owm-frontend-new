@@ -66,8 +66,15 @@ export function ExceptionView({ report }: ExceptionViewProps) {
             <tbody>
               {ordered.map((line, index) => (
                 <tr key={`${line.kind}-${line.entityId ?? index}`}>
-                  <td className={line.severity === 'ERROR' ? styles.figureNegative : undefined}>
-                    {line.severity === 'ERROR' ? 'Error' : 'Question'}
+                  <td>
+                    <span
+                      className={cn(
+                        styles.severity,
+                        line.severity === 'ERROR' ? styles.severityError : styles.severityQuestion,
+                      )}
+                    >
+                      {line.severity === 'ERROR' ? 'Error' : 'Question'}
+                    </span>
                   </td>
                   <td>{KIND_LABELS[line.kind] ?? line.kind}</td>
                   <td>{line.message}</td>

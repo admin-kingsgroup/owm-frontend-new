@@ -1,10 +1,19 @@
 /* ============================================================================
-   Design tokens — "Owner Cockpit".
+   Design tokens — "Graphite".
 
-   A warm-neutral light ground with a single amber accent reserved for actions,
-   a light sidebar, and a full dark counterpart. Reports and figures lean on
-   --font-serif; --data-1..4 is a separate, restrained palette for charts so
-   data colour never competes with the action colour.
+   Near-neutral greys with no hue bias, dark chrome, and one blue reserved for
+   actions and selection. The point of the neutrality is that colour then means
+   something: a red or green figure is the only saturated thing on a screen of
+   numbers, so it reads as information rather than decoration.
+
+   The chrome — menu bar, status strip — is dark against a light workspace. A
+   white bar on a near-white page gives the product no spine, which is what made
+   the previous direction read as a document rather than an application.
+
+   Headings are --font-display (the sans, at 600, tracked in) rather than a
+   serif: a literary face over a data grid is the single thing that made this
+   look like a template. --data-1..4 is a separate, restrained palette for charts
+   so data colour never competes with the action colour.
 
    Structure, in order:
      1. Scales        — spacing, radius, type, z-index. Theme-independent.
@@ -34,8 +43,13 @@
 :root {
   /* ---- 1. Scales ---------------------------------------------------- */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
-  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  /* Headings. The sans at 600 with negative tracking — see the note at the head of the file. */
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Figures. Plex is loaded for its tabular numerals: decimal points line up down a column and
+     a digit never changes width as a value changes. */
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Applied wherever --font-display is. One value, so every heading is tracked alike. */
+  --display-tracking: -0.021em;
 
   /* A 4px base. Prefer these over ad-hoc rem values in new rules. */
   --space-1: 0.25rem;
@@ -69,59 +83,73 @@
   /* ---- 2. Palette: light -------------------------------------------- */
   color-scheme: light;
 
-  --paper: #fbfaf8;
+  --paper: #f6f6f7;
   --paper-card: #ffffff;
   /* Recessed surfaces — table headers, wells, inset panels. */
-  --paper-sunken: #f4f2ee;
-  --ink: #1a1c1f;
-  --ink-soft: #5b6068;
-  --ink-faint: #656c76;
-  --border: #e9e6e0;
+  --paper-sunken: #eeeef0;
+  --ink: #121316;
+  --ink-soft: #4f535a;
+  --ink-faint: #656a72;
+  --border: #e0e1e4;
   /* 1px dividers only. Too light to read as a hover fill — use --hover-tint. */
-  --border-soft: #f1efea;
+  --border-soft: #f0f0f2;
 
-  /* The sidebar is a light surface in this direction, so its hover and border
-     must be real tokens; the white-alpha values that worked on a near-black
-     sidebar are invisible here. */
-  --sidebar: #ffffff;
-  --sidebar-text: #1a1c1f;
-  --sidebar-dim: #6e757f;
-  --sidebar-border: #e9e6e0;
+  /* The chrome. Dark in this direction, so its dim text and border are measured
+     against a near-black ground rather than a white one — --sidebar-dim is
+     6.3:1 on --sidebar, which is what lets the inactive menu items sit quiet
+     without dropping out of AA. */
+  --sidebar: #17191c;
+  --sidebar-text: #eaebed;
+  --sidebar-dim: #989ca2;
+  --sidebar-border: #2b2e33;
 
-  /* Amber is reserved for actions and selection. Dark enough to read as text
-     on --paper (6.3:1), and to carry --on-accent as a fill (6.5:1). */
-  --accent-rgb: 143, 76, 20;
-  --accent: #8f4c14;
-  --accent-2: #a75d1c;
+  /* One blue, for actions and selection, and nothing else wears it. 5.9:1 as
+     text on --paper-sunken, the darkest light surface, and 6.8:1 carrying
+     --on-accent as a fill. */
+  --accent-rgb: 26, 82, 196;
+  --accent: #1a52c4;
+  --accent-2: #2a63d6;
   --on-accent: #ffffff;
 
-  --overlay: rgba(26, 28, 31, 0.42);
-  --shadow-1: 0 1px 2px rgba(43, 38, 32, 0.06);
-  --shadow-2: 0 4px 12px rgba(43, 38, 32, 0.1);
-  --shadow-3: 0 20px 44px rgba(43, 38, 32, 0.18);
+  --overlay: rgba(12, 13, 15, 0.45);
+  --shadow-1: 0 1px 2px rgba(16, 18, 22, 0.06);
+  --shadow-2: 0 4px 12px rgba(16, 18, 22, 0.1);
+  --shadow-3: 0 20px 44px rgba(16, 18, 22, 0.18);
 
-  --chip-bg: #f2efe9;
-  --chip-fg: #5b6068;
+  --chip-bg: #eeeef0;
+  --chip-fg: #4f535a;
 
-  --success-fg: #166534;
-  --success-bd: #9fcbac;
-  --success-bg-soft: #eaf6ee;
-  --warning-fg: #87690c;
-  --warning-bd: #d9c077;
-  --warning-bg-soft: #faf3de;
-  --danger-fg: #b91c1c;
-  --danger-bd: #e3a5a5;
-  --danger-bg-soft: #fdecec;
+  --success-fg: #146b41;
+  --success-bd: #a4d2bb;
+  --success-bg-soft: #e9f5ee;
+  --warning-fg: #8a5a00;
+  --warning-bd: #ddc283;
+  --warning-bg-soft: #fbf3e2;
+  --danger-fg: #b0281c;
+  --danger-bd: #e5aba5;
+  --danger-bg-soft: #fdedeb;
   /* The "inactive/draft" status colour (Badge variant="neutral") — a neutral
      grey so it can never be mistaken for the amber accent. */
-  --neutral-fg: #52565f;
-  --neutral-bd: #c3c6cc;
+  --neutral-fg: #565a61;
+  --neutral-bd: #c5c7cc;
+
+  /*
+    State, as it reads on the chrome rather than on paper.
+
+    The bar is near-black in both themes, so the light-surface --success-fg and
+    friends are unreadable on it — dark green on #17191c is about 1.5:1. These
+    are the same three meanings pitched for that ground: 8.1:1, 9.1:1 and 6.9:1.
+    They do not vary by theme, because the chrome does not either.
+  */
+  --chrome-ok: #5cc48d;
+  --chrome-warn: #e0b45c;
+  --chrome-danger: #f0837a;
 
   /* Charts only. Kept away from the accent hue so a series colour is never
      read as an action. */
   --data-1: #2f7a72;
   --data-2: #b0663a;
-  --data-3: #4b5a8f;
+  --data-3: #6b4f9e;
   --data-4: #9a7b28;
 
   /* ---- Dark palette values ------------------------------------------
@@ -129,33 +157,35 @@
      Plain CSS cannot share a declaration block between a media query and
      an attribute selector, so the *aliasing* is unavoidably written
      twice — but a colour is only ever edited in this one place. */
-  --dk-paper: #14161a;
-  --dk-paper-card: #1b1e23;
-  --dk-paper-sunken: #101216;
-  --dk-ink: #eceef1;
-  --dk-ink-soft: #a8b0bb;
-  --dk-ink-faint: #8b929c;
-  --dk-border: #2b2f36;
-  --dk-border-soft: #22262c;
+  --dk-paper: #121315;
+  --dk-paper-card: #191a1d;
+  --dk-paper-sunken: #151619;
+  --dk-ink: #e8e9eb;
+  --dk-ink-soft: #a3a6ac;
+  --dk-ink-faint: #868a91;
+  --dk-border: #282a2f;
+  --dk-border-soft: #1e2023;
 
-  --dk-sidebar: #1b1e23;
-  --dk-sidebar-text: #eceef1;
-  --dk-sidebar-dim: #969ea9;
-  --dk-sidebar-border: #2b2f36;
+  /* The chrome goes darker than the workspace here, not lighter: on a dark
+     theme the bar reads as the frame only if it recedes behind the page. */
+  --dk-sidebar: #0f1113;
+  --dk-sidebar-text: #e8e9eb;
+  --dk-sidebar-dim: #8e9298;
+  --dk-sidebar-border: #212327;
 
-  --dk-accent-rgb: 229, 154, 78;
-  --dk-accent: #e59a4e;
-  --dk-accent-2: #f5b06a;
-  /* White on light amber fails; the fill needs dark ink instead (8.1:1). */
-  --dk-on-accent: #191106;
+  --dk-accent-rgb: 126, 169, 240;
+  --dk-accent: #7ea9f0;
+  --dk-accent-2: #9abcf5;
+  /* White on a light blue fails; the fill needs dark ink instead (8.6:1). */
+  --dk-on-accent: #08111f;
 
   --dk-overlay: rgba(0, 0, 0, 0.6);
   --dk-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --dk-shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5);
   --dk-shadow-3: 0 20px 44px rgba(0, 0, 0, 0.62);
 
-  --dk-chip-bg: #252a31;
-  --dk-chip-fg: #a9b1bc;
+  --dk-chip-bg: #24262b;
+  --dk-chip-fg: #a3a6ac;
 
   --dk-success-fg: #5fbb8a;
   --dk-success-bd: #2d5a45;
@@ -166,12 +196,12 @@
   --dk-danger-fg: #ec7070;
   --dk-danger-bd: #653333;
   --dk-danger-bg-soft: #2a1616;
-  --dk-neutral-fg: #98a0ab;
-  --dk-neutral-bd: #3a414a;
+  --dk-neutral-fg: #9a9ea5;
+  --dk-neutral-bd: #3b3e44;
 
   --dk-data-1: #4fb0a4;
   --dk-data-2: #d98f5d;
-  --dk-data-3: #8092cf;
+  --dk-data-3: #a68ad8;
   --dk-data-4: #cfa94c;
 
   /* ---- 3. Derived ---------------------------------------------------- */
@@ -181,7 +211,9 @@
   --focus-ring: rgba(var(--accent-rgb), 0.22);
   /* Interactive row/item backgrounds only, never a divider. */
   --hover-tint: rgba(var(--accent-rgb), 0.055);
-  --sidebar-hover: rgba(var(--accent-rgb), 0.07);
+  /* White, not a tint of the accent: the chrome is near-black in both themes and
+     a 7% blue over it is not a visible change of state. */
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
 }
 
 /* ---- Palette: dark -------------------------------------------------------
@@ -373,6 +405,21 @@ textarea:focus-visible {
     --accent: #000000;
     --accent-2: #000000;
     --on-accent: #ffffff;
+
+    /*
+      The chrome is hidden on paper except for the context strip, which is the only thing naming
+      the company and the year. It is drawn in chrome colours, and those are pitched for a
+      near-black bar — left alone, a filed statement carried grey-on-white text it took a good
+      light to read.
+    */
+    --sidebar: #ffffff;
+    --sidebar-text: #000000;
+    --sidebar-dim: #1f1f1f;
+    --sidebar-border: #9a9a9a;
+    --sidebar-hover: transparent;
+    --chrome-ok: #000000;
+    --chrome-warn: #000000;
+    --chrome-danger: #000000;
     --hover-tint: transparent;
     --chip-bg: transparent;
     --chip-fg: #1f1f1f;
@@ -385,7 +432,7 @@ textarea:focus-visible {
        values, which are what the rest of this block assumes. */
     --data-1: #2f7a72;
     --data-2: #b0663a;
-    --data-3: #4b5a8f;
+    --data-3: #6b4f9e;
     --data-4: #9a7b28;
   }
 

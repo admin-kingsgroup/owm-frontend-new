@@ -1,10 +1,11 @@
 import type { AuditList } from '@/entities/report';
-import { toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
 interface AuditTrailViewProps {
   trail: AuditList;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -41,7 +42,7 @@ function describeChange(entry: AuditList['rows'][number]): string | null {
  * the books and there is no endpoint that edits or removes an entry, which is what makes it worth
  * anything at all.
  */
-export function AuditTrailView({ trail }: AuditTrailViewProps) {
+export function AuditTrailView({ trail, day }: AuditTrailViewProps) {
   return (
     <section className={styles.panel}>
       <p className={styles.hint}>
@@ -63,7 +64,7 @@ export function AuditTrailView({ trail }: AuditTrailViewProps) {
           <tbody>
             {trail.rows.map((entry) => (
               <tr key={entry.id}>
-                <td>{toCalendarDay(entry.at)}</td>
+                <td>{day(entry.at)}</td>
                 <td>{ENTITY_LABELS[entry.entity] ?? entry.entity}</td>
                 <td>{ACTION_LABELS[entry.action] ?? entry.action}</td>
                 <td>{entry.summary}</td>

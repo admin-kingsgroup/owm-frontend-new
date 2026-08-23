@@ -35,7 +35,7 @@ export function CashFlowView({
 }: CashFlowViewProps) {
   return (
     <>
-      {cashFlow.monthly.length > 0 && (
+      {cashFlow.monthly.length > 1 && (
         <section className={styles.chartPanel}>
           <h2 className={styles.chartTitle}>Month by month</h2>
           <ColumnChart

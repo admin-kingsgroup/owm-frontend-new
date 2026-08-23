@@ -18,9 +18,9 @@
   align-items: center;
   padding: 0.5rem 0.875rem;
   border: none;
-  border-right: 1px solid var(--border-soft);
+  border-right: 1px solid var(--sidebar-border);
   background: transparent;
-  color: var(--ink);
+  color: var(--sidebar-text);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 500;
@@ -30,7 +30,7 @@
 }
 
 .trigger:hover {
-  background-color: var(--hover-tint);
+  background-color: var(--sidebar-hover);
 }
 
 /*
@@ -44,7 +44,8 @@
 }
 
 .mnemonic {
-  text-decoration-color: var(--accent);
+  /* Against dark chrome, not paper. The accent is too dark here to be seen as a rule. */
+  text-decoration-color: var(--sidebar-dim);
   text-decoration-thickness: 1.5px;
   text-underline-offset: 0.15em;
 }
@@ -123,13 +124,13 @@
     justify-content: flex-start;
     min-height: 2.75rem;
     border-right: none;
-    border-bottom: 1px solid var(--border-soft);
+    border-bottom: 1px solid var(--sidebar-border);
     font-size: var(--text-md);
   }
 
   .triggerOpen,
   .triggerOpen:hover {
-    background-color: var(--hover-tint);
+    background-color: var(--sidebar-hover);
     box-shadow: none;
   }
 

@@ -1,5 +1,5 @@
 import type { ForexGainLossReport } from '@/entities/currency';
-import { cn, formatMoney, toCalendarDay } from '@/shared/lib';
+import { cn, formatMoney } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
 
@@ -7,6 +7,8 @@ interface ForexViewProps {
   forex: ForexGainLossReport;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
 }
 
 /**
@@ -16,7 +18,7 @@ interface ForexViewProps {
  * currency that is neither owed nor paid — that residue is the gain or the loss, and this is where
  * it is named rather than left sitting in a party's balance.
  */
-export function ForexView({ forex, money }: ForexViewProps) {
+export function ForexView({ forex, money, day }: ForexViewProps) {
   return (
     <section className={styles.panel}>
       <div className={styles.buckets}>
@@ -42,8 +44,7 @@ export function ForexView({ forex, money }: ForexViewProps) {
 
       {forex.skippedForMissingRate.length > 0 && (
         <p className={styles.warning}>
-          Left out for want of a rate on {toCalendarDay(forex.asOf)}:{' '}
-          {forex.skippedForMissingRate.join(', ')}
+          Left out for want of a rate on {day(forex.asOf)}: {forex.skippedForMissingRate.join(', ')}
         </p>
       )}
 
@@ -81,7 +82,7 @@ export function ForexView({ forex, money }: ForexViewProps) {
         </table>
       </div>
       {forex.lines.length === 0 && (
-        <p className={styles.empty}>No exchange differences as at {toCalendarDay(forex.asOf)}.</p>
+        <p className={styles.empty}>No exchange differences as at {day(forex.asOf)}.</p>
       )}
     </section>
   );

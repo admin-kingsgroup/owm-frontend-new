@@ -1,5 +1,6 @@
 import type { MonthlySummaryReport } from '@/entities/report';
 
+import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
 
 interface MonthlySummaryViewProps {
@@ -19,15 +20,12 @@ interface MonthlySummaryViewProps {
  * the balance it carried, which is a fact rather than a filler.
  */
 export function MonthlySummaryView({ report, money, monthLabel }: MonthlySummaryViewProps) {
-  const side = (value: 'DEBIT' | 'CREDIT') => (value === 'DEBIT' ? 'Dr' : 'Cr');
-
   return (
     <section className={styles.panel}>
       <h2 className={styles.panelTitle}>
         {report.subject.name}
         <span className={styles.panelTotal}>
-          {money(report.totals.closing)}
-          <span className={styles.priorSide}>{side(report.totals.closingSide)}</span>
+          <Figure amount={money(report.totals.closing)} side={report.totals.closingSide} />
         </span>
       </h2>
 
@@ -47,8 +45,7 @@ export function MonthlySummaryView({ report, money, monthLabel }: MonthlySummary
               <td className={styles.num}>—</td>
               <td className={styles.num}>—</td>
               <td className={styles.num}>
-                {money(report.opening)}
-                <span className={styles.priorSide}>{side(report.openingSide)}</span>
+                <Figure amount={money(report.opening)} side={report.openingSide} />
               </td>
             </tr>
             {report.months.map((month) => (
@@ -57,8 +54,7 @@ export function MonthlySummaryView({ report, money, monthLabel }: MonthlySummary
                 <td className={styles.num}>{money(month.debit)}</td>
                 <td className={styles.num}>{money(month.credit)}</td>
                 <td className={styles.num}>
-                  {money(month.closing)}
-                  <span className={styles.priorSide}>{side(month.closingSide)}</span>
+                  <Figure amount={money(month.closing)} side={month.closingSide} />
                 </td>
               </tr>
             ))}
@@ -69,8 +65,7 @@ export function MonthlySummaryView({ report, money, monthLabel }: MonthlySummary
               <td className={styles.num}>{money(report.totals.debit)}</td>
               <td className={styles.num}>{money(report.totals.credit)}</td>
               <td className={styles.num}>
-                {money(report.totals.closing)}
-                <span className={styles.priorSide}>{side(report.totals.closingSide)}</span>
+                <Figure amount={money(report.totals.closing)} side={report.totals.closingSide} />
               </td>
             </tr>
           </tfoot>

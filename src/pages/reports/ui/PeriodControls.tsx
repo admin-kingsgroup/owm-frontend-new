@@ -16,11 +16,19 @@ interface PeriodControlsProps {
   applied: AppliedPeriod;
   /** Whether this particular report answers a comparison. */
   canCompare: boolean;
+  /** Writes a date the way the company's country writes it, for the echo under each box. */
+  day: (value: string) => string;
   onApply: (next: AppliedPeriod) => void;
 }
 
 /**
  * The From / To / Compare boxes, and the button that applies them.
+ *
+ * Each box echoes its date underneath, written the way the company's country writes it. A native
+ * date input is drawn in the *browser's* locale and nothing in the page can change that — `lang`
+ * on the element or the document has no effect in Chromium, which I checked rather than assumed.
+ * So an Indian firm on an en-US machine reads 03/31/2027 and a firm reading it as 3 March cannot
+ * tell they are wrong. The echo costs one line and removes the ambiguity entirely.
  *
  * Split out so the reports screen can reset it by key rather than by effect. What is typed here is
  * a draft — nothing has been asked of the server until Apply — but the applied period lives in the
@@ -29,7 +37,7 @@ interface PeriodControlsProps {
  * does that in one line, where syncing it back into state would mean an effect that fires a second
  * render every time either changes.
  */
-export function PeriodControls({ applied, canCompare, onApply }: PeriodControlsProps) {
+export function PeriodControls({ applied, canCompare, day, onApply }: PeriodControlsProps) {
   const [from, setFrom] = useState(applied.from);
   const [to, setTo] = useState(applied.to);
   const [compare, setCompare] = useState(applied.compare);
@@ -46,6 +54,7 @@ export function PeriodControls({ applied, canCompare, onApply }: PeriodControlsP
           value={from}
           onChange={(event) => setFrom(event.target.value)}
         />
+        {from && <span className={styles.periodEcho}>{day(from)}</span>}
       </div>
       <div className={styles.periodField}>
         <label className={styles.periodLabel} htmlFor="report-to">
@@ -57,6 +66,7 @@ export function PeriodControls({ applied, canCompare, onApply }: PeriodControlsP
           value={to}
           onChange={(event) => setTo(event.target.value)}
         />
+        {to && <span className={styles.periodEcho}>{day(to)}</span>}
       </div>
       {/*
         Applied with the period rather than on its own, because asking for it re-fetches both

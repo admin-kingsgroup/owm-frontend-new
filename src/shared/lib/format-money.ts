@@ -80,6 +80,15 @@ export interface FormatMoneyOptions {
    * grouping. Omit to group the way the reader's own browser would.
    */
   country?: string;
+  /**
+   * Render an exact nil as an empty string rather than "0.00".
+   *
+   * For the report grids, where whole columns are zero and forty copies of 0.00 bury the four
+   * figures that are not. The caller decides what an empty cell looks like — the reports draw a
+   * dot — so this never returns a placeholder of its own. Off by default: on a voucher or a
+   * balance, nil is a fact and has to be stated.
+   */
+  blankZero?: boolean;
 }
 
 /**
@@ -87,7 +96,7 @@ export interface FormatMoneyOptions {
  * malformed figure shows as itself rather than as "NaN".
  */
 export function formatMoney(value: string | number, options: FormatMoneyOptions = {}): string {
-  const { currency, accounting = true, country } = options;
+  const { currency, accounting = true, country, blankZero = false } = options;
 
   // Blank and null must be caught before the conversion, not after: Number('') and Number(null)
   // are both 0, which would render a missing amount as a confident 0.00 balance.
@@ -105,6 +114,9 @@ export function formatMoney(value: string | number, options: FormatMoneyOptions 
   if (Math.abs(numeric) > MAX_EXACT) {
     return String(value);
   }
+
+  // After the finite check, so a malformed figure still shows as itself rather than as blank.
+  if (blankZero && numeric === 0) return '';
 
   const magnitude = formatterFor(currency, localeFor(country)).format(Math.abs(numeric));
 

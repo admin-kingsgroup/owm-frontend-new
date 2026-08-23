@@ -1,13 +1,16 @@
 import type { StatementOfAccountReport } from '@/entities/report';
-import { cn, toCalendarDay } from '@/shared/lib';
+import { cn } from '@/shared/lib';
 
 import { LedgerStatement } from './LedgerStatement';
+import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
 
 interface StatementOfAccountViewProps {
   report: StatementOfAccountReport;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** Writes a date the way the company's country writes it. */
+  day: (value: string) => string;
 }
 
 /**
@@ -18,7 +21,7 @@ interface StatementOfAccountViewProps {
  * own invites "what have I already paid?". The party's own details sit at the top because the
  * recipient has to recognise themselves before they will read anything below.
  */
-export function StatementOfAccountView({ report, money }: StatementOfAccountViewProps) {
+export function StatementOfAccountView({ report, money, day }: StatementOfAccountViewProps) {
   const { party, totals } = report;
   const overdue = Number(totals.overdue) > 0;
 
@@ -28,8 +31,7 @@ export function StatementOfAccountView({ report, money }: StatementOfAccountView
         <h2 className={styles.panelTitle}>
           {party.name}
           <span className={styles.panelTotal}>
-            {money(totals.closing)}
-            <span className={styles.priorSide}>{totals.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}</span>
+            <Figure amount={money(totals.closing)} side={totals.closingSide} />
           </span>
         </h2>
         <dl className={styles.partyFacts}>
@@ -113,9 +115,9 @@ export function StatementOfAccountView({ report, money }: StatementOfAccountView
                 {report.openBills.map((bill) => (
                   <tr key={bill.billId}>
                     <td>{bill.reference}</td>
-                    <td>{toCalendarDay(bill.billDate)}</td>
+                    <td>{day(bill.billDate)}</td>
                     {/* An em dash, not a blank: an invoice with no due date is a fact. */}
-                    <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : '—'}</td>
+                    <td>{bill.dueDate ? day(bill.dueDate) : '—'}</td>
                     <td className={styles.num}>{money(bill.amount)}</td>
                     <td className={styles.num}>{money(bill.settled)}</td>
                     <td className={styles.num}>{money(bill.outstanding)}</td>
@@ -130,7 +132,7 @@ export function StatementOfAccountView({ report, money }: StatementOfAccountView
         </section>
       )}
 
-      <LedgerStatement statement={report.statement} money={money} />
+      <LedgerStatement statement={report.statement} money={money} day={day} />
     </>
   );
 }

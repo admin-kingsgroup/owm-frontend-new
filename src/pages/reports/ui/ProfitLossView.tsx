@@ -34,7 +34,7 @@ export function ProfitLossView({
 }: ProfitLossViewProps) {
   return (
     <>
-      {profitLoss.monthly.length > 0 && (
+      {profitLoss.monthly.length > 1 && (
         <section className={styles.chartPanel}>
           <h2 className={styles.chartTitle}>Month by month</h2>
           <ColumnChart
