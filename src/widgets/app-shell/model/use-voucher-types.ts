@@ -80,7 +80,14 @@ export function useVoucherTypes(
         }
       })
       .catch(() => {
-        // Chrome, not content — see above.
+        /*
+          Chrome, not content — no error is raised either way. But what was asked is forgotten, so
+          a later run is free to try again: the guard above would otherwise treat a read that
+          failed as a read already done, and a transient failure on a cold load would leave the
+          menus and the bar on the four-type fallback for the whole session. Guarded on being the
+          latest, so a stale failure cannot make a newer read repeat itself.
+        */
+        if (latest.current === mine) asked.current = null;
       });
   }, [companyId, mastersVersion]);
 

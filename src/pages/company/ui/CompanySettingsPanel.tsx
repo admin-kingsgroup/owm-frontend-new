@@ -94,11 +94,20 @@ export function CompanySettingsPanel({
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
   /*
+    What the product is on, when the server said. It always does — but a page held open across a
+    deploy, or a new bundle reaching a browser before the API answers from the new release, can
+    have a company record from before the field existed. Read defensively so the screen can decline
+    to claim anything rather than announce "up to date" against a number it never received.
+  */
+  const current =
+    typeof company.currentSeedVersion === 'number' ? company.currentSeedVersion : null;
+
+  /*
     Whether this company is missing anything the product has since added. The server states both
     numbers — see currentSeedVersion — so the screen can say there is something to do rather than
     leaving a reader to press a button and find out.
   */
-  const behind = company.seedVersion < company.currentSeedVersion;
+  const behind = current !== null && company.seedVersion < current;
 
   async function toggle(key: FeatureKey, value: boolean) {
     setSaving(key);
@@ -199,10 +208,15 @@ export function CompanySettingsPanel({
             */}
             {behind ? (
               <span className={styles.behind}>
-                version {company.seedVersion} of {company.currentSeedVersion}
+                version {company.seedVersion} of {current}
               </span>
             ) : (
-              <span>version {company.seedVersion} · up to date</span>
+              /* Bare when there is nothing to read it against — see `current`. Saying "up to date"
+                 there would be the screen asserting something it has not been told. */
+              <span>
+                version {company.seedVersion}
+                {current !== null && ' · up to date'}
+              </span>
             )}
             {/*
               Offered only when there is something to receive. Standing there on a current company

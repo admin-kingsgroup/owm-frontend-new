@@ -104,6 +104,36 @@ test.describe('the data entry strip', () => {
     await expect(sheet.getByText('Petty Cash', { exact: true })).toHaveCount(0);
   });
 
+  /* The strip and the Transactions menu are two doors to the same set of documents. Built from
+     the same list in the same order, so neither can offer one the other does not. */
+  test('agrees with the Transactions menu about what can be raised', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+    await page.getByRole('button', { name: 'Petty Cash' }).waitFor();
+
+    await page.getByRole('button', { name: 'Transactions' }).click();
+    const items = await page.getByRole('menuitem').allTextContents();
+
+    expect(items.some((item) => item.includes('Petty Cash'))).toBe(true);
+    expect(items.some((item) => item.includes('Income'))).toBe(true);
+  });
+
+  /* Twenty actions on a laptop that is not tall is the ordinary case, not an edge one. The bar
+     scrolls inside itself; what must never happen is a row that is off the end and unreachable. */
+  test('keeps every action reachable when the bar is taller than the screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 460 });
+    await signIn(page);
+    await page.goto(`/companies/${companyId}`);
+
+    const last = page.getByRole('button', { name: 'Day Book' });
+    await last.scrollIntoViewIfNeeded();
+    await expect(last).toBeInViewport();
+
+    const petty = page.getByRole('button', { name: 'Petty Cash' });
+    await petty.scrollIntoViewIfNeeded();
+    await expect(petty).toBeInViewport();
+  });
+
   test('fits on a narrow screen, keyless row included', async ({ page }) => {
     await page.setViewportSize({ width: 420, height: 820 });
     await signIn(page);

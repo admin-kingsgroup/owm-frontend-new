@@ -111,6 +111,28 @@ describe('useVoucherTypes', () => {
     await waitFor(() => expect(result.current).toHaveLength(2));
   });
 
+  /*
+    A read that failed is not a read already done. The guard that stops the list being read twice
+    on a cold load would otherwise treat it as one, and a transient failure before the company
+    record arrived would leave the menus and the bar on the four-type fallback all session.
+  */
+  it('tries again after a failed read, once the version arrives', async () => {
+    list.mockRejectedValueOnce(new Error('offline'));
+
+    const { result, rerender } = renderHook(
+      ({ version }: { version?: number }) => useVoucherTypes('c1', version),
+      { initialProps: { version: undefined } as { version?: number } },
+    );
+
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    expect(result.current).toHaveLength(0);
+
+    rerender({ version: 4 });
+
+    await waitFor(() => expect(result.current).toHaveLength(1));
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
   it('does not re-read when nothing about the company has moved', async () => {
     const { result, rerender } = renderHook(
       ({ version }: { version: number }) => useVoucherTypes('c1', version),

@@ -135,6 +135,25 @@ describe('CompanySettingsPanel', () => {
     expect(screen.getByRole('button', { name: 'Sync' })).toBeTruthy();
   });
 
+  /*
+    Only ever true across a deploy — a page held open, or a bundle reaching a browser before the
+    API answers from the new release. Short-lived, and the wrong thing to say confidently: a screen
+    that announces "up to date" against a number it never received is stating something it does
+    not know, which is exactly what the rest of this product refuses to do with a figure.
+  */
+  it('claims nothing when the server did not say what the product is on', () => {
+    const unknown = { ...company(), currentSeedVersion: undefined as unknown as number };
+    render(
+      <CompanySettingsPanel company={unknown} onChanged={() => {}} onMastersSynced={() => {}} />,
+    );
+
+    // The number it holds, and no verdict on it either way.
+    expect(screen.getByText('version 3')).toBeTruthy();
+    expect(screen.queryByText(/up to date/)).toBeNull();
+    expect(screen.queryByText(/version 3 of/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+  });
+
   it('reports a refusal rather than leaving the button looking busy', async () => {
     sync.mockRejectedValueOnce(new Error('boom'));
     render(
