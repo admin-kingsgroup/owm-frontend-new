@@ -635,7 +635,13 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
             )}
 
             {recent !== null && recent.length > 0 && (
-              <table className={styles.figures}>
+              /*
+                A record list, not a statement: one voucher per row with a handful of named fields,
+                which is what data-stack turns into a card on a phone. Without it the amount — the
+                one figure being read — was clipped at the card's edge on a 390px screen, and the
+                draft mark was pushed off it entirely.
+              */
+              <table className={styles.figures} data-stack>
                 {/*
                   Headed for a reader who cannot see the shape of it. The columns are obvious by
                   eye — a number, what it was for, a type, an amount — and naming them on screen
@@ -652,7 +658,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                 <tbody>
                   {recent.map((voucher) => (
                     <tr key={voucher.id} className={styles.figureRow}>
-                      <td>
+                      <td data-label="Voucher">
                         <span className={styles.recentNumber}>{voucher.voucherNumber}</span>
                         {voucher.narration && (
                           <span className={styles.recentNarration}>{voucher.narration}</span>
@@ -662,10 +668,12 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                         Named from the company's own types — see typeNames. Blank where the type has
                         since been deleted, rather than the id it was stored against.
                       */}
-                      <td className={styles.recentType}>
+                      <td className={styles.recentType} data-label="Type">
                         {typeNames.get(voucher.voucherTypeId) ?? ''}
                       </td>
-                      <td className={styles.amount}>{gridMoney(voucher.amount)}</td>
+                      <td className={styles.amount} data-label="Amount">
+                        {gridMoney(voucher.amount)}
+                      </td>
                       <td>
                         {/*
                           Posted is the ordinary case and goes unmarked; a draft is the one worth

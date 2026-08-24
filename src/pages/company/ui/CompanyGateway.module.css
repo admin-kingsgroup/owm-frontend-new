@@ -496,3 +496,23 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/*
+  Statements scroll sideways rather than stacking, which is the same trade the masters tables make.
+
+  A balance summary and an ageing band are genuinely columns of figures read against each other;
+  turned into cards they stop being comparable, which is the whole reason to look at them. The
+  record lists on these screens opt out through `data-stack`, and the attribute selector outranks
+  this rule below 48rem — so the two do not fight, they hand over.
+
+  `screen` only: a printed table must stay a table, and a sideways scroll on paper is just columns
+  cut off the edge of the page.
+*/
+@media screen and (max-width: 60rem) {
+  .figures {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

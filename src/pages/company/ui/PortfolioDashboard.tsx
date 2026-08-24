@@ -260,7 +260,8 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
             )}
 
             {league.length > 0 && (
-              <table className={styles.figures}>
+              /* One business per row with named fields — a record list, so it stacks on a phone. */
+              <table className={styles.figures} data-stack>
                 <thead>
                   <tr>
                     <th className={styles.figuresHeading}>Business</th>
@@ -274,14 +275,20 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
                 <tbody>
                   {league.map((business) => (
                     <tr key={business.businessId} className={styles.figureRow}>
-                      <td>
+                      <td data-label="Business">
                         <Link className={styles.figureLink} to={`${base}/kg`}>
                           {business.businessName}
                         </Link>
                       </td>
-                      <td className={styles.amount}>{money(business.netProfit)}</td>
-                      <td className={styles.amount}>{percent(business.roiPercent)}</td>
-                      <td className={styles.amount}>{percent(business.netMarginPercent)}</td>
+                      <td className={styles.amount} data-label="Net profit">
+                        {money(business.netProfit)}
+                      </td>
+                      <td className={styles.amount} data-label="Return">
+                        {percent(business.roiPercent)}
+                      </td>
+                      <td className={styles.amount} data-label="Margin">
+                        {percent(business.netMarginPercent)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -305,7 +312,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
           {view && view.businesses.length > 0 && (
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>Against target</h2>
-              <table className={styles.figures}>
+              <table className={styles.figures} data-stack>
                 <thead>
                   <tr>
                     <th className={styles.figuresHeading}>Business</th>
@@ -320,9 +327,13 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
                 <tbody>
                   {view.businesses.map((business) => (
                     <tr key={business.businessId} className={styles.figureRow}>
-                      <td>{business.businessName}</td>
-                      <td className={styles.amount}>{verdict(business.meetsRoiTarget)}</td>
-                      <td className={styles.amount}>{verdict(business.meetsMarginTarget)}</td>
+                      <td data-label="Business">{business.businessName}</td>
+                      <td className={styles.amount} data-label="Return">
+                        {verdict(business.meetsRoiTarget)}
+                      </td>
+                      <td className={styles.amount} data-label="Margin">
+                        {verdict(business.meetsMarginTarget)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
