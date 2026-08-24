@@ -33,6 +33,15 @@ export interface PendingMasters {
   ledgers: number;
   voucherTypes: number;
   numberSeries: number;
+  /**
+   * Why a sync cannot run at all, or `null` when it can — a company with no financial year has
+   * nowhere to attach a number series, and the server refuses outright.
+   *
+   * Not the same as every count being zero, and reading it as such would have the screen explain a
+   * company that cannot be synced as one with nothing to sync. The wording is the server's own,
+   * and the same one pressing the control would have produced.
+   */
+  blockedReason: string | null;
 }
 
 export interface SeedResult {

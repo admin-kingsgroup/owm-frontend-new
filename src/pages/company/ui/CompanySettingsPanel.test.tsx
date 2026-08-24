@@ -10,7 +10,7 @@ let result: SeedResult;
 const sync = vi.fn(async (_companyId: string) => result);
 
 /** What the server says is waiting. The panel asks before it offers anything. */
-let waiting: PendingMasters = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2 };
+let waiting: PendingMasters = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2, blockedReason: null };
 const pending = vi.fn(async (_companyId: string) => waiting);
 
 vi.mock('@/entities/company', async (importOriginal) => ({
@@ -56,7 +56,7 @@ const behind = company();
 
 describe('CompanySettingsPanel', () => {
   beforeEach(() => {
-    waiting = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2 };
+    waiting = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2, blockedReason: null };
   });
 
   afterEach(() => {
@@ -156,7 +156,7 @@ describe('CompanySettingsPanel', () => {
     outcome is "nothing to add" is a dead end the screen can rule out before showing it.
   */
   it('offers no sync to a company the new rows do not apply to, and says why', async () => {
-    waiting = { accountGroups: 0, ledgers: 0, voucherTypes: 0, numberSeries: 0 };
+    waiting = { accountGroups: 0, ledgers: 0, voucherTypes: 0, numberSeries: 0, blockedReason: null };
     render(
       <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
     );
@@ -167,6 +167,32 @@ describe('CompanySettingsPanel', () => {
     // Still stated honestly — the stamp is older — but not flagged as something to act on.
     expect(screen.getByText('version 3 of 4')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+  });
+
+  /*
+    A company whose last financial year was deleted — reachable, since one holding no vouchers can
+    be. Rows are waiting and none of them can land, so a control that could only fail is not shown
+    and the server's own reason is. The opposite of "nothing to add", wearing the same zeroes if
+    the counts were all the screen looked at.
+  */
+  it('says why a sync cannot run at all, and offers no control that would fail', async () => {
+    waiting = {
+      accountGroups: 3,
+      ledgers: 0,
+      voucherTypes: 2,
+      numberSeries: 0,
+      blockedReason: 'Company has no financial year to attach number series to',
+    };
+    render(
+      <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Company has no financial year to attach number series to. Masters cannot be synced until it has one.',
+    );
+    expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+    // And never explained as nothing being due, which is the other reason a control is absent.
+    expect(screen.queryByText(/applies to this kind of books/)).toBeNull();
   });
 
   /* A read that failed leaves the version as the only thing to go on, which is where this screen

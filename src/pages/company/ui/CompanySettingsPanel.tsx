@@ -74,7 +74,12 @@ const FEATURES: Array<{
  * thing a reader is checking. `null` when every count is zero, which the two callers word for
  * themselves — "nothing waiting" and "nothing added" are different sentences.
  */
-function wordCounts(counts: PendingMasters): string | null {
+function wordCounts(counts: {
+  accountGroups: number;
+  ledgers: number;
+  voucherTypes: number;
+  numberSeries: number;
+}): string | null {
   const parts = [
     { count: counts.accountGroups, one: 'account group', many: 'account groups' },
     { count: counts.ledgers, one: 'ledger', many: 'ledgers' },
@@ -165,12 +170,15 @@ export function CompanySettingsPanel({
   const pending = answered?.companyId === company.id ? answered.counts : null;
   const pendingUnknown = failedFor === company.id;
   const waiting = pending === null ? null : wordCounts(pending);
+  /** Why the sync cannot run at all. Rows may still be waiting behind it — see PendingMasters. */
+  const blocked = pending?.blockedReason ?? null;
 
   /*
     Offer the control only when pressing it would do something. A Sync whose whole outcome is
-    "nothing to add" is a dead end, and the screen can find that out first.
+    "nothing to add" is a dead end, and one that can only fail is worse — the screen can find out
+    which it would be before putting it in front of anyone.
   */
-  const behind = behindByVersion && (pendingUnknown || waiting !== null);
+  const behind = behindByVersion && blocked === null && (pendingUnknown || waiting !== null);
 
   async function toggle(key: FeatureKey, value: boolean) {
     setSaving(key);
@@ -325,9 +333,18 @@ export function CompanySettingsPanel({
           left exactly as it is, and syncing twice adds nothing the second time.
         </p>
       )}
-      {/* Behind by the number with nothing to receive. Said, rather than left as a bare "3 of 4"
-          with no control and no reason — which reads as something the screen forgot to offer. */}
-      {behindByVersion && !behind && waiting === null && pending !== null && (
+      {/*
+        Behind by the number with no control offered, and the two reasons for that are opposites:
+        nothing waiting, or something waiting that cannot be applied. Said either way, rather than
+        left as a bare "3 of 4" with no control and no reason — which reads as something the screen
+        forgot to offer.
+      */}
+      {behindByVersion && blocked !== null && (
+        <p className={styles.error} role="alert">
+          {blocked}. Masters cannot be synced until it has one.
+        </p>
+      )}
+      {behindByVersion && blocked === null && !behind && waiting === null && pending !== null && (
         <p className={styles.hint}>
           Nothing in version {current} applies to this kind of books, so there is nothing to add.
         </p>
