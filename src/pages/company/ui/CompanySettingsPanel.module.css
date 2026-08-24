@@ -91,3 +91,12 @@
   color: var(--warning-fg);
   font-weight: 500;
 }
+
+/* What a sync will insert. The ordinary ink, not the hint grey: it is the fact the control acts
+   on rather than a note about the control. */
+.waiting {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink);
+}

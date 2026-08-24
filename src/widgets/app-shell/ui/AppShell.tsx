@@ -99,7 +99,10 @@ export function AppShell() {
   // silently never offered.
   /* Declared before the menus, which name a register and a Create entry for each of them. */
   /* The seed version re-reads the list after a masters sync — see useVoucherTypes. */
-  const voucherTypes = useVoucherTypes(companyId, company?.seedVersion);
+  const { types: voucherTypes, known: voucherTypesKnown } = useVoucherTypes(
+    companyId,
+    company?.seedVersion,
+  );
 
   /**
    * Whether this company measures other people's businesses rather than keeping its own books.
@@ -247,7 +250,14 @@ export function AppShell() {
     const base = `/companies/${companyId}`;
     const raise = (code: string) => () => navigate(`${base}/vouchers?new=${code}`);
 
-    if (voucherTypes.length === 0) {
+    /*
+      Only while the company's own list is not known — still being read, or read and failed. Not
+      merely "no types came back": a company that has switched every one of its voucher types off
+      holds none on purpose, and offering it four the form will refuse is the bar claiming the
+      company can raise documents it cannot. The two look identical in an empty array, which is why
+      the hook says which it is.
+    */
+    if (!voucherTypesKnown) {
       return VOUCHER_FUNCTION_KEYS.filter(({ code }) => ALWAYS_SEEDED_VOUCHER_CODES.has(code)).map(
         ({ key, code, label }) => ({ group: 'Data entry', key, label, onSelect: raise(code) }),
       );
@@ -274,7 +284,7 @@ export function AppShell() {
         onSelect: raise(type.code),
       };
     });
-  }, [companyId, isPortfolio, navigate, voucherTypes]);
+  }, [companyId, isPortfolio, navigate, voucherTypes, voucherTypesKnown]);
 
   /*
     The page keeps first claim on a key: a screen that binds F8 to its own meaning must not have the

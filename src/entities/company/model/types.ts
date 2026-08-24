@@ -21,6 +21,20 @@ export interface SeedPreview {
  * rather than refusing, so the screen can say "nothing to add" instead of reporting an error for
  * the ordinary case. `seedVersion` is the version the company is on afterwards.
  */
+/**
+ * What a sync would insert, asked before offering to run one.
+ *
+ * Being behind by the version and having something to receive are different questions: a row is
+ * tagged with the kind of company it belongs to as well as the version it arrived in, so a trading
+ * company created before a release of personal-only rows is behind and missing nothing.
+ */
+export interface PendingMasters {
+  accountGroups: number;
+  ledgers: number;
+  voucherTypes: number;
+  numberSeries: number;
+}
+
 export interface SeedResult {
   accountGroups: number;
   ledgers: number;

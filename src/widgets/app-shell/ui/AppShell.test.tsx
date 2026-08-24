@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useCompanyStore } from '@/entities/company';
@@ -403,6 +403,21 @@ describe('AppShell', () => {
 
       // Sales holds F8 because it comes first in key order; the invented type keeps its button.
       expect(rows).toEqual(['PaymentF5', 'SalesF8', 'Consulting income']);
+    });
+
+    /*
+      The fallback exists for a list that is not known — still being read, or read and failed — so
+      the bar is never without a way to enter a voucher. A company that has switched every one of
+      its types off is the opposite case: it can raise nothing, and offering it four documents the
+      form will refuse is the bar claiming a company can do something it cannot.
+    */
+    it('offers nothing to a company that has switched every voucher type off', async () => {
+      heldTypes = [];
+      renderShell();
+
+      await waitFor(() => expect(screen.queryByRole('group', { name: 'Data entry' })).toBeNull());
+      // The rest of the bar is unaffected — there is still a way out of the screen.
+      expect(screen.getByRole('group', { name: 'Go to' })).toBeTruthy();
     });
 
     it('raises the company’s own voucher type from the bar', async () => {

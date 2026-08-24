@@ -56,8 +56,8 @@ describe('useVoucherTypes', () => {
   it('answers with the active types, and asks once', async () => {
     const { result } = renderHook(() => useVoucherTypes('c1', 3));
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
-    expect(result.current[0].code).toBe('PAYMENT');
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
+    expect(result.current.types[0].code).toBe('PAYMENT');
     expect(list).toHaveBeenCalledTimes(1);
   });
 
@@ -70,8 +70,24 @@ describe('useVoucherTypes', () => {
   it('still answers when the effect is mounted twice, as StrictMode mounts it', async () => {
     const { result } = renderHook(() => useVoucherTypes('c1', 4), { wrapper: StrictMode });
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
-    expect(result.current[0].code).toBe('PAYMENT');
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
+    expect(result.current.types[0].code).toBe('PAYMENT');
+  });
+
+  /*
+    Holding none and not knowing yet are opposites, and an empty array says both. A company that has
+    switched every voucher type off can raise nothing, and the caller has to be able to tell that
+    from a list still being read — otherwise the bar offers four documents the form will refuse.
+  */
+  it('separates holding no types from not knowing yet', async () => {
+    answer = [];
+    const { result } = renderHook(() => useVoucherTypes('c1', 4));
+
+    // Before the answer: nothing, and not known.
+    expect(result.current).toEqual({ types: [], known: false });
+
+    await waitFor(() => expect(result.current.known).toBe(true));
+    expect(result.current.types).toHaveLength(0);
   });
 
   it('re-reads when the company’s masters are synced, so the new types appear at once', async () => {
@@ -80,13 +96,13 @@ describe('useVoucherTypes', () => {
       { initialProps: { version: 3 } },
     );
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
 
     answer = [type('PAYMENT'), type('INCOME'), type('EXPENSE')];
     rerender({ version: 4 });
 
-    await waitFor(() => expect(result.current).toHaveLength(3));
-    expect(result.current.map((entry) => entry.code)).toEqual(['PAYMENT', 'INCOME', 'EXPENSE']);
+    await waitFor(() => expect(result.current.types).toHaveLength(3));
+    expect(result.current.types.map((entry) => entry.code)).toEqual(['PAYMENT', 'INCOME', 'EXPENSE']);
   });
 
   /*
@@ -100,7 +116,7 @@ describe('useVoucherTypes', () => {
       { initialProps: { version: undefined } as { version?: number } },
     );
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
     rerender({ version: 4 });
 
     expect(list).toHaveBeenCalledTimes(1);
@@ -108,7 +124,7 @@ describe('useVoucherTypes', () => {
     // And the version is remembered, so the next move is still seen.
     answer = [type('PAYMENT'), type('INCOME')];
     rerender({ version: 5 });
-    await waitFor(() => expect(result.current).toHaveLength(2));
+    await waitFor(() => expect(result.current.types).toHaveLength(2));
   });
 
   /*
@@ -125,11 +141,11 @@ describe('useVoucherTypes', () => {
     );
 
     await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
-    expect(result.current).toHaveLength(0);
+    expect(result.current.types).toHaveLength(0);
 
     rerender({ version: 4 });
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
     expect(list).toHaveBeenCalledTimes(2);
   });
 
@@ -139,7 +155,7 @@ describe('useVoucherTypes', () => {
       { initialProps: { version: 4 } },
     );
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
     rerender({ version: 4 });
 
     expect(list).toHaveBeenCalledTimes(1);
@@ -151,10 +167,10 @@ describe('useVoucherTypes', () => {
       { initialProps: { companyId: 'c1' } },
     );
 
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.types).toHaveLength(1));
     rerender({ companyId: 'c2' });
 
     // Tagged with the company it describes — c1's types must not be drawn under c2.
-    expect(result.current).toHaveLength(0);
+    expect(result.current.types).toHaveLength(0);
   });
 });

@@ -176,15 +176,16 @@ export function ReportsPage() {
   const companyLoaded = company !== null;
   /*
     False until the company is known, which is what keeps the fetch below from firing at a report
-    the company may not keep. `isAvailable` deliberately gives a loading company the benefit of the
-    doubt so the screen does not bounce off a valid report — right for what is rendered, but it
-    means the open tab can briefly be one the company has no data for, and the server refuses those
-    outright rather than answering with bills left over from before the feature was switched off.
+    the company may not keep. Only the fetch: the tab itself opens whatever was asked for, so a
+    report behind a switch that is off is drawn and explained rather than swapped for another —
+    see `behindAFeatureThisCompanyLacks`. Nothing is asked of the server for one, which is right
+    twice over, because it refuses those outright rather than answering with bills left over from
+    before the feature was switched off.
   */
   const billWise = company?.features.billWiseDetails ?? false;
 
-  /* Derived here rather than beside the raw search param, because whether a report is available
-     at all depends on the company's features — see isAvailable. */
+  /* Whatever the address names, if it names a report at all. Which reports a company can produce
+     decides what the menus offer and what is drawn in the panel, not which tab opens. */
   const tab: Tab = isTab(requested) ? requested : 'balance-sheet';
 
   /**

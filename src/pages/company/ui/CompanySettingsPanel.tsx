@@ -1,7 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { syncDefaultMasters, updateCompany } from '@/entities/company';
-import type { Company, CompanyFeatures, SeedResult } from '@/entities/company';
+import {
+  getPendingDefaultMasters,
+  syncDefaultMasters,
+  updateCompany,
+} from '@/entities/company';
+import type {
+  Company,
+  CompanyFeatures,
+  PendingMasters,
+  SeedResult,
+} from '@/entities/company';
 import { Button, Checkbox } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
@@ -58,6 +67,29 @@ const FEATURES: Array<{
 ];
 
 /**
+ * A set of master counts, in words — "3 account groups, 2 voucher types and 2 number series".
+ *
+ * Written once because it is said twice, of the same numbers: before, as what is waiting, and
+ * after, as what was inserted. Two spellings of one list would eventually disagree about the very
+ * thing a reader is checking. `null` when every count is zero, which the two callers word for
+ * themselves — "nothing waiting" and "nothing added" are different sentences.
+ */
+function wordCounts(counts: PendingMasters): string | null {
+  const parts = [
+    { count: counts.accountGroups, one: 'account group', many: 'account groups' },
+    { count: counts.ledgers, one: 'ledger', many: 'ledgers' },
+    { count: counts.voucherTypes, one: 'voucher type', many: 'voucher types' },
+    { count: counts.numberSeries, one: 'number series', many: 'number series' },
+  ]
+    .filter((row) => row.count > 0)
+    .map((row) => `${row.count} ${row.count === 1 ? row.one : row.many}`);
+
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/**
  * What a sync inserted, in words.
  *
  * Counted from the server's own answer rather than assumed, because what a company is missing
@@ -65,22 +97,10 @@ const FEATURES: Array<{
  * same day can receive different things, and a fixed sentence would be wrong for one of them.
  */
 function describeSync(result: SeedResult): string {
-  const added = [
-    { count: result.accountGroups, one: 'account group', many: 'account groups' },
-    { count: result.ledgers, one: 'ledger', many: 'ledgers' },
-    { count: result.voucherTypes, one: 'voucher type', many: 'voucher types' },
-    { count: result.numberSeries, one: 'number series', many: 'number series' },
-  ]
-    .filter((row) => row.count > 0)
-    .map((row) => `${row.count} ${row.count === 1 ? row.one : row.many}`);
-
-  if (added.length === 0) {
-    return `Nothing to add — this company is already on version ${result.seedVersion}.`;
-  }
-
-  const list =
-    added.length === 1 ? added[0] : `${added.slice(0, -1).join(', ')} and ${added[added.length - 1]}`;
-  return `Added ${list}. Now on version ${result.seedVersion}.`;
+  const list = wordCounts(result);
+  return list === null
+    ? `Nothing to add — this company is already on version ${result.seedVersion}.`
+    : `Added ${list}. Now on version ${result.seedVersion}.`;
 }
 
 export function CompanySettingsPanel({
@@ -103,11 +123,54 @@ export function CompanySettingsPanel({
     typeof company.currentSeedVersion === 'number' ? company.currentSeedVersion : null;
 
   /*
-    Whether this company is missing anything the product has since added. The server states both
-    numbers — see currentSeedVersion — so the screen can say there is something to do rather than
-    leaving a reader to press a button and find out.
+    Whether this company's stamp is older than the product's. Necessary for there to be anything to
+    do, and not sufficient: a row carries the kind of company it belongs to as well as the version
+    it arrived in, so a trading book created before a release of personal-only rows is behind by
+    the number and missing nothing at all.
   */
-  const behind = current !== null && company.seedVersion < current;
+  const behindByVersion = current !== null && company.seedVersion < current;
+
+  /**
+   * What a sync would actually insert, and which company that was asked about.
+   *
+   * Tagged rather than cleared when the company changes: this panel is not remounted by a switch,
+   * and clearing would mean writing state from inside the effect, which is a cascading render for
+   * something a comparison answers. An answer for a company no longer open is simply not read.
+   */
+  const [answered, setAnswered] = useState<{ companyId: string; counts: PendingMasters } | null>(
+    null,
+  );
+  /* And which company the read failed for. Then the version is all there is to go on, which is
+     where this screen was before it asked — offer the control rather than hide a needed one. */
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!behindByVersion) return;
+    const id = company.id;
+    let cancelled = false;
+
+    getPendingDefaultMasters(id)
+      .then((counts) => {
+        if (!cancelled) setAnswered({ companyId: id, counts });
+      })
+      .catch(() => {
+        if (!cancelled) setFailedFor(id);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [company.id, behindByVersion]);
+
+  const pending = answered?.companyId === company.id ? answered.counts : null;
+  const pendingUnknown = failedFor === company.id;
+  const waiting = pending === null ? null : wordCounts(pending);
+
+  /*
+    Offer the control only when pressing it would do something. A Sync whose whole outcome is
+    "nothing to add" is a dead end, and the screen can find that out first.
+  */
+  const behind = behindByVersion && (pendingUnknown || waiting !== null);
 
   async function toggle(key: FeatureKey, value: boolean) {
     setSaving(key);
@@ -206,17 +269,18 @@ export function CompanySettingsPanel({
               only worth reading against what the product is on. Equal, the second would be noise —
               a company that is current says so in words instead.
             */}
-            {behind ? (
-              <span className={styles.behind}>
+            {/* Bare when there is nothing to read it against — see `current`. Saying "up to date"
+                there would be the screen asserting something it has not been told. Both numbers
+                whenever the stamp is older, and coloured only when something is actually waiting:
+                amber is a prompt to act, and there is nothing to act on otherwise. */}
+            {current === null ? (
+              <span>version {company.seedVersion}</span>
+            ) : behindByVersion ? (
+              <span className={behind ? styles.behind : undefined}>
                 version {company.seedVersion} of {current}
               </span>
             ) : (
-              /* Bare when there is nothing to read it against — see `current`. Saying "up to date"
-                 there would be the screen asserting something it has not been told. */
-              <span>
-                version {company.seedVersion}
-                {current !== null && ' · up to date'}
-              </span>
+              <span>version {company.seedVersion} · up to date</span>
             )}
             {/*
               Offered only when there is something to receive. Standing there on a current company
@@ -244,12 +308,28 @@ export function CompanySettingsPanel({
         Said plainly, because "sync" is the one word here that could be read as two-way. It is not:
         the server only ever inserts. Shown only alongside the control it explains.
       */}
+      {/*
+        Its own line, in the ordinary ink. Named rather than implied — "something is waiting" is a
+        reason to press a button, "3 account groups and 2 voucher types" is a reason and a
+        description of the result — and it was the opening clause of five lines of grey, which is
+        where a reader stops reading. The paragraph below explains the control; this is the fact.
+      */}
+      {behind && waiting !== null && (
+        <p className={styles.waiting}>Waiting for this company: {waiting}.</p>
+      )}
       {behind && (
         <p className={styles.hint}>
           Syncing gives this company the default account groups, ledgers and voucher types added to
           the product since it was created — a personal book created before Income and Expense
           existed, for instance. It only ever adds: anything renamed, edited or switched off here is
           left exactly as it is, and syncing twice adds nothing the second time.
+        </p>
+      )}
+      {/* Behind by the number with nothing to receive. Said, rather than left as a bare "3 of 4"
+          with no control and no reason — which reads as something the screen forgot to offer. */}
+      {behindByVersion && !behind && waiting === null && pending !== null && (
+        <p className={styles.hint}>
+          Nothing in version {current} applies to this kind of books, so there is nothing to add.
         </p>
       )}
       {syncResult && (

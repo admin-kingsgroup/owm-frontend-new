@@ -1,17 +1,22 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 
-import type { Company, SeedResult } from '@/entities/company';
+import type { Company, PendingMasters, SeedResult } from '@/entities/company';
 
 import { CompanySettingsPanel } from './CompanySettingsPanel';
 
 let result: SeedResult;
 const sync = vi.fn(async (_companyId: string) => result);
 
+/** What the server says is waiting. The panel asks before it offers anything. */
+let waiting: PendingMasters = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2 };
+const pending = vi.fn(async (_companyId: string) => waiting);
+
 vi.mock('@/entities/company', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/company')>()),
   syncDefaultMasters: (companyId: string) => sync(companyId),
+  getPendingDefaultMasters: (companyId: string) => pending(companyId),
 }));
 
 const company = (patch: Partial<Company> = {}): Company => ({
@@ -50,8 +55,13 @@ const current = company({ seedVersion: 4 });
 const behind = company();
 
 describe('CompanySettingsPanel', () => {
+  beforeEach(() => {
+    waiting = { accountGroups: 3, ledgers: 0, voucherTypes: 2, numberSeries: 2 };
+  });
+
   afterEach(() => {
     sync.mockClear();
+    pending.mockClear();
     cleanup();
   });
 
@@ -69,7 +79,7 @@ describe('CompanySettingsPanel', () => {
       <CompanySettingsPanel company={behind} onChanged={changed} onMastersSynced={synced} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync' }));
 
     // Only the kinds that received something, listed as they read aloud.
     expect(
@@ -98,7 +108,7 @@ describe('CompanySettingsPanel', () => {
       <CompanySettingsPanel company={behind} onChanged={changed} onMastersSynced={synced} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync' }));
 
     expect(
       await screen.findByText('Nothing to add — this company is already on version 4.'),
@@ -122,17 +132,53 @@ describe('CompanySettingsPanel', () => {
 
     expect(screen.getByText('version 4 · up to date')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+    // Nothing to ask about, so nothing is asked.
+    expect(pending).not.toHaveBeenCalled();
     // The explanation goes with the control it explains.
     expect(screen.queryByText(/Syncing gives this company/)).toBeNull();
   });
 
-  it('says which version a company behind is on, against the one the product is on', () => {
+  it('says which version a company behind is on, and names what is waiting', async () => {
     render(
       <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
     );
 
     expect(screen.getByText('version 3 of 4')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sync' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Sync' })).toBeTruthy();
+    expect(
+      screen.getByText(/Waiting for this company: 3 account groups, 2 voucher types and 2 number series\./),
+    ).toBeTruthy();
+  });
+
+  /*
+    Behind by the number and missing nothing are different things — every row carries the kind of
+    company it belongs to as well as the version it arrived in. Offering a control whose whole
+    outcome is "nothing to add" is a dead end the screen can rule out before showing it.
+  */
+  it('offers no sync to a company the new rows do not apply to, and says why', async () => {
+    waiting = { accountGroups: 0, ledgers: 0, voucherTypes: 0, numberSeries: 0 };
+    render(
+      <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
+    );
+
+    expect(
+      await screen.findByText(/Nothing in version 4 applies to this kind of books/),
+    ).toBeTruthy();
+    // Still stated honestly — the stamp is older — but not flagged as something to act on.
+    expect(screen.getByText('version 3 of 4')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+  });
+
+  /* A read that failed leaves the version as the only thing to go on, which is where this screen
+     was before it asked: offer the control rather than hide one that might be needed. */
+  it('still offers the sync when it cannot find out what is waiting', async () => {
+    pending.mockRejectedValueOnce(new Error('offline'));
+    render(
+      <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Sync' })).toBeTruthy();
+    expect(screen.queryByText(/Waiting for this company/)).toBeNull();
   });
 
   /*
@@ -160,7 +206,7 @@ describe('CompanySettingsPanel', () => {
       <CompanySettingsPanel company={behind} onChanged={() => {}} onMastersSynced={() => {}} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync' }));
 
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sync' }).hasAttribute('disabled')).toBe(false);

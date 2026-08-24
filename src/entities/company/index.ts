@@ -4,6 +4,7 @@ export type {
   CompanyStatus,
   CompanyType,
   CreateCompanyInput,
+  PendingMasters,
   SeedPreview,
   SeedResult,
   UpdateCompanyInput,

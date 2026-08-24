@@ -4,6 +4,7 @@ import type { ApiSuccessResponse } from '@/shared/types';
 import type {
   Company,
   CreateCompanyInput,
+  PendingMasters,
   SeedPreview,
   SeedResult,
   UpdateCompanyInput,
@@ -29,6 +30,20 @@ export async function getCompany(companyId: string): Promise<Company> {
 export async function getSeedPreview(type: string): Promise<SeedPreview> {
   const { data } = await apiClient.get<ApiSuccessResponse<SeedPreview>>(
     endpoints.companies.seedPreview(type),
+  );
+  return data.data;
+}
+
+/**
+ * What syncing this company would insert, without inserting it.
+ *
+ * Read before the control is offered, so a Sync whose only possible answer is "nothing to add" is
+ * never put in front of anyone. Counted by the server from the same filters the sync itself
+ * applies, so the two cannot disagree.
+ */
+export async function getPendingDefaultMasters(companyId: string): Promise<PendingMasters> {
+  const { data } = await apiClient.get<ApiSuccessResponse<PendingMasters>>(
+    endpoints.companies.pendingDefaultMasters(companyId),
   );
   return data.data;
 }

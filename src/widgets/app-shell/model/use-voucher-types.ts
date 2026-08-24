@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { listVoucherTypes } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
@@ -28,10 +28,25 @@ import type { VoucherType } from '@/entities/voucher-type';
  * read this list twice — once before the company was known and once after — for a number that had
  * not moved.
  */
+export interface HeldVoucherTypes {
+  /** The company's active types. Empty both while unknown and when the company has none. */
+  types: VoucherType[];
+  /**
+   * Whether the server has answered for this company.
+   *
+   * The two ways of holding no types are opposites and a caller has to tell them apart. Unknown —
+   * still reading, or the read failed — means offer the documents every set of books has, because
+   * a bar with no way to raise a voucher is a worse answer than four that certainly exist. Known
+   * and empty means this company has switched every one of its types off, and offering four it
+   * will refuse is the bar lying about what the company can do.
+   */
+  known: boolean;
+}
+
 export function useVoucherTypes(
   companyId: string | undefined,
   mastersVersion?: number,
-): VoucherType[] {
+): HeldVoucherTypes {
   const [state, setState] = useState<{ companyId: string; types: VoucherType[] } | null>(null);
 
   /**
@@ -92,8 +107,17 @@ export function useVoucherTypes(
   }, [companyId, mastersVersion]);
 
   // Tagged with the company it describes, so switching cannot leave the previous one's types up.
-  return state && state.companyId === companyId ? state.types : EMPTY;
+  const answered = state !== null && state.companyId === companyId;
+
+  /*
+    Memoised on the two things it carries. A fresh object each render would rebuild the menus every
+    time, which is the whole reason the empty case was a frozen array before.
+  */
+  return useMemo(
+    () => (answered ? { types: state.types, known: true } : UNKNOWN),
+    [answered, state],
+  );
 }
 
-/** One frozen array rather than a new one each render, which would rebuild the menus every time. */
-const EMPTY: VoucherType[] = [];
+/** One frozen value rather than a new one each render, which would rebuild the menus every time. */
+const UNKNOWN: HeldVoucherTypes = { types: [], known: false };

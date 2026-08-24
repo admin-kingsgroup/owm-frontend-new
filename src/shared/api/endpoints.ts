@@ -5,6 +5,8 @@ export const endpoints = {
     byId: (companyId: string) => `/companies/${companyId}`,
     seedPreview: (type: string) => `/companies/seed-preview?type=${encodeURIComponent(type)}`,
     syncDefaultMasters: (companyId: string) => `/companies/${companyId}/sync-default-masters`,
+    pendingDefaultMasters: (companyId: string) =>
+      `/companies/${companyId}/default-masters/pending`,
   },
   financialYears: {
     list: (companyId: string) => `/companies/${companyId}/financial-years`,
