@@ -286,6 +286,47 @@ test.describe('the portfolio dashboard', () => {
 });
 
 /**
+ * The width between the two designs.
+ *
+ * Below 48rem a record list becomes cards and a statement scrolls; above 60rem both are ordinary
+ * tables. In between, the record lists scroll too — a band nothing had ever been drawn at, and the
+ * one where a rule written for one end can quietly fail at the other.
+ */
+test.describe('at the width between the two', () => {
+  test.use({ viewport: { width: 900, height: 900 } });
+
+  for (const screen of [
+    { name: 'the company dashboard', path: () => `/companies/${companyId}` },
+    { name: 'the portfolio dashboard', path: () => `/companies/${analyticsId}` },
+  ]) {
+    test(`${screen.name} does not spill`, async ({ page }) => {
+      await signIn(page);
+      await page.goto(screen.path());
+      await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+      await page.waitForLoadState('networkidle');
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${screen.name} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
+
+      /*
+        And no card is wider than the column holding it. The page not scrolling is not the same as
+        nothing spilling — a card that overflows its own column clips instead, which is how the
+        register lost its amounts on a phone without failing the check above.
+      */
+      const spilling = await page.evaluate(
+        () =>
+          [...document.querySelectorAll('section')].filter(
+            (card) => card.scrollWidth > card.clientWidth + 1,
+          ).length,
+      );
+      expect(spilling, `${spilling} card(s) overflow their own width`).toBe(0);
+    });
+  }
+});
+
+/**
  * The phone is not a second design, but nothing may overflow. The sweep covers the accounting
  * dashboard at this width; these are the two it does not.
  */
@@ -308,6 +349,22 @@ test.describe('on a narrow screen', () => {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, `${screen.name} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
+
+      /*
+        And nothing spills its own card, which is the check that matters at this width.
+
+        The page not scrolling sideways is not the same as nothing overflowing: a card wider than
+        its column clips instead, and clipping is silent. That is exactly how the register lost the
+        right-hand end of every amount and the whole draft mark on a 390px screen while passing the
+        assertion above.
+      */
+      const spilling = await page.evaluate(
+        () =>
+          [...document.querySelectorAll('section')].filter(
+            (card) => card.scrollWidth > card.clientWidth + 1,
+          ).length,
+      );
+      expect(spilling, `${spilling} card(s) overflow their own width`).toBe(0);
 
       // The switcher is the only company control there is, so it has to survive the narrow width.
       await expect(page.locator('[aria-haspopup="menu"]').first()).toBeVisible();
