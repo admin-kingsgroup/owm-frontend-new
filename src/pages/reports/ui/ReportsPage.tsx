@@ -187,6 +187,19 @@ export function ReportsPage() {
      at all depends on the company's features — see isAvailable. */
   const tab: Tab = isTab(requested) ? requested : 'balance-sheet';
 
+  /**
+   * The report asked for exists only behind a feature this company has not switched on.
+   *
+   * It still opens and says what is missing — being shown the report you asked for, empty and
+   * explained, beats being shown one you did not. But the controls around it are for reading a
+   * report, and there is none: a date range to narrow nothing down, and a switch to show nil
+   * balances among no balances. Offering them suggests the emptiness is something the reader
+   * did, and that pressing something will undo it.
+   */
+  const behindAFeatureThisCompanyLacks =
+    ((tab === 'receivables' || tab === 'payables') && !billWise) ||
+    (tab === 'forex' && !multiCurrency);
+
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetReport | null>(null);
   const [profitLoss, setProfitLoss] = useState<ProfitAndLossReport | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceReport | null>(null);
@@ -623,9 +636,12 @@ export function ReportsPage() {
       key: 'Ctrl+E',
       label: 'Export CSV',
       onSelect: exportCurrentTab,
-      // Off rather than silent on the few reports with no writer: a button that does nothing when
-      // pressed is worse than one that shows it will not.
-      disabled: loading,
+      /*
+        Off rather than silent on the few reports with no writer: a button that does nothing when
+        pressed is worse than one that shows it will not. A report the company has not switched on
+        is the same case — there is nothing to write out, and the reader is already being told why.
+      */
+      disabled: loading || behindAFeatureThisCompanyLacks,
     },
     {
       group: 'This report',
@@ -677,7 +693,7 @@ export function ReportsPage() {
           Naming the action is true everywhere, and it is why there is no `aria-pressed`: that
           attribute tells a screen reader the label is a state, which would contradict it.
         */}
-        {!loading && !loadError && showsMoney(tab) && (
+        {!loading && !loadError && !behindAFeatureThisCompanyLacks && showsMoney(tab) && (
           <button
             type="button"
             className={styles.zeroToggle}
@@ -778,7 +794,7 @@ export function ReportsPage() {
         />
       )}
 
-      {usesPeriod(tab) && (
+      {usesPeriod(tab) && !behindAFeatureThisCompanyLacks && (
         <PeriodControls
           key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
           applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
@@ -953,19 +969,21 @@ export function ReportsPage() {
         Keyed on the feature rather than on the report being missing, so a company that does have it
         is not told this while its figures are still arriving.
       */}
-      {(tab === 'receivables' || tab === 'payables') && !billWise && (
+      {(tab === 'receivables' || tab === 'payables') && behindAFeatureThisCompanyLacks && (
         <p className={styles.empty}>
           These books are not kept bill by bill, so there is nothing to age. Switch on bill-wise
-          details in <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link>{' '}
-          to track invoices one by one.
+          details in{' '}
+          <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link> to
+          track invoices one by one.
         </p>
       )}
 
-      {tab === 'forex' && !multiCurrency && (
+      {tab === 'forex' && behindAFeatureThisCompanyLacks && (
         <p className={styles.empty}>
           These books are kept in one currency, so there is nothing to revalue. Switch on multi
-          currency in <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link>{' '}
-          to hold balances in more than one.
+          currency in{' '}
+          <Link to={`/companies/${companyId}?tab=settings`}>the company&apos;s settings</Link> to
+          hold balances in more than one.
         </p>
       )}
 
