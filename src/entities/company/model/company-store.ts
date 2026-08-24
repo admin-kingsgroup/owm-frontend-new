@@ -27,6 +27,16 @@ interface CompanyState {
   load: (force?: boolean) => Promise<void>;
   /** Adds or replaces one company, so every reader sees the change without refetching. */
   upsert: (company: Company) => void;
+  /**
+   * Empties the list and forgets that it was ever read.
+   *
+   * Called when the signed-in user changes. This store outlives a sign-out — nothing reloads the
+   * page — and `load` returns early once it has answered, so without this the next person to sign
+   * in on the same tab is shown the previous person's companies: their names and their codes, in
+   * the switcher at the top of every screen and on the selection list itself. It is the one piece
+   * of state here that belongs to a person rather than to the installation.
+   */
+  reset: () => void;
 }
 
 export const useCompanyStore = create<CompanyState>((set, get) => ({
@@ -52,6 +62,8 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
       set({ loading: false });
     }
   },
+
+  reset: () => set({ companies: null, loaded: false, error: null, loading: false }),
 
   upsert: (company) =>
     set((state) => {

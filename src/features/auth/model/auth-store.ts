@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { useCompanyStore } from '@/entities/company';
 import type { User } from '@/entities/user';
 import { getAuthToken, setAuthToken, getErrorMessage } from '@/shared/lib';
 
@@ -29,6 +30,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { user, accessToken } = await loginRequest(email, password);
       setAuthToken(accessToken);
+      /*
+        Whoever was here before, their companies are not this person's to see. Cleared on the way
+        in rather than only on the way out, because a session does not always end with a sign-out —
+        a token can expire, or a tab can be left — and the list is fetched once and remembered.
+      */
+      useCompanyStore.getState().reset();
       set({ user, status: 'authenticated', error: null });
     } catch (error) {
       setAuthToken(null);
@@ -43,6 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await logoutRequest();
     } finally {
       setAuthToken(null);
+      useCompanyStore.getState().reset();
       set({ user: null, status: 'unauthenticated', error: null });
     }
   },

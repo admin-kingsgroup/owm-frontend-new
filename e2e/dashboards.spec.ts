@@ -125,6 +125,57 @@ test.describe('the reads behind the dashboard', () => {
 });
 
 /**
+ * Whose companies the tab is holding, after the person using it changes.
+ *
+ * The list is read once and remembered, and nothing reloads the page on a sign-out — so the next
+ * person to sign in on the same tab was being shown the previous person's companies: their names
+ * and their codes, in the switcher at the top of every screen. Signing out and back in is the
+ * cheapest way to drive it, and what is asserted is that the list is genuinely fetched again rather
+ * than answered from what was already in memory.
+ */
+test.describe('signing out and back in', () => {
+  test('reads the company list again rather than keeping the last one', async ({ page }) => {
+    const listReads: number[] = [];
+    await page.route('**/api/v1/companies', async (route) => {
+      if (route.request().method() === 'GET') listReads.push(Date.now());
+      await route.continue();
+    });
+
+    await page.goto('/');
+    await page.getByLabel('Email').fill(ACCOUNT.email);
+    await page.getByLabel('Password').fill(ACCOUNT.password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    const readsBefore = listReads.length;
+    expect(readsBefore, 'the list was never read at all').toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: new RegExp(ACCOUNT.name) }).click();
+    await page.getByRole('menuitem', { name: /Log out/ }).click();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+
+    await page.getByLabel('Email').fill(ACCOUNT.email);
+    await page.getByLabel('Password').fill(ACCOUNT.password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    /*
+      The whole point. Before the store was cleared on a change of user this count did not move —
+      the second person's screen was drawn entirely from the first person's answer.
+    */
+    expect(
+      listReads.length,
+      'the list was served from the previous session rather than read again',
+    ).toBeGreaterThan(readsBefore);
+
+    // And what is on screen is right, which a permanently blank switcher would also fail.
+    await expect(page.getByRole('link', { name: 'Open ADB - INR' })).toBeVisible();
+  });
+});
+
+/**
  * Choosing a company happens in one place, top right.
  *
  * The menu bar and the function-key strip each used to offer their own way back to the company
@@ -214,6 +265,18 @@ test.describe('the keys that moved', () => {
     await expect(page).toHaveURL(new RegExp(`/companies/${companyId}$`));
   });
 
+  test('Alt+O opens the dashboard from wherever you are', async ({ page }) => {
+    await signIn(page);
+    // From a report, which is where somebody actually presses it.
+    await page.goto(`/companies/${companyId}/reports?report=trial-balance`);
+    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+
+    await page.keyboard.press('Alt+KeyO');
+
+    await expect(page).toHaveURL(new RegExp(`/companies/${companyId}$`));
+    await expect(page.getByText('Company dashboard')).toBeVisible();
+  });
+
   test('Alt+K still opens the Day Book', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
@@ -223,6 +286,31 @@ test.describe('the keys that moved', () => {
 
     await expect(page).toHaveURL(/report=day-book/);
     await expect(page.getByRole('heading', { name: 'Day Book' })).toBeVisible();
+  });
+});
+
+/**
+ * A company id that is not a company.
+ *
+ * A stale bookmark, a link from an old note, an id belonging to a company since deleted. The frame
+ * has to stay up and say so — a dashboard is the screen most likely to be bookmarked, and the worst
+ * answer is a blank page with the chrome still promising there is something behind it.
+ */
+test.describe('an address that names no company', () => {
+  test('says so, and leaves a way out', async ({ page }) => {
+    const crashes: string[] = [];
+    page.on('pageerror', (error) => crashes.push(error.message));
+
+    await signIn(page);
+    await page.goto('/companies/000000000000000000000000');
+    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    // Said out loud rather than left blank.
+    await expect(page.getByText(/not found|could not|Could not/)).toBeVisible();
+    // And the switcher is still there, which is the only way back to another company.
+    await expect(page.locator('[aria-haspopup="menu"]').last()).toBeVisible();
+    expect(crashes, `the screen threw ${crashes.length} time(s)`).toEqual([]);
   });
 });
 
