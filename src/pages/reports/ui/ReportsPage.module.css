@@ -774,6 +774,18 @@
     color: #000000 !important;
   }
 
+  /*
+    The dotted rule under a name says it can be opened, which is true on a screen and not on
+    paper. Left in, a printed trial balance carries a dotted underline beneath every ledger in
+    it — a mark that means nothing to whoever is holding the page.
+
+    Only this one needs saying: the balances on the gateway are anchors, and the print rules
+    already take the underline off those. This is a button wearing the same clothes.
+  */
+  .linkCell {
+    text-decoration: none !important;
+  }
+
   /* The chevron opens a group; on paper the group is already open or it is not there. */
   .treeChevron {
     display: none !important;

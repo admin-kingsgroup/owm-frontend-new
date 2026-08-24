@@ -523,6 +523,34 @@ test.describe('the frame', () => {
     await expect(page.locator('tbody tr')).not.toHaveCount(0);
   });
 
+  /*
+    What a statement looks like on paper.
+
+    The print rules are substantial — tabs and toolbars removed, colour forced to black, the tree put
+    back inline — and nothing had ever exercised them. They are also where a screen convention
+    quietly becomes a printing fault: the dotted rule under a ledger name says the account behind it
+    can be opened, which is true on a screen and meaningless on a page somebody is holding.
+  */
+  test('prints a statement without the marks that only mean something on screen', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}/reports?report=trial-balance`);
+    await expect(page.getByRole('heading', { name: 'Trial Balance' })).toBeVisible();
+
+    const ledgerName = page.locator('tbody button').first();
+    await expect(ledgerName).toBeVisible();
+
+    // On screen the name carries a rule, which is what says it opens the account behind it.
+    await expect(ledgerName).toHaveCSS('text-decoration-style', 'dotted');
+
+    await page.emulateMedia({ media: 'print' });
+
+    await expect(ledgerName).toHaveCSS('text-decoration-line', 'none');
+    // And a control that cannot be pressed on paper is not on it.
+    await expect(page.getByRole('button', { name: /Nil balances/ })).toBeHidden();
+  });
+
   test('raises a voucher from a function key, on any screen', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}/reports`);
