@@ -669,17 +669,21 @@ export function ReportsPage() {
         )}
         {/*
           Beside the period, because both describe how to read the figures below rather than what
-          they are. A statement, not a form: this is a link rather than a switch, and it says what
-          is true now and what pressing it will do.
+          they are.
+
+          It names the action, not the state. "Nil balances hidden · show" claimed something was
+          hidden even on a day book, which holds no balances and had nothing suppressed — a label
+          asserting a state has to be true on every screen it appears on, and this one was not.
+          Naming the action is true everywhere, and it is why there is no `aria-pressed`: that
+          attribute tells a screen reader the label is a state, which would contradict it.
         */}
         {!loading && !loadError && showsMoney(tab) && (
           <button
             type="button"
             className={styles.zeroToggle}
             onClick={() => setShowZeros((current) => !current)}
-            aria-pressed={showZeros}
           >
-            {showZeros ? 'Nil balances shown · hide' : 'Nil balances hidden · show'}
+            {showZeros ? 'Hide nil figures' : 'Show nil figures'}
           </button>
         )}
       </div>
