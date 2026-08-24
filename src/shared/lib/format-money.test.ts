@@ -87,4 +87,50 @@ describe('regional grouping', () => {
       /^\(.*2,19,600\.00\)$/,
     );
   });
+
+  /**
+   * `blankZero` is what lets a statement whose columns are mostly zero show the two figures that
+   * are not. It is also the option most able to do harm: a figure wrongly blanked reads as a cell
+   * that failed to load, and a figure wrongly kept puts the noise back. The line it draws is
+   * exactly nil and nothing else.
+   */
+  describe('blankZero', () => {
+    it('writes nothing for a nil figure', () => {
+      expect(formatMoney('0', { blankZero: true })).toBe('');
+      expect(formatMoney('0.00', { blankZero: true })).toBe('');
+      expect(formatMoney(0, { blankZero: true })).toBe('');
+    });
+
+    it('treats a negative nil as nil, because it is one', () => {
+      expect(formatMoney('-0.00', { blankZero: true })).toBe('');
+    });
+
+    it('keeps a figure that is merely small', () => {
+      expect(formatMoney('0.01', { blankZero: true })).toBe('0.01');
+      expect(formatMoney('-0.01', { blankZero: true })).toBe('(0.01)');
+    });
+
+    it('is off unless asked for, so a voucher still states its nil', () => {
+      expect(formatMoney('0', {})).toBe('0.00');
+      expect(formatMoney('0')).toBe('0.00');
+    });
+
+    /*
+      A missing amount and a nil amount are different facts, and the em dash for the first must
+      survive: blanking it would turn "we do not know" into "it is nothing".
+    */
+    it('still marks a missing amount rather than blanking it', () => {
+      expect(formatMoney('', { blankZero: true })).toBe('—');
+      expect(formatMoney(null as unknown as string, { blankZero: true })).toBe('—');
+      expect(formatMoney(undefined as unknown as string, { blankZero: true })).toBe('—');
+    });
+
+    it('leaves a malformed figure showing as itself', () => {
+      expect(formatMoney('not-a-number', { blankZero: true })).toBe('not-a-number');
+    });
+
+    it('blanks the nil whatever else is asked of it', () => {
+      expect(formatMoney('0', { blankZero: true, currency: 'INR', country: 'IN' })).toBe('');
+    });
+  });
 });
