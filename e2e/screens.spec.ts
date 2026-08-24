@@ -346,6 +346,91 @@ test.describe('the frame', () => {
     first is still on screen once the second has arrived — the codes are what tell them apart, and
     they appear in the frame as well as on the page.
   */
+  /*
+    The columns the export writes, read back in full.
+
+    The import check above sends the three columns a file must have. The export writes twelve — the
+    party's tax registration, address, email and telephone among them — and a file with all of them
+    is what an edited export actually is. Nothing had put one back in, so the five party columns
+    were written out and never read.
+
+    Sent twice: once to set them on an account that has none, and once with two of the twelve
+    columns removed, because leaving a column out has to leave that field alone rather than clear
+    it. That distinction is the whole reason absent and empty are held apart.
+  */
+  test('reads back every column the export writes, and leaves out what the file leaves out', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}?tab=import-export`);
+    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+
+    const chooseLedgers = page.locator('label', { hasText: 'Ledgers CSV' }).locator('input');
+    const columns =
+      'code,name,accountGroupCode,ledgerType,openingBalance,openingBalanceType,maintainBillwise,gstin,pan,address,contactEmail,contactPhone';
+
+    await chooseLedgers.setInputFiles({
+      name: 'ledgers.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        `${columns}\n` +
+          'E2E_PARTY,Tenant of the shop,CURRENT_ASSETS,GENERAL,0,DEBIT,false,' +
+          '27ABCDE1234F1Z5,ABCDE1234F,"12 Example Road, Mumbai 400001",tenant@example.invalid,+91 90000 11111\n',
+      ),
+    });
+    await expect(page.getByText('1 created')).toBeVisible();
+
+    /*
+      Read back from the server rather than off a screen. No screen shows all twelve at once, and
+      what is being checked is that the columns were sent and accepted — the panel's own tally would
+      say "1 created" whether or not the party details went with it.
+    */
+    const read = async () => {
+      const response = await page.request.get(
+        `http://localhost:5099/api/v1/companies/${companyId}/ledgers?limit=200`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const body = await response.json();
+      const rows = body.data.items ?? body.data;
+      return rows.find((row: { code: string }) => row.code === 'E2E_PARTY');
+    };
+
+    const created = await read();
+    expect(created, 'the imported account is not in the chart').toBeTruthy();
+    expect(created.name).toBe('Tenant of the shop');
+    expect(created.gstin).toBe('27ABCDE1234F1Z5');
+    expect(created.pan).toBe('ABCDE1234F');
+    expect(created.address).toBe('12 Example Road, Mumbai 400001');
+    expect(created.contactEmail).toBe('tenant@example.invalid');
+    expect(created.contactPhone).toBe('+91 90000 11111');
+
+    /*
+      The same account again with the tax columns dropped and the name changed. The name must move
+      and the registration must not — a three-column correction corrects three columns.
+    */
+    await page.goto(`/companies/${companyId}?tab=import-export`);
+    await page
+      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('input')
+      .setInputFiles({
+        name: 'ledgers.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          'code,name,accountGroupCode\nE2E_PARTY,Tenant of the corner shop,CURRENT_ASSETS\n',
+        ),
+      });
+    await expect(page.getByText('1 updated')).toBeVisible();
+
+    const updated = await read();
+    expect(updated.name, 'the column that was there did not move').toBe(
+      'Tenant of the corner shop',
+    );
+    expect(updated.gstin, 'a column the file left out was cleared').toBe('27ABCDE1234F1Z5');
+    expect(updated.address, 'a column the file left out was cleared').toBe(
+      '12 Example Road, Mumbai 400001',
+    );
+  });
+
   test('shows the company asked for, and nothing of the one being left', async ({ page }) => {
     await signIn(page);
 
