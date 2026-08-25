@@ -108,9 +108,16 @@
   overflow-x: auto;
 }
 
+.table th {
+  padding: var(--grid-head-padding);
+}
+
+.table td {
+  padding: var(--grid-cell-padding);
+}
+
 .table th,
 .table td {
-  padding: 0.5rem 0.625rem;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;

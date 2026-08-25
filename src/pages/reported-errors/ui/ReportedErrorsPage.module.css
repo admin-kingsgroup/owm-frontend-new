@@ -52,7 +52,7 @@
 }
 
 .table th {
-  padding: 0.625rem 0.75rem;
+  padding: var(--grid-head-padding);
   text-align: left;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -63,7 +63,7 @@
 }
 
 .table td {
-  padding: 0.75rem;
+  padding: var(--grid-cell-padding);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
   vertical-align: top;

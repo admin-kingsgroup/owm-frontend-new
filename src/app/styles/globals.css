@@ -77,11 +77,17 @@
   /*
     How tight a grid of figures is.
 
-    Named here because the product has three of them — the reports, the vouchers list, the chart of
-    accounts — and they had drifted to three different row heights: 29px, 37px and 49px in the same
-    company. A reader moving between them saw the same kind of table loosen by a third for no
-    reason they could name. These are the reports' values, which are the density the Tally-native
-    direction is aimed at.
+    Named here because the product is full of them and they had drifted: the reports, the vouchers
+    list and the chart of accounts alone held three different row heights — 29px, 37px and 49px in
+    the same company. A reader moving between them saw the same kind of table loosen by a third for
+    no reason they could name. These are the reports' values, which are the density the
+    Tally-native direction is aimed at.
+
+    Every top-level grid reads these. There are seven: the reports, the vouchers list, the chart of
+    accounts, currencies, financial years, the portfolio and reported errors. The parties panel is
+    the one exception, and deliberately — its table is nested inside a party's card and is meant to
+    sit tighter than a grid standing on its own. A new grid writing its own padding will look like
+    a different product to anyone who moves between them, which is how the three above got there.
   */
   --grid-head-padding: 0.375rem 0.625rem;
   --grid-cell-padding: 0.25rem 0.625rem;

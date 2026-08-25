@@ -316,23 +316,14 @@ export function CompanyDashboardPage() {
 
       {openingBalance && openingBalance.difference !== '0.00' && (
         <div className={styles.openingDiff}>
+          {/* Bare, like the ledger table below it. These three sat on the same tab as figures
+              written without a symbol, so one screen stated the same currency two ways. */}
           <strong>Difference in opening balances:</strong>{' '}
-          {formatMoney(openingBalance.difference, {
-            currency: company.baseCurrency,
-            country: company.country,
-          })}
+          {formatMoney(openingBalance.difference, { country: company.country })}
           <span className={styles.openingDiffHint}>
-            Debits{' '}
-            {formatMoney(openingBalance.totalDebit, {
-              currency: company.baseCurrency,
-              country: company.country,
-            })}{' '}
-            · credits{' '}
-            {formatMoney(openingBalance.totalCredit, {
-              currency: company.baseCurrency,
-              country: company.country,
-            })}
-            . Opening balances should net to zero once every ledger has been entered.
+            Debits {formatMoney(openingBalance.totalDebit, { country: company.country })} · credits{' '}
+            {formatMoney(openingBalance.totalCredit, { country: company.country })}. Opening
+            balances should net to zero once every ledger has been entered.
           </span>
         </div>
       )}
