@@ -12,6 +12,13 @@ const createLedger = vi.fn();
 const updateLedger = vi.fn();
 const createAccountGroup = vi.fn();
 const updateAccountGroup = vi.fn();
+const downloadCsv = vi.fn();
+
+/* Only the download is stood in for — the CSV writing and reading either side of it stay real. */
+vi.mock('@/shared/lib', async (importActual) => ({
+  ...(await importActual<typeof import('@/shared/lib')>()),
+  downloadCsv: (...args: unknown[]) => downloadCsv(...args),
+}));
 
 vi.mock('@/entities/ledger', () => ({
   createLedger: (...args: unknown[]) => createLedger(...args),
@@ -73,17 +80,26 @@ function csv(name: string, content: string): File {
   return file;
 }
 
-function panel(onImported = vi.fn()) {
+function panel(
+  onImported = vi.fn(),
+  overrides: { ledgers?: Ledger[]; currencies?: Currency[] } = {},
+) {
   return render(
     <ImportExportPanel
       companyId="c1"
       companyCode="ADB"
       groups={groups}
-      ledgers={ledgers}
-      currencies={currencies}
+      ledgers={overrides.ledgers ?? ledgers}
+      currencies={overrides.currencies ?? currencies}
       onImported={onImported}
     />,
   );
+}
+
+/** The ledger export, as the columns and rows it was asked to write. */
+function exported() {
+  const [, headers, rows] = downloadCsv.mock.calls[0] as [string, string[], string[][]];
+  return { headers, rows };
 }
 
 /** Hands the input a file, the way a browser does when one is chosen. */
@@ -246,6 +262,47 @@ describe('importing a chart of accounts', () => {
     Left to `Number()` this would be NaN, JSON would write it as null, and the server would read
     that as a request to clear the limit — a typo quietly wiping a figure. It fails the row instead.
   */
+  /*
+    The round trip cuts both ways, and this is the half that can destroy data rather than refuse
+    it. An empty cell now means "clear this" — so any cell the export cannot fill honestly must not
+    be written empty, or a file produced on a bad day silently strips the field when it is read
+    back. The currency list is loaded with a `.catch(() => [])` by the screen around this panel,
+    so "cannot fill it" is a state that genuinely happens rather than a hypothetical.
+  */
+  it('leaves the currency column out rather than exporting it blank it cannot name', async () => {
+    const foreign = [{ ...ledgers[0], currencyId: 'cur-usd' }] as Ledger[];
+    panel(vi.fn(), { ledgers: foreign, currencies: [] });
+
+    fireEvent.click(screen.getByRole('button', { name: /Ledgers \(/ }));
+
+    const { headers, rows } = exported();
+    // Absent means "leave alone" on the way back in; empty would mean "clear it".
+    expect(headers).not.toContain('currencyCode');
+    expect(rows[0]).toHaveLength(headers.length);
+    expect(screen.getByRole('alert').textContent).toMatch(/currency/i);
+  });
+
+  it('writes the currency as its code when it can name it', async () => {
+    const foreign = [{ ...ledgers[0], currencyId: 'cur-usd' }] as Ledger[];
+    panel(vi.fn(), { ledgers: foreign });
+
+    fireEvent.click(screen.getByRole('button', { name: /Ledgers \(/ }));
+
+    const { headers, rows } = exported();
+    expect(rows[0][headers.indexOf('currencyCode')]).toBe('USD');
+  });
+
+  /* A base-currency account has no currency to lose, so the column stays and stays empty. */
+  it('keeps the currency column when nothing is denominated in anything', async () => {
+    panel(vi.fn(), { currencies: [] });
+
+    fireEvent.click(screen.getByRole('button', { name: /Ledgers \(/ }));
+
+    const { headers, rows } = exported();
+    expect(headers).toContain('currencyCode');
+    expect(rows[0][headers.indexOf('currencyCode')]).toBe('');
+  });
+
   it('fails the row when a number column holds something that is not one', async () => {
     panel();
 

@@ -142,6 +142,12 @@ export function ImportExportPanel({
   const [busy, setBusy] = useState(false);
   const [outcomes, setOutcomes] = useState<RowOutcome[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /*
+    Kept apart from `error`, which belongs to the import and is drawn inside that card. A warning
+    about the file being written is no use underneath the heading for reading one back, and sharing
+    the state would also have an export quietly clear a refusal the reader had not dealt with yet.
+  */
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   const groupCodeById = new Map(groups.map((group) => [group.id, group.code]));
   const currencyCodeById = new Map(currencies.map((currency) => [currency.id, currency.code]));
@@ -161,26 +167,60 @@ export function ImportExportPanel({
   }
 
   function exportLedgers() {
+    /*
+      An account whose currency cannot be named. The list is loaded around this panel with a
+      `.catch(() => [])`, so this is a state that happens rather than a hypothetical.
+
+      It matters because of what an empty cell now means on the way back in. Writing the column
+      blank would say "clear it", and a file taken on a day the currency list did not load would
+      quietly strip the currency off every foreign account when it was read back — the one thing
+      no other bulk path can set, undone by a file that looked complete. An absent column means
+      "leave alone", so the column comes out instead and the reason is said.
+    */
+    const unnameable = ledgers.filter(
+      (ledger) => ledger.currencyId && !currencyCodeById.has(ledger.currencyId),
+    ).length;
+
+    const columns = unnameable
+      ? LEDGER_COLUMNS.filter((column) => column !== 'currencyCode')
+      : [...LEDGER_COLUMNS];
+
+    setExportNote(
+      unnameable
+        ? `Currencies could not be read, so the currency column is left out of this file — ` +
+            `${unnameable} account${unnameable === 1 ? '' : 's'} would have been written blank, ` +
+            `which on import would clear it. Everything else is here.`
+        : null,
+    );
+
+    /*
+      Keyed by column name rather than laid out in order. The two lists had to be kept in step by
+      hand, and a column added to one but not the other would not fail — it would shift every cell
+      after it one place left, writing each account's phone number into its credit limit.
+    */
     downloadCsv(
       `${companyCode}-ledgers.csv`,
-      [...LEDGER_COLUMNS],
-      ledgers.map((ledger) => [
-        ledger.code,
-        ledger.name,
-        groupCodeById.get(ledger.accountGroupId) ?? '',
-        ledger.ledgerType,
-        ledger.openingBalance,
-        ledger.openingBalanceType,
-        String(ledger.maintainBillwise),
-        ledger.gstin ?? '',
-        ledger.pan ?? '',
-        ledger.address ?? '',
-        ledger.contactEmail ?? '',
-        ledger.contactPhone ?? '',
-        ledger.currencyId ? (currencyCodeById.get(ledger.currencyId) ?? '') : '',
-        ledger.creditLimit ?? '',
-        ledger.creditDays === undefined ? '' : String(ledger.creditDays),
-      ]),
+      [...columns],
+      ledgers.map((ledger) => {
+        const cells: Record<(typeof LEDGER_COLUMNS)[number], string> = {
+          code: ledger.code,
+          name: ledger.name,
+          accountGroupCode: groupCodeById.get(ledger.accountGroupId) ?? '',
+          ledgerType: ledger.ledgerType,
+          openingBalance: ledger.openingBalance,
+          openingBalanceType: ledger.openingBalanceType,
+          maintainBillwise: String(ledger.maintainBillwise),
+          gstin: ledger.gstin ?? '',
+          pan: ledger.pan ?? '',
+          address: ledger.address ?? '',
+          contactEmail: ledger.contactEmail ?? '',
+          contactPhone: ledger.contactPhone ?? '',
+          currencyCode: ledger.currencyId ? (currencyCodeById.get(ledger.currencyId) ?? '') : '',
+          creditLimit: ledger.creditLimit ?? '',
+          creditDays: ledger.creditDays === undefined ? '' : String(ledger.creditDays),
+        };
+        return columns.map((column) => cells[column]);
+      }),
     );
   }
 
@@ -489,14 +529,22 @@ export function ImportExportPanel({
             <Download size={14} /> Ledgers ({ledgers.length})
           </Button>
         </div>
+
+        {exportNote && (
+          <p className={styles.error} role="alert">
+            {exportNote}
+          </p>
+        )}
       </section>
 
       <section className={styles.card}>
         <h2 className={styles.title}>Import</h2>
         <p className={styles.note}>
           A code that is already in use is updated; anything else is created. A column the file does
-          not carry is left as it was, so a file with three columns corrects three columns. Rows are
-          independent — the ones that are accepted stay, and the ones that are not are listed below.
+          not carry is left as it was, so a file with three columns corrects three columns — but a
+          column that is there with the cell <strong>empty clears that field</strong>, which is how
+          a value is removed. Rows are independent — the ones that are accepted stay, and the ones
+          that are not are listed below.
         </p>
 
         <div className={styles.actions}>

@@ -507,6 +507,104 @@ test.describe('the frame', () => {
     await expect(page.getByText('Imported Account renamed')).toBeVisible();
   });
 
+  /*
+    An export read straight back in, with the optional columns empty.
+
+    This is the journey the panel exists for and the one the unit suite cannot prove: those tests
+    mock the two API calls, so they see what the screen sends and never what the server makes of
+    it — and what the server made of it was the defect. An empty cell went up as `''`, which to a
+    validator expecting a fifteen-character GSTIN is not "no GSTIN" but a GSTIN that fails.
+
+    It bit hardest here of anywhere. These books carry no tax layer, so GSTIN and PAN are empty on
+    every account of every one of them; the round trip did not degrade at the edges, it refused
+    every row it was given.
+  */
+  test('reads back a file whose optional columns are empty, clearing them rather than refusing', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}?tab=import-export`);
+    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+
+    await page
+      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('input')
+      .setInputFiles({
+        name: 'ledgers.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          'code,name,accountGroupCode,gstin,pan,contactEmail,contactPhone\n' +
+            'HDFC_BANK,HDFC Bank — 4021,BANK_ACCOUNTS,,,,\n',
+        ),
+      });
+
+    // Accepted by the real server, which is the only place the empty cell was ever refused.
+    await expect(page.getByText('1 updated')).toBeVisible();
+    await expect(page.getByText(/not a valid/)).toHaveCount(0);
+  });
+
+  /*
+    Currency is the one added column that cannot be set in bulk any other way, and it is what every
+    voucher line posted against the account inherits. Run against the multi-currency company,
+    because that is the only kind that has a second currency to name.
+  */
+  test('carries a ledger currency in, on a company that keeps more than one', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${featuredId}?tab=import-export`);
+    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+
+    await page
+      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('input')
+      .setInputFiles({
+        name: 'ledgers.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          'code,name,accountGroupCode,currencyCode,creditDays\n' +
+            'TENANT,Tenant — Bandra flat,LOANS_ADVANCES_ASSET,usd,45\n',
+        ),
+      });
+    await expect(page.getByText('1 updated')).toBeVisible();
+
+    const response = await page.request.get(
+      `http://localhost:5099/api/v1/companies/${featuredId}/ledgers?limit=200`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const body = await response.json();
+    const rows = body.data.items ?? body.data;
+    const tenant = rows.find((row: { code: string }) => row.code === 'TENANT');
+
+    // Read off the server, which is the only place it counts.
+    expect(tenant?.currencyId, 'the currency did not reach the account').toBeTruthy();
+    expect(tenant?.creditDays).toBe(45);
+  });
+
+  /*
+    Left to `Number()` this became NaN, JSON wrote it as null, and the server read that as a
+    request to clear the field — a typo quietly wiping a credit limit.
+  */
+  test('fails a row whose number column is not a number, rather than clearing it', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}?tab=import-export`);
+    await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
+
+    await page
+      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('input')
+      .setInputFiles({
+        name: 'ledgers.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          'code,name,accountGroupCode,creditLimit\n' +
+            'HDFC_BANK,HDFC Bank — 4021,BANK_ACCOUNTS,fifty thousand\n',
+        ),
+      });
+
+    await expect(page.getByText(/creditLimit is not a number/)).toBeVisible();
+  });
+
   test('the gateway reads in the dark theme too', async ({ page }) => {
     const faults: string[] = [];
     page.on('pageerror', (error) => faults.push(error.message));
