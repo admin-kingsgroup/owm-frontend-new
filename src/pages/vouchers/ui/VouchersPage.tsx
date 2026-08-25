@@ -226,8 +226,8 @@ export function VouchersPage() {
           balances: new Map(
             report.rows.map((row) => [
               row.code,
+              // Bare too: this is a hint beside a ledger inside the company's own books.
               formatMoneyWithSide(Number(row.closingDebit) - Number(row.closingCredit), {
-                currency: company.baseCurrency,
                 country: company.country,
               }),
             ]),
@@ -561,20 +561,16 @@ export function VouchersPage() {
                         </span>
                       )}
                     </td>
+                    {/* Bare, like the list this drawer opened from. The same amount carrying a
+                        symbol here and none one click away is the inconsistency, not the symbol. */}
                     <td className={styles.mono} data-label="Debit">
                       {Number(entry.debit) > 0
-                        ? formatMoney(entry.debit, {
-                            currency: loaded?.company?.baseCurrency,
-                            country: loaded?.company?.country,
-                          })
+                        ? formatMoney(entry.debit, { country: loaded?.company?.country })
                         : ''}
                     </td>
                     <td className={styles.mono} data-label="Credit">
                       {Number(entry.credit) > 0
-                        ? formatMoney(entry.credit, {
-                            currency: loaded?.company?.baseCurrency,
-                            country: loaded?.company?.country,
-                          })
+                        ? formatMoney(entry.credit, { country: loaded?.company?.country })
                         : ''}
                     </td>
                   </tr>
