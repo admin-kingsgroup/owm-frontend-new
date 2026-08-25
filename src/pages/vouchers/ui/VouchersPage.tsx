@@ -387,45 +387,58 @@ export function VouchersPage() {
         <EmptyState title="No vouchers found" description="Create a voucher to get started." />
       ) : (
         <>
-          <table className={styles.table} data-stack>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Narration</th>
-                <th className={styles.amountHead}>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((voucher) => (
-                <tr key={voucher.id} className={styles.row} onClick={() => openVoucher(voucher.id)}>
-                  <td className={styles.mono} data-label="ID" title={voucher.id}>
-                    {voucher.voucherNumber}
-                  </td>
-                  <td data-label="Date">
-                    {formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}
-                  </td>
-                  <td data-label="Type">{typeName(voucher.voucherTypeId)}</td>
-                  <td className={styles.narration} data-label="Narration">
-                    {voucher.narration ?? '—'}
-                  </td>
-                  {/* What the voucher is worth. A list of postings without amounts is a list of
-                      dates and narrations, and nobody scanning a day of them is looking for those. */}
-                  <td className={styles.amount} data-label="Amount">
-                    {formatMoney(voucher.amount, {
-                      currency: loaded?.company?.baseCurrency,
-                      country: loaded?.company?.country,
-                    })}
-                  </td>
-                  <td data-label="Status">
-                    <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
-                  </td>
+          {/* The grid gets a frame of its own, so a short list stops floating in an empty pane and
+              a long one scrolls under a heading that stays put — the same treatment the statements
+              got. The pagination below stays outside it, where it belongs to the page rather than
+              to the rows. */}
+          <div className={styles.tableWrap}>
+            <table className={styles.table} data-stack>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Narration</th>
+                  <th className={styles.amountHead}>Amount</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {vouchers.map((voucher) => (
+                  <tr
+                    key={voucher.id}
+                    className={styles.row}
+                    onClick={() => openVoucher(voucher.id)}
+                  >
+                    <td className={styles.mono} data-label="ID" title={voucher.id}>
+                      {voucher.voucherNumber}
+                    </td>
+                    <td data-label="Date">
+                      {formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}
+                    </td>
+                    <td data-label="Type">{typeName(voucher.voucherTypeId)}</td>
+                    <td className={styles.narration} data-label="Narration">
+                      {voucher.narration ?? '—'}
+                    </td>
+                    {/* What the voucher is worth. A list of postings without amounts is a list of
+                      dates and narrations, and nobody scanning a day of them is looking for those. */}
+                    <td className={styles.amount} data-label="Amount">
+                      {/* No symbol. Inside a company every figure is in that company's currency, the
+                        status strip says which, and the reports have written them bare since the
+                        density pass — this column was the one place left repeating it, so the same
+                        amount was written two ways depending on which screen you were on. Where
+                        companies are listed side by side the symbol stays, because there it is
+                        telling you something. */}
+                      {formatMoney(voucher.amount, { country: loaded?.company?.country })}
+                    </td>
+                    <td data-label="Status">
+                      <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className={styles.pagination}>
             <span className={styles.pageLabel}>

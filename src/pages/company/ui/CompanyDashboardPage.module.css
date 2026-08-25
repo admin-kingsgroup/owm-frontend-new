@@ -131,7 +131,7 @@
 }
 
 .table th {
-  padding: 0.5rem;
+  padding: var(--grid-head-padding);
   text-align: left;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -142,10 +142,15 @@
 }
 
 .table td {
-  padding: 0.625rem 0.5rem;
+  padding: var(--grid-cell-padding);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
   vertical-align: middle;
+}
+
+/* The longest list in the product, and the only grid that had no rail to follow a row along. */
+.table tbody tr:nth-child(even) td {
+  background-color: var(--paper);
 }
 
 .table tr:last-child td {

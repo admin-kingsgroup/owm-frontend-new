@@ -29,7 +29,25 @@ export function toDateInput(date: Date): string {
  * different day. Without one it falls back to the reader's own locale.
  */
 export function formatCalendarDay(value: string | Date, country?: string): string {
-  return new Date(value).toLocaleDateString(localeFor(country), { timeZone: 'UTC' });
+  const date = new Date(value);
+
+  /*
+    With no company there is no convention to follow, and falling back to the reader's browser was
+    how the status strip came to read 25/8/2026 inside a company and 8/25/2026 on the list of them
+    — the same day, the same strip, two orders. Neither is wrong; showing both is. Where the
+    country is unknown the month is written as a word instead, which cannot be read the other way
+    round by anybody.
+  */
+  if (!country) {
+    return date.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
+
+  return date.toLocaleDateString(localeFor(country), { timeZone: 'UTC' });
 }
 
 /**

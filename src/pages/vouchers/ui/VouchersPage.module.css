@@ -3,6 +3,47 @@
   flex-direction: column;
   gap: 1.25rem;
   width: 100%;
+  /* Fills the pane, so the grid below can reach the bottom of the frame. `min-height`, so a long
+     list still grows past it and scrolls as it always did. */
+  min-height: 100%;
+}
+
+/*
+  The grid's frame — the same one the statements have.
+
+  A list of six vouchers was a small table with a third of the screen empty beneath it. This takes
+  the room left over, and the rows scroll inside it while the heading holds the top.
+*/
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tableWrap .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--paper-sunken);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* A card list on a phone is a page, not a frame, and must not be boxed into a scroller. */
+@media screen and (max-width: 48rem) {
+  .tableWrap {
+    flex: none;
+    overflow: visible;
+  }
+}
+
+@media print {
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .tableWrap .table thead th {
+    position: static;
+  }
 }
 
 .header {
@@ -52,7 +93,7 @@
 }
 
 .table th {
-  padding: 0.625rem 0.75rem;
+  padding: var(--grid-head-padding);
   text-align: left;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -74,7 +115,7 @@
 }
 
 .table td {
-  padding: 0.4375rem 0.75rem;
+  padding: var(--grid-cell-padding);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
 }
