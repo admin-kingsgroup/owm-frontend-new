@@ -49,9 +49,15 @@
   font-family: var(--font-mono);
 }
 
-/* Separators, quieter than the words they separate. */
+/*
+  Separators, quieter than the words they separate — but still read.
+
+  --border is the divider colour, and globals.css says what it is for: 1px rules, nothing else. As
+  text it came out at 1.21:1, which is not quiet, it is absent. --ink-faint is the tier this wanted:
+  the quietest colour in the palette that a reader can still make out.
+*/
 .dot {
-  color: var(--border);
+  color: var(--ink-faint);
 }
 
 .actions {

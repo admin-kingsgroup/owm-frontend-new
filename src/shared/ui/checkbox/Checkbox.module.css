@@ -20,6 +20,23 @@
   flex-shrink: 0;
 }
 
+/*
+  Where the keyboard is.
+
+  globals.css takes the outline off every input, on the grounds that the controls draw a
+  --focus-ring shadow of their own instead — which Input, Select and Textarea do, and this never
+  did. The rule applies to a checkbox all the same, so this was the one control in the product a
+  keyboard could land on with nothing to show for it.
+
+  An outline rather than that shadow: the others pair the shadow with a border turning --accent,
+  and it is the border doing most of the work. A checkbox has no border to turn, and --focus-ring
+  alone is a 22% tint around a 14px box.
+*/
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .text {
   display: flex;
   flex-direction: column;

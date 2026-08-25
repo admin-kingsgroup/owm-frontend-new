@@ -42,5 +42,8 @@
   margin: 0;
   font-size: 0.75rem;
   line-height: 1.4;
-  color: var(--color-text-muted);
+  /* --color-text-muted is not a token this product has, and never was: the declaration resolved to
+     nothing, so the hint under a field rendered in full --ink alongside the label it qualifies.
+     --ink-faint is what "muted" means here. */
+  color: var(--ink-faint);
 }
