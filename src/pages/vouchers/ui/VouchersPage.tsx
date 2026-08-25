@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
@@ -26,6 +26,7 @@ const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
+  const navigate = useNavigate();
 
   // Held as one value tagged with the company it was fetched for. Tagging lets the render derive
   // "is this the company on screen?" instead of clearing state from inside an effect, which would
@@ -342,11 +343,27 @@ export function VouchersPage() {
             <Plus size={16} /> New voucher
           </Button>
         ) : (
-          <Link to={`/companies/${companyId}/kg`}>
-            <Button type="button" variant="primary">
-              Open the portfolio <ArrowRight size={16} />
-            </Button>
-          </Link>
+          /*
+            A button that navigates, not a Link wrapped round a Button.
+
+            Wrapped, it renders <a><button> — interactive content inside an anchor, which is invalid
+            and cost two tab stops for one control: the keyboard stopped on the link and again on
+            the button inside it, and a reader announced the same destination twice. That shape is
+            survivable in an EmptyState nobody reaches twice; this sits in the header of a screen a
+            workspace lands on routinely.
+
+            A button rather than a bare styled link because the shell's own strip already reaches
+            this exact destination with one — "Go to · Portfolio" — so it is the pattern the product
+            uses for this, and it keeps the header identical to the New voucher button it stands in
+            for without a second copy of that button's styling.
+          */
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => navigate(`/companies/${companyId}/kg`)}
+          >
+            Open the portfolio <ArrowRight size={16} />
+          </Button>
         )}
       </div>
 

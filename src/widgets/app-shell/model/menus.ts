@@ -146,12 +146,28 @@ export function buildMenus(
   const base = `/companies/${companyId}`;
   const features = company?.features;
   const isPortfolio = company?.type === 'ANALYTICS';
-  /* What Transactions offers to raise — the strip's list exactly. See raisableVoucherTypes. */
-  const raisable = raisableVoucherTypes(
-    voucherTypes,
-    voucherTypesKnown,
-    isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
-  );
+
+  /**
+   * What Transactions offers to raise — the strip's list exactly. See raisableVoucherTypes.
+   *
+   * Nothing at all until the company record has arrived, because `isPortfolio` is false both for a
+   * company that keeps books and for one nobody has identified yet, and the two want opposite
+   * answers. Read as "keeps books", an unidentified portfolio was offered Contra, Payment, Receipt
+   * and Journal — four documents it does not hold and never will — each pointing at a voucher form.
+   * The stand-in exists to name what certainly exists; when the kind is unknown, nothing does.
+   *
+   * The wait is as long as one request that the shell fires on mount anyway, and a company that
+   * cannot be identified has a blank context strip and an empty switcher already, so a Create list
+   * that waits with them is the consistent answer rather than a lone confident guess.
+   */
+  const raisable =
+    company === null
+      ? []
+      : raisableVoucherTypes(
+          voucherTypes,
+          voucherTypesKnown,
+          isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
+        );
 
   return [
     {

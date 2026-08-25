@@ -274,6 +274,19 @@ describe('AppShell', () => {
     expect(screen.getByRole('menuitem', { name: /Adjustment/ })).toBeTruthy();
   });
 
+  it('draws no data entry at all until the company has been identified', async () => {
+    /*
+      The strip has its own copy of this guard and must agree with the menu's. Without it a
+      portfolio whose company record had not arrived was handed the books' four — Contra, Payment,
+      Receipt, Journal — because "not a portfolio" and "not known yet" are the same boolean.
+    */
+    renderShell({ companies: null });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Company' })).toBeTruthy());
+    expect(screen.queryByRole('group', { name: 'Data entry' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Contra/ })).toBeNull();
+  });
+
   it('states the year and currency once for the whole app', async () => {
     renderShell();
 

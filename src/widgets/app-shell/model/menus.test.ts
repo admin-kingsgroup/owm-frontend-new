@@ -303,6 +303,39 @@ describe('the menus an analytics workspace gets', () => {
     expect(created.map((item) => item.to)).toEqual(['/companies/c1/vouchers?new=PAYMENT']);
   });
 
+  it('offers nothing to raise while the company has not been identified', () => {
+    /*
+      `isPortfolio` is false both for a company that keeps books and for one whose record has not
+      arrived, and the two want opposite answers. Read as "keeps books", an unidentified portfolio
+      was handed Contra, Payment, Receipt and Journal — four documents it does not hold and never
+      will — each pointing at a voucher form that would refuse them. The stand-in names what
+      certainly exists; when the kind is unknown, nothing does.
+    */
+    const transactions =
+      buildMenus('c1', null, '/companies/c1', false, [], false).find(
+        (menu) => menu.id === 'transactions',
+      )?.items ?? [];
+
+    expect(transactions.map((item) => item.label)).toEqual(['Vouchers']);
+  });
+
+  it('waits even when the types are already in, because it is where they go that is unknown', () => {
+    /*
+      Knowing *what* can be raised is not enough — the company's kind decides *where*, and a
+      portfolio's four go to its registry rather than to a voucher form that cannot accept them.
+      Naming them against the wrong destination is the same fault one step later, and a company
+      whose record never arrives would keep it for good. Both reads are fired together on mount, so
+      what this costs in practice is the tail of one request that was already in flight.
+    */
+    const types = [voucherType('CAPITAL_INTRODUCTION', 'Capital Introduction')];
+    const transactions =
+      buildMenus('c1', null, '/companies/c1', false, types).find(
+        (menu) => menu.id === 'transactions',
+      )?.items ?? [];
+
+    expect(transactions.map((item) => item.label)).toEqual(['Vouchers']);
+  });
+
   it('still names the dashboard for what it is', () => {
     const dashboards = menus.find((menu) => menu.id === 'dashboards')?.items ?? [];
 

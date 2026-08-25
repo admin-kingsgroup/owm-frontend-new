@@ -248,7 +248,14 @@ export function AppShell() {
    * holding four documents was offering no way to raise any of them.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
-    if (!companyId) return [];
+    /*
+      Nothing until the company record has arrived. `isPortfolio` is false both for a company that
+      keeps books and for one that has not been identified yet, and those want opposite answers —
+      read as "keeps books", an unidentified portfolio was handed Contra, Payment, Receipt and
+      Journal, four documents it does not hold, each pointing at a voucher form that would refuse
+      them. Same reasoning as the Create list in buildMenus, which this must agree with.
+    */
+    if (!companyId || company === null) return [];
     const base = `/companies/${companyId}`;
 
     return raisableVoucherTypes(
@@ -263,7 +270,7 @@ export function AppShell() {
       // portfolio's four go to its registry rather than to a voucher form that cannot accept them.
       onSelect: () => navigate(raiseVoucherPath(base, type.code, isPortfolio)),
     }));
-  }, [companyId, isPortfolio, navigate, voucherTypes, voucherTypesKnown]);
+  }, [company, companyId, isPortfolio, navigate, voucherTypes, voucherTypesKnown]);
 
   /*
     The page keeps first claim on a key: a screen that binds F8 to its own meaning must not have the
