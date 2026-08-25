@@ -143,6 +143,38 @@ describe("menus built from the company's voucher types", () => {
     ).toEqual([]);
   });
 
+  it('stands the four every posting company has into Create while the list is unknown', () => {
+    /*
+      The strip beside the menu already offered them, so without this the two doors disagreed for
+      as long as the one read of the types had not landed — which includes it having failed, and
+      then for the rest of the session.
+    */
+    const created = buildMenus('c1', company(), '/companies/c1', false, [], false)
+      .flatMap((menu) => menu.items)
+      .filter((item) => item.to.includes('vouchers?new='))
+      .map((item) => `${item.label} ${item.hint}`);
+
+    expect(created).toEqual(['Contra F4', 'Payment F5', 'Receipt F6', 'Journal F7']);
+  });
+
+  it('still names no register while the list is unknown', () => {
+    // Reports are not documents to raise: the reports screen's picker is what answers there.
+    const links = buildMenus('c1', company(), '/companies/c1/reports', false, [], false)
+      .flatMap((menu) => menu.items)
+      .map((item) => item.to);
+
+    expect(links.filter((to) => to.includes('report=register'))).toEqual([]);
+  });
+
+  it('offers nothing to raise once a company is known to hold no types', () => {
+    // Switched every one of them off on purpose — four the form would refuse is the worse answer.
+    const created = buildMenus('c1', company(), '/companies/c1', false, [], true)
+      .flatMap((menu) => menu.items)
+      .filter((item) => item.to.includes('vouchers?new='));
+
+    expect(created).toEqual([]);
+  });
+
   it('carries the period onto a register the same as any other report', () => {
     const links = linksFor('/companies/c1/reports?report=day-book&from=2027-04-01', types);
 
@@ -192,6 +224,83 @@ describe('the menus an analytics workspace gets', () => {
       drawn from postings it will never have.
     */
     expect(reports).toEqual(['audit']);
+  });
+
+  it('offers the portfolio and every document the workspace actually holds', () => {
+    /*
+      Both, not one instead of the other. `ANALYTICS` was given four voucher types of its own —
+      capital in, profit reported, profit shared out, a correction — and until this the menu named
+      only the registry, so a workspace holding four documents offered no way to raise any of them.
+    */
+    const types = [
+      voucherType('CAPITAL_INTRODUCTION', 'Capital Introduction'),
+      voucherType('BUSINESS_PROFIT', 'Business Profit'),
+      voucherType('PROFIT_ALLOCATION', 'Profit Allocation'),
+      voucherType('ADJUSTMENT', 'Adjustment'),
+    ];
+    const transactions =
+      buildMenus('c1', portfolio, '/companies/c1', false, types).find(
+        (menu) => menu.id === 'transactions',
+      )?.items ?? [];
+
+    expect(transactions.map((item) => item.label)).toEqual([
+      'Portfolio',
+      'Vouchers',
+      'Capital Introduction',
+      'Business Profit',
+      'Profit Allocation',
+      'Adjustment',
+    ]);
+    expect(transactions.map((item) => item.hint)).toEqual([
+      undefined,
+      // Alt+V still reaches the registry for this kind of company, so Vouchers prints no key here.
+      undefined,
+      'F4',
+      'F5',
+      'F6',
+      'F7',
+    ]);
+  });
+
+  it("stands in the workspace's own four while its list is unknown, never the books'", () => {
+    const created =
+      buildMenus('c1', portfolio, '/companies/c1', false, [], false)
+        .find((menu) => menu.id === 'transactions')
+        ?.items.filter((item) => item.to.includes('raise=')) ?? [];
+
+    // Contra and Payment here would be the menu naming documents this company certainly lacks.
+    expect(created.map((item) => item.to.split('raise=')[1])).toEqual([
+      'CAPITAL_INTRODUCTION',
+      'BUSINESS_PROFIT',
+      'PROFIT_ALLOCATION',
+      'ADJUSTMENT',
+    ]);
+  });
+
+  it('sends its four to the registry, never to a voucher form that would refuse them', () => {
+    /*
+      The accounts a workspace posts to are namespaced with a slash by the business registry, and
+      the voucher API validates `ledgerCode` as `[A-Z0-9_]+`. The form fills, balances, and then
+      answers `ledgerCode must be alphanumeric` on accept — a dead end reached only after the work
+      is done. See raiseVoucherPath.
+    */
+    const types = [voucherType('CAPITAL_INTRODUCTION', 'Capital Introduction')];
+    const created =
+      buildMenus('c1', portfolio, '/companies/c1', false, types)
+        .find((menu) => menu.id === 'transactions')
+        ?.items.filter((item) => item.label === 'Capital Introduction') ?? [];
+
+    expect(created.map((item) => item.to)).toEqual(['/companies/c1/kg?raise=CAPITAL_INTRODUCTION']);
+  });
+
+  it('still sends a company that keeps books to the voucher form', () => {
+    const types = [voucherType('PAYMENT', 'Payment')];
+    const created =
+      buildMenus('c1', company(), '/companies/c1', false, types)
+        .find((menu) => menu.id === 'transactions')
+        ?.items.filter((item) => item.label === 'Payment') ?? [];
+
+    expect(created.map((item) => item.to)).toEqual(['/companies/c1/vouchers?new=PAYMENT']);
   });
 
   it('still names the dashboard for what it is', () => {

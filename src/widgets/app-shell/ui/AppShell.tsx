@@ -4,10 +4,9 @@ import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
 import {
-  VOUCHER_FUNCTION_KEYS,
+  ALWAYS_SEEDED_PORTFOLIO_CODES,
   ALWAYS_SEEDED_VOUCHER_CODES,
-  functionKeyFor,
-  inFunctionKeyOrder,
+  raisableVoucherTypes,
 } from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
@@ -25,7 +24,7 @@ import type { ButtonBarAction } from '../model/button-bar';
 import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-company-context';
 import { useVoucherTypes } from '../model/use-voucher-types';
 import { ButtonBar } from './ButtonBar';
-import { buildMenus, periodQuery } from '../model/menus';
+import { buildMenus, periodQuery, raiseVoucherPath } from '../model/menus';
 import { MenuBar } from './MenuBar';
 import { ShortcutSheet } from './ShortcutSheet';
 import { CompanySwitcher } from './CompanySwitcher';
@@ -114,8 +113,8 @@ export function AppShell() {
 
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const menus = useMemo(
-    () => buildMenus(companyId, company, here, isAdmin, voucherTypes),
-    [companyId, company, here, isAdmin, voucherTypes],
+    () => buildMenus(companyId, company, here, isAdmin, voucherTypes, voucherTypesKnown),
+    [companyId, company, here, isAdmin, voucherTypes, voucherTypesKnown],
   );
 
   /**
@@ -239,51 +238,31 @@ export function AppShell() {
    * alphabetically. See inFunctionKeyOrder: read down, the keys are in the order they sit under
    * the hand rather than in the order the server happens to answer in.
    *
-   * Until that list arrives, the four every set of books has — see ALWAYS_SEEDED_VOUCHER_CODES.
-   * Filtering on the company's own types alone left the bar empty whenever the request for them
-   * had not come back, which includes failing, and a bar with no way to raise a voucher is a worse
-   * answer than one offering four that certainly exist. An analytics workspace posts nothing, so
-   * it gets none of them.
+   * Until that list arrives, the four its kind of company is certainly seeded with — see
+   * raisableVoucherTypes, which is also what the Transactions menu is built from, so the strip and
+   * the menu cannot disagree about what this company can raise.
+   *
+   * A portfolio workspace is included, and its four are its own: capital in, profit reported,
+   * profit shared out, and a correction. The strip skipped it entirely while nothing was ever
+   * posted to one, which stopped being true the moment those types were seeded — a workspace
+   * holding four documents was offering no way to raise any of them.
    */
   const dataEntry = useMemo<ButtonBarAction[]>(() => {
-    if (!companyId || isPortfolio) return [];
+    if (!companyId) return [];
     const base = `/companies/${companyId}`;
-    const raise = (code: string) => () => navigate(`${base}/vouchers?new=${code}`);
 
-    /*
-      Only while the company's own list is not known — still being read, or read and failed. Not
-      merely "no types came back": a company that has switched every one of its voucher types off
-      holds none on purpose, and offering it four the form will refuse is the bar claiming the
-      company can raise documents it cannot. The two look identical in an empty array, which is why
-      the hook says which it is.
-    */
-    if (!voucherTypesKnown) {
-      return VOUCHER_FUNCTION_KEYS.filter(({ code }) => ALWAYS_SEEDED_VOUCHER_CODES.has(code)).map(
-        ({ key, code, label }) => ({ group: 'Data entry', key, label, onSelect: raise(code) }),
-      );
-    }
-
-    /*
-      One key, one action. Income and Expense deliberately share F8 and F9 with Sales and Purchase
-      — a company is either trading or personal, so the pair can never both be seeded. A company is
-      free to create a voucher type of its own under either code though, and then the strip would
-      print F8 twice while only the first of them answered it. The second keeps its button and
-      loses the key it does not own.
-    */
-    const taken = new Set<string>();
-
-    return inFunctionKeyOrder(voucherTypes).map((type) => {
-      const key = functionKeyFor(type.code);
-      const free = key !== undefined && !taken.has(key);
-      if (free) taken.add(key);
-
-      return {
-        group: 'Data entry',
-        key: free ? key : undefined,
-        label: type.name,
-        onSelect: raise(type.code),
-      };
-    });
+    return raisableVoucherTypes(
+      voucherTypes,
+      voucherTypesKnown,
+      isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
+    ).map((type) => ({
+      group: 'Data entry',
+      key: type.key,
+      label: type.name,
+      // The same destination the Transactions menu uses — see raiseVoucherPath, which is also why a
+      // portfolio's four go to its registry rather than to a voucher form that cannot accept them.
+      onSelect: () => navigate(raiseVoucherPath(base, type.code, isPortfolio)),
+    }));
   }, [companyId, isPortfolio, navigate, voucherTypes, voucherTypesKnown]);
 
   /*

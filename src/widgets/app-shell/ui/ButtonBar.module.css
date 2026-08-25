@@ -83,10 +83,29 @@
   background-color: transparent;
 }
 
+/*
+  Wraps to a second line before it gives up, rather than cutting off at the first.
+
+  It was a single ellipsised line, which was fine for as long as every document in the product was
+  one short word — Contra, Payment, Petty Cash. A portfolio workspace names its four for what they
+  are, and three of them did not fit: "Capital Intro…", "Business Pr…", "Profit Alloca…". Two of
+  those are unreadable, and the strip is the one place in Tally's layout you are meant to be able to
+  read at a glance rather than hover over.
+
+  Clamped at two lines rather than left to wrap freely, so a company that names a voucher type a
+  sentence cannot push the rest of the bar off the screen; past that it still ellipsises, and the
+  full wording is still on the button's title. Measured across every screen that draws a bar before
+  this changed: these three were the only labels cut off anywhere in the product, so nothing else
+  moves.
+*/
 .label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A single unbroken word longer than the column still has to stay inside it. */
+  overflow-wrap: anywhere;
 }
 
 .key {
@@ -159,6 +178,15 @@
     justify-content: space-between;
     border-color: var(--border);
     background-color: var(--paper-card);
+  }
+
+  /* One line again here. Wrapping only earns its keep in the stacked column, where the width is
+     fixed and the height is free; in a scrolling row a two-line chip is simply a taller row. */
+  .label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .groupName::after {

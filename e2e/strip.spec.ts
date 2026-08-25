@@ -1,14 +1,16 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { seed, seedInvented } from './seed';
+import { seed, seedAnalytics, seedInvented } from './seed';
 
 let companyId: string;
+let portfolioId: string;
 let token: string;
 
 test.beforeAll(async () => {
   ({ token } = await seed());
   companyId = await seedInvented(token);
+  portfolioId = await seedAnalytics(token);
 });
 
 async function signIn(page: Page) {
@@ -164,5 +166,98 @@ test.describe('the data entry strip', () => {
       widths.petty,
       `the keyless chip is ${widths.petty}px against ${widths.contra}px for a keyed one`,
     ).toBeLessThanOrEqual(widths.contra + 20);
+  });
+});
+
+/**
+ * The same strip, for the workspace that measures other people's businesses.
+ *
+ * It was skipped entirely while nothing was ever posted to one — no Data entry group at all, and a
+ * Transactions menu naming only the registry. That stopped being true when the workspace was seeded
+ * with four voucher types of its own, and nothing in the unit suites can show that the four are on
+ * screen, on the keys the books' four would have used, or that the vouchers screen accepts a company
+ * it used to turn away at the door.
+ */
+test.describe('the data entry strip in a portfolio workspace', () => {
+  test('offers the four it is seeded with, on F4 to F7', async ({ page }) => {
+    const faults: string[] = [];
+    page.on('pageerror', (error) => faults.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') faults.push(message.text());
+    });
+
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}`);
+
+    const group = page.getByRole('group', { name: 'Data entry' });
+    await group.getByRole('button', { name: 'Adjustment' }).waitFor();
+
+    // In the order a month is worked, not alphabetically: money in, earned, allocated, fixes last.
+    expect(await group.getByRole('button').allTextContents()).toEqual([
+      'Capital IntroductionF4',
+      'Business ProfitF5',
+      'Profit AllocationF6',
+      'AdjustmentF7',
+    ]);
+
+    expect(faults, `the workspace reported ${faults.length} fault(s)`).toEqual([]);
+  });
+
+  /* Both, not one instead of the other — the registry is still what the workspace is mostly for. */
+  test('keeps the portfolio on the Transactions menu beside them', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}`);
+    await page.getByRole('button', { name: 'Adjustment' }).waitFor();
+
+    await page.getByRole('button', { name: 'Transactions' }).click();
+
+    expect(await page.getByRole('menuitem').allTextContents()).toEqual([
+      'Portfolio',
+      'Vouchers',
+      'Capital IntroductionF4',
+      'Business ProfitF5',
+      'Profit AllocationF6',
+      'AdjustmentF7',
+    ]);
+  });
+
+  test('reads its vouchers on the vouchers screen, and is sent elsewhere to write them', async ({
+    page,
+  }) => {
+    /*
+      The screen refused this company outright before, which made its own vouchers unreadable. It
+      lists them now — but raising one here cannot work: the accounts are namespaced with a slash
+      by the business registry and the voucher API validates `ledgerCode` as `[A-Z0-9_]+`, so the
+      form balances and then answers `ledgerCode must be alphanumeric` on accept.
+    */
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}/vouchers`);
+
+    await expect(page.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
+    await expect(page.getByText('This company does not post vouchers')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /New voucher/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Open the portfolio/ })).toBeVisible();
+  });
+
+  test('cannot be talked into the voucher form by an old bookmark', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}/vouchers?new=CAPITAL_INTRODUCTION`);
+
+    await expect(page.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
+    // The form would fill and balance and then be refused, so it is never opened at all.
+    await expect(page.getByLabel('Voucher type')).toHaveCount(0);
+  });
+
+  test('still answers its function keys from the registry screen', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}`);
+    await page
+      .getByRole('group', { name: 'Data entry' })
+      .getByRole('button', { name: 'Business Profit' })
+      .waitFor();
+
+    await page.keyboard.press('F5');
+
+    await expect(page).toHaveURL(/kg\?raise=BUSINESS_PROFIT/);
   });
 });

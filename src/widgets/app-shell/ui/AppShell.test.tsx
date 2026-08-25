@@ -254,12 +254,24 @@ describe('AppShell', () => {
     expect(screen.queryByRole('menuitem', { name: /Currencies/ })).toBeNull();
   });
 
-  it('offers Portfolio instead of Vouchers to an analytics workspace', () => {
+  it('offers an analytics workspace the portfolio and its own four documents', () => {
+    /*
+      Both, not one instead of the other. The registry is what the workspace is mostly for, and it
+      also posts now — capital in, profit reported, profit shared out and a correction — so a menu
+      naming only the registry left four seeded documents with no way to raise any of them.
+
+      No key printed against Vouchers here: Alt+V still reaches the portfolio for this kind of
+      company, and a menu naming a key that does something else is worse than one naming none.
+    */
     renderShell({ companies: [company({ type: 'ANALYTICS' })] });
     openMenu('Transactions');
 
     expect(screen.getByRole('menuitem', { name: 'Portfolio' })).toBeTruthy();
-    expect(screen.queryByRole('menuitem', { name: 'Vouchers' })).toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'Vouchers' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /Capital Introduction/ })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /Business Profit/ })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /Profit Allocation/ })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /Adjustment/ })).toBeTruthy();
   });
 
   it('states the year and currency once for the whole app', async () => {
@@ -365,7 +377,7 @@ describe('AppShell', () => {
       from the fixed function-key table, which meant a type the company created was silently
       absent — the fault this covers.
     */
-    it("offers every voucher type the company holds, in the order the keys run", async () => {
+    it('offers every voucher type the company holds, in the order the keys run', async () => {
       renderShell();
 
       const group = await screen.findByRole('group', { name: 'Data entry' });
@@ -425,9 +437,7 @@ describe('AppShell', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: 'Petty Cash' }));
 
-      expect(screen.getByTestId('here').textContent).toBe(
-        '/companies/c1/vouchers?new=PETTY_CASH',
-      );
+      expect(screen.getByTestId('here').textContent).toBe('/companies/c1/vouchers?new=PETTY_CASH');
     });
   });
 });

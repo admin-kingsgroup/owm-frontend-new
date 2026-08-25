@@ -29,6 +29,22 @@ export const VOUCHER_FUNCTION_KEYS = [
   */
   { key: 'F8', code: 'INCOME', label: 'Income' },
   { key: 'F9', code: 'EXPENSE', label: 'Expense' },
+  /*
+    F4 to F7 again, for a portfolio workspace.
+
+    The same reasoning as the household pair above, and the same guarantee: a company either keeps
+    its own books or measures other people's, so these four can never be seeded alongside Contra,
+    Payment, Receipt and Journal. What a portfolio files under the four keys under the hand is
+    capital going in, profit reported, profit shared out, and a correction — which is the whole of
+    what it files.
+
+    Listed in the order they are worked in rather than alphabetically, so reading the strip down is
+    the order a month is actually recorded: money in, profit earned, profit allocated, fixes last.
+  */
+  { key: 'F4', code: 'CAPITAL_INTRODUCTION', label: 'Capital Introduction' },
+  { key: 'F5', code: 'BUSINESS_PROFIT', label: 'Business Profit' },
+  { key: 'F6', code: 'PROFIT_ALLOCATION', label: 'Profit Allocation' },
+  { key: 'F7', code: 'ADJUSTMENT', label: 'Adjustment' },
 ] as const;
 
 /**
@@ -49,6 +65,21 @@ export const ALWAYS_SEEDED_VOUCHER_CODES: ReadonlySet<string> = new Set([
   'PAYMENT',
   'RECEIPT',
   'JOURNAL',
+]);
+
+/**
+ * The same, for a portfolio workspace — which is seeded with four of its own and none of the above.
+ *
+ * A separate set rather than a company-type check inside the stand-in, because the caller already
+ * knows which kind of company is open and this file deliberately knows nothing about companies.
+ * Offering a portfolio the books' four would be the strip naming documents it certainly does not
+ * hold, which is the one thing the stand-in exists to avoid.
+ */
+export const ALWAYS_SEEDED_PORTFOLIO_CODES: ReadonlySet<string> = new Set([
+  'CAPITAL_INTRODUCTION',
+  'BUSINESS_PROFIT',
+  'PROFIT_ALLOCATION',
+  'ADJUSTMENT',
 ]);
 
 /** The key that raises this voucher type, or undefined for a type a company invented. */
@@ -73,5 +104,57 @@ export function inFunctionKeyOrder<T extends { code: string; name: string }>(typ
     if (left !== -1) return -1;
     if (right !== -1) return 1;
     return a.name.localeCompare(b.name);
+  });
+}
+
+/** A document the company can raise: what it is called, what raises it, and the key that reaches it. */
+export interface RaisableVoucherType {
+  code: string;
+  name: string;
+  /** Absent for a type the company invented, and for the second claimant of a shared key. */
+  key?: string;
+}
+
+/**
+ * Every document this company can raise, in the order the keys sit under the hand.
+ *
+ * The one answer to "what can be entered here", for the two places that offer it: the shell's
+ * right-hand strip and the Transactions menu. They are two doors onto the same set of documents and
+ * an e2e check holds them to it — built separately, they drifted the moment the list was not known,
+ * because only the strip carried the fallback. The menu then offered nothing to raise for the whole
+ * of a session whose one read of the types had failed.
+ *
+ * `known` is the hook's, not `types.length > 0`: a company that has switched every one of its
+ * voucher types off holds none on purpose, and offering four the form will refuse is worse than
+ * offering none. Unknown — still reading, or read and failed — takes `standIn` instead, since a way
+ * in that certainly exists beats no way in at all.
+ */
+export function raisableVoucherTypes(
+  types: ReadonlyArray<{ code: string; name: string }>,
+  known: boolean,
+  /** What to name while the list is unknown. A portfolio is seeded with its own four — see above. */
+  standIn: ReadonlySet<string> = ALWAYS_SEEDED_VOUCHER_CODES,
+): RaisableVoucherType[] {
+  if (!known) {
+    return VOUCHER_FUNCTION_KEYS.filter(({ code }) => standIn.has(code)).map(
+      ({ key, code, label }) => ({ code, name: label, key }),
+    );
+  }
+
+  /*
+    One key, one action. Income and Expense deliberately share F8 and F9 with Sales and Purchase —
+    a company is either trading or personal, so the seeded pair can never both be present. A company
+    is free to create a type of its own under either code though, and then the strip would print F8
+    twice while only the first of them answered it. The second keeps its button and loses the key it
+    does not own.
+  */
+  const taken = new Set<string>();
+
+  return inFunctionKeyOrder([...types]).map((type) => {
+    const key = functionKeyFor(type.code);
+    const free = key !== undefined && !taken.has(key);
+    if (free) taken.add(key);
+
+    return { code: type.code, name: type.name, ...(free ? { key } : {}) };
   });
 }

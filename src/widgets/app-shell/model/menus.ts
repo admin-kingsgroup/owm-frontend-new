@@ -1,5 +1,11 @@
 import type { Company } from '@/entities/company';
-import { functionKeyFor, inFunctionKeyOrder, type VoucherType } from '@/entities/voucher-type';
+import {
+  ALWAYS_SEEDED_PORTFOLIO_CODES,
+  ALWAYS_SEEDED_VOUCHER_CODES,
+  inFunctionKeyOrder,
+  raisableVoucherTypes,
+  type VoucherType,
+} from '@/entities/voucher-type';
 
 export interface MenuItem {
   label: string;
@@ -45,6 +51,30 @@ export function periodQuery(here: string): string {
 }
 
 /**
+ * Where raising this document begins, for a company of this kind.
+ *
+ * Shared by the Transactions menu and the button bar so the two doors cannot send the same document
+ * to two different places.
+ *
+ * A set of books goes to the voucher form, which is what that form is for. A portfolio workspace
+ * goes to its registry instead, and that is not a preference — the generic form **cannot** post its
+ * documents. The accounts a portfolio posts to are minted by the business registry and namespaced
+ * with a slash (`KG_TEXTILES/INV`, `KG_TEXTILES/CAP/PTR_A`), while the voucher API validates
+ * `ledgerCode` as `[A-Z0-9_]+`. So every entry against them is refused, and refused late: the form
+ * fills, balances, and answers `ledgerCode must be alphanumeric` on accept. Sending someone there
+ * is sending them to a dead end with a developer's error message at the bottom of it.
+ *
+ * The document asked for rides along in `raise`. The registry ignores a parameter it does not know,
+ * so today this simply lands there — and when the workspace grows an entry screen of its own it can
+ * open on the right document without the shell being touched again. Those entries also need a
+ * business, a period and a profit split, none of which the generic form has any notion of, which is
+ * why the registry is where they belong rather than somewhere the voucher form could be taught.
+ */
+export function raiseVoucherPath(base: string, code: string, isPortfolio: boolean): string {
+  return isPortfolio ? `${base}/kg?raise=${code}` : `${base}/vouchers?new=${code}`;
+}
+
+/**
  * The menus, for the company that is open.
  *
  * Everything here resolves to a route that exists. A menu that lists destinations the product does
@@ -72,6 +102,22 @@ export function buildMenus(
    * the reports screen's picker.
    */
   voucherTypes: VoucherType[] = [],
+  /**
+   * Whether the server has answered with them yet.
+   *
+   * The Create list stands in for the types every posting company is seeded with while it has not —
+   * exactly as the button bar does, and from the same function, because the two are two doors onto
+   * the same set of documents. Without it a read that failed left the menu with nothing to raise
+   * for the rest of the session while the strip beside it went on offering four.
+   *
+   * The registers below deliberately do not stand anything in: they are reports, and the reports
+   * screen's own picker is what answers while this list is short.
+   *
+   * Defaults to trusting the list it was given, so a caller that does not track the difference
+   * simply gets a menu naming exactly what it passed — the behaviour before this existed. Only the
+   * shell, which holds the read, says otherwise.
+   */
+  voucherTypesKnown = true,
 ): Menu[] {
   const period = periodQuery(here);
   const orderedTypes = inFunctionKeyOrder(voucherTypes);
@@ -100,6 +146,12 @@ export function buildMenus(
   const base = `/companies/${companyId}`;
   const features = company?.features;
   const isPortfolio = company?.type === 'ANALYTICS';
+  /* What Transactions offers to raise — the strip's list exactly. See raisableVoucherTypes. */
+  const raisable = raisableVoucherTypes(
+    voucherTypes,
+    voucherTypesKnown,
+    isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
+  );
 
   return [
     {
@@ -165,22 +217,37 @@ export function buildMenus(
         rather than in the right-hand strip, which belongs to whichever screen is open. The function
         keys printed here are the real bindings — the shell holds them, so they work from anywhere.
       */
-      items: isPortfolio
-        ? [{ label: 'Portfolio', to: `${base}/kg` }]
-        : [
-            { label: 'Vouchers', to: `${base}/vouchers`, hint: 'Alt+V' },
-            /*
-              Every type the company actually keeps, in its own order, each with the key the shell
-              binds for it where there is one. A company that has added a type gets it here; one
-              that has switched a type off does not.
-            */
-            ...orderedTypes.map((type, index) => ({
-              label: type.name,
-              to: `${base}/vouchers?new=${type.code}`,
-              ...(functionKeyFor(type.code) ? { hint: functionKeyFor(type.code) } : {}),
-              ...(index === 0 ? { section: 'Create' } : {}),
-            })),
-          ],
+      items: [
+        /*
+          A portfolio's own screen first, because the registry is what that workspace is mostly
+          for and it is where Alt+V still lands. No hint on Vouchers beneath it for the same
+          reason: printing Alt+V against a second destination would be the menu naming a key that
+          does something else.
+        */
+        ...(isPortfolio ? [{ label: 'Portfolio', to: `${base}/kg` }] : []),
+        {
+          label: 'Vouchers',
+          to: `${base}/vouchers`,
+          ...(isPortfolio ? {} : { hint: 'Alt+V' }),
+        },
+        /*
+          Every type the company actually keeps, in its own order, each with the key the shell
+          binds for it where there is one. A company that has added a type gets it here; one
+          that has switched a type off does not. See raisableVoucherTypes — the same list the
+          button bar is drawn from, so neither can offer a document the other does not.
+
+          A portfolio workspace is here too. It was left out while nothing was ever posted to one,
+          and that stopped being true when it was seeded with four voucher types of its own —
+          capital in, profit reported, profit shared out, and a correction. Leaving the menu on the
+          old answer meant a workspace holding four documents offered no way to raise any of them.
+        */
+        ...raisable.map((type, index) => ({
+          label: type.name,
+          to: raiseVoucherPath(base, type.code, isPortfolio),
+          ...(type.key ? { hint: type.key } : {}),
+          ...(index === 0 ? { section: 'Create' } : {}),
+        })),
+      ],
     },
     /*
       Statements, for a company that keeps books.

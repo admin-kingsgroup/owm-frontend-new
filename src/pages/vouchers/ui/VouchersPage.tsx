@@ -266,9 +266,9 @@ export function VouchersPage() {
 
   /*
     The shell reads the company list on entering a company, so it has settled well before this
-    screen's own request for the company comes back. Preferring whichever arrived first means an
-    analytics workspace is turned away at the same moment the sidebar drops its Vouchers link,
-    rather than a beat later with the screen half-drawn in between.
+    screen's own request for the company comes back. Preferring whichever arrived first means the
+    header states which books are open, and in which currency, from the earlier of the two rather
+    than from this screen's own read alone.
   */
   const listedCompany = listLoaded ? companies?.find((entry) => entry.id === companyId) : undefined;
   const company = loaded?.company ?? listedCompany;
@@ -276,37 +276,34 @@ export function VouchersPage() {
   if (!companyId) return null;
 
   /*
-    Nothing is drawn until it is known whether this company posts vouchers at all. Both sources are
-    in flight together and either one settles the question, so the wait is the shorter of the two —
-    and it is shorter still than it looks, because the table below is a spinner for that same
-    window anyway. Drawing a screen that is about to be replaced by "this company does not post
-    vouchers" is worse than a moment of nothing. An error releases the hold, so a company that
-    cannot be read reports that rather than spinning for ever.
+    Nothing is drawn until one of the two sources has named the company. Both are in flight
+    together and either settles it, so the wait is the shorter of the two — and shorter still than
+    it looks, because the table below is a spinner for that same window anyway. What it buys is a
+    header that never states the wrong currency for a moment before correcting itself. An error
+    releases the hold, so a company that cannot be read reports that rather than spinning for ever.
   */
   if (company === undefined && !error) {
     return <Loading label="Loading vouchers…" />;
   }
 
-  /*
-    An analytics workspace keeps no double-entry books, which is why its overview offers the
-    portfolio where the others offer vouchers and why the sidebar carries no Vouchers link for it.
-    Reached by a typed or bookmarked URL this screen would still show filters and an enabled New
-    voucher button; saying so plainly, and pointing at the screen that does apply, matches how
-    KgPage turns away a company that is not a portfolio workspace.
-  */
-  if (company?.type === 'ANALYTICS') {
-    return (
-      <EmptyState
-        title="This company does not post vouchers"
-        description={`${company.name} is a portfolio workspace, so it has no double-entry books of its own. Its figures come from the businesses tracked under KG Business.`}
-        action={
-          <Link to={`/companies/${companyId}/kg`}>
-            <Button variant="primary">Open the portfolio</Button>
-          </Link>
-        }
-      />
-    );
-  }
+  /**
+   * Whether a voucher can be *raised* here, as opposed to merely read.
+   *
+   * A portfolio workspace used to be turned away from this screen outright, on the reasoning that
+   * it keeps no double-entry books. That reasoning ended when it was seeded with four voucher types
+   * of its own, so the list below is now worth reading for one: those vouchers are its month.
+   *
+   * Raising one here is a different matter, and it cannot work. Its accounts are minted by the
+   * business registry and namespaced with a slash — `KG_TEXTILES/CAP/PTR_A` — while the voucher
+   * API validates `ledgerCode` as `[A-Z0-9_]+` and refuses anything else. The form fills and
+   * balances and then answers `ledgerCode must be alphanumeric` on accept, which is a dead end
+   * reached only after the work is done. Those entries also need a business, a period and a profit
+   * split that this form has no notion of.
+   *
+   * So the screen reads, and points at the registry to write. Reading `company` rather than a
+   * feature flag because it is the company's kind that decides it, exactly as the shell does.
+   */
+  const raisesVouchersHere = company?.type !== 'ANALYTICS';
 
   return (
     <div className={styles.page}>
@@ -316,26 +313,41 @@ export function VouchersPage() {
           {/* The reason the action is unavailable has to be readable, not just a tooltip: a
               disabled button takes no focus, so screen readers never reach its title. */}
           <p className={styles.subtitle} id="vouchers-subtitle">
-            {setupIncomplete
-              ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
-              : 'Double-entry transactions for this company.'}
+            {!raisesVouchersHere
+              ? 'Capital, profit and allocations are entered against a business in the portfolio. They are listed here once posted.'
+              : setupIncomplete
+                ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
+                : 'Double-entry transactions for this company.'}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="primary"
-          onClick={() => openCreate(null)}
-          /*
-            Also while the setup is still in flight. `setupMissing` is empty until it lands, so
-            this read as "nothing missing" and let the form open on no ledgers and no voucher
-            types — where it announced "Finish setting up this company" about a company that is
-            set up perfectly well. The same distinction the subtitle above already draws.
-          */
-          disabled={!setupLoadedOk || setupIncomplete}
-          aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
-        >
-          <Plus size={16} /> New voucher
-        </Button>
+        {/*
+          A workspace is sent to where its documents are actually raised rather than given a
+          disabled button — see raisesVouchersHere. A dead control says "not now"; a link says
+          where, and where is a real screen.
+        */}
+        {raisesVouchersHere ? (
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => openCreate(null)}
+            /*
+              Also while the setup is still in flight. `setupMissing` is empty until it lands, so
+              this read as "nothing missing" and let the form open on no ledgers and no voucher
+              types — where it announced "Finish setting up this company" about a company that is
+              set up perfectly well. The same distinction the subtitle above already draws.
+            */
+            disabled={!setupLoadedOk || setupIncomplete}
+            aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
+          >
+            <Plus size={16} /> New voucher
+          </Button>
+        ) : (
+          <Link to={`/companies/${companyId}/kg`}>
+            <Button type="button" variant="primary">
+              Open the portfolio <ArrowRight size={16} />
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className={styles.filters}>
@@ -384,7 +396,16 @@ export function VouchersPage() {
           }
         />
       ) : vouchers.length === 0 ? (
-        <EmptyState title="No vouchers found" description="Create a voucher to get started." />
+        <EmptyState
+          title="No vouchers found"
+          /* Not "create one to get started" for a workspace that cannot create one here — the
+             header directly above already says where they are entered. */
+          description={
+            raisesVouchersHere
+              ? 'Create a voucher to get started.'
+              : 'Entries made against a business in the portfolio appear here once posted.'
+          }
+        />
       ) : (
         <>
           {/* The grid gets a frame of its own, so a short list stops floating in an empty pane and
@@ -466,7 +487,16 @@ export function VouchersPage() {
         </>
       )}
 
-      <Modal open={createModalOpen} onClose={() => closeCreate()} title="New voucher" size="wide">
+      {/*
+        `raisesVouchersHere` as well, so a bookmarked ?new= from before the shell stopped producing
+        one for a workspace cannot open a form whose every accept is refused — see the note on it.
+      */}
+      <Modal
+        open={createModalOpen && raisesVouchersHere}
+        onClose={() => closeCreate()}
+        title="New voucher"
+        size="wide"
+      >
         {/*
           Held back until the masters are in.
 
