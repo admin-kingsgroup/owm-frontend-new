@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 
 import type { AccountGroup } from '@/entities/account-group';
+import type { Currency } from '@/entities/currency';
 import type { Ledger } from '@/entities/ledger';
 
 import { ImportExportPanel } from './ImportExportPanel';
@@ -55,6 +56,10 @@ const ledgers = [
   },
 ] as Ledger[];
 
+const currencies = [
+  { id: 'cur-usd', companyId: 'c1', code: 'USD', symbol: '$', name: 'US Dollar', decimalPlaces: 2, isActive: true },
+] as Currency[];
+
 /**
  * A chosen file, the way the component receives one.
  *
@@ -75,6 +80,7 @@ function panel(onImported = vi.fn()) {
       companyCode="ADB"
       groups={groups}
       ledgers={ledgers}
+      currencies={currencies}
       onImported={onImported}
     />,
   );
@@ -163,6 +169,96 @@ describe('importing a chart of accounts', () => {
     expect(Object.keys(fields).sort()).toEqual(['accountGroupCode', 'name']);
     expect('maintainBillwise' in fields).toBe(false);
     expect('gstin' in fields).toBe(false);
+  });
+
+  /*
+    The other half of that distinction, and the half that was wrong. A column that is present and
+    empty asks for the field to be cleared — and it must not be sent as `''`, which the server
+    reads as a GSTIN that fails its pattern rather than as no GSTIN at all.
+
+    This is the round trip these books actually make: a personal ledger carries no GSTIN, no PAN
+    and usually no email on any account, so exporting the chart and reading it straight back in
+    put an empty cell under all three on every row.
+  */
+  it('clears a field the file carries as empty, rather than sending an empty string', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,gstin,pan,contactEmail\nHDFC_BANK,HDFC Bank — 4021,CURRENT_ASSETS,,,\n',
+      ),
+    );
+
+    await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
+    const [, , fields] = updateLedger.mock.calls[0] as [string, string, Record<string, unknown>];
+
+    expect(fields.gstin).toBeNull();
+    expect(fields.pan).toBeNull();
+    expect(fields.contactEmail).toBeNull();
+  });
+
+  /* A new record has nothing to clear, and the create DTO refuses a null outright. */
+  it('omits an empty field when creating, rather than sending null', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,gstin,creditDays\nPETTY_CASH,Petty Cash,CURRENT_ASSETS,,\n',
+      ),
+    );
+
+    await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
+    const [, fields] = createLedger.mock.calls[0] as [string, Record<string, unknown>];
+
+    expect('gstin' in fields).toBe(false);
+    expect('creditDays' in fields).toBe(false);
+    expect(fields.code).toBe('PETTY_CASH');
+  });
+
+  /*
+    Currency is the one of the three added columns that cannot be set any other way in bulk, and
+    every voucher line posted against the account inherits it.
+  */
+  it('carries currency and credit terms in, upper-casing the currency code', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,currencyCode,creditLimit,creditDays\nHDFC_BANK,HDFC Bank — 4021,CURRENT_ASSETS,usd,50000,45\n',
+      ),
+    );
+
+    await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
+    const [, , fields] = updateLedger.mock.calls[0] as [string, string, Record<string, unknown>];
+
+    expect(fields.currencyCode).toBe('USD');
+    expect(fields.creditLimit).toBe(50000);
+    expect(fields.creditDays).toBe(45);
+  });
+
+  /*
+    Left to `Number()` this would be NaN, JSON would write it as null, and the server would read
+    that as a request to clear the limit — a typo quietly wiping a figure. It fails the row instead.
+  */
+  it('fails the row when a number column holds something that is not one', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,creditLimit\nHDFC_BANK,HDFC Bank — 4021,CURRENT_ASSETS,fifty thousand\n',
+      ),
+    );
+
+    expect(await screen.findByText(/creditLimit is not a number/)).toBeTruthy();
+    expect(updateLedger).not.toHaveBeenCalled();
   });
 
   it('keeps the accepted rows when one is refused, and says which failed', async () => {

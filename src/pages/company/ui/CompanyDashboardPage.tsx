@@ -409,6 +409,7 @@ export function CompanyDashboardPage() {
           companyCode={company.code}
           groups={groups}
           ledgers={ledgers}
+          currencies={currencies}
           /* Imported ledgers are the same records the chart of accounts shows, so it re-reads. */
           onImported={() => setReloadKey((key) => key + 1)}
         />

@@ -8,6 +8,7 @@ import {
   updateAccountGroup,
 } from '@/entities/account-group';
 import type { AccountGroup, AccountNature, GroupType } from '@/entities/account-group';
+import type { Currency } from '@/entities/currency';
 import { createLedger, listLedgers, updateLedger } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
 import { Button } from '@/shared/ui';
@@ -20,6 +21,12 @@ interface ImportExportPanelProps {
   companyCode: string;
   groups: AccountGroup[];
   ledgers: Ledger[];
+  /**
+   * Needed to write a ledger's currency as its code rather than its id: the export is read by a
+   * person, and the import sends `currencyCode` back. Already loaded by the dashboard around this
+   * panel, so it is passed down rather than fetched again.
+   */
+  currencies: Currency[];
   /** Ledgers created here are the same records the chart of accounts is showing. */
   onImported: () => void;
 }
@@ -45,6 +52,17 @@ const LEDGER_COLUMNS = [
   'address',
   'contactEmail',
   'contactPhone',
+  /*
+    Appended rather than slotted in beside the fields they belong with, so a file exported before
+    they existed still imports: a column that is not there leaves its field alone.
+
+    `currencyCode` is the one that is not merely convenient. An account denominated in a currency
+    that is not the company's own can otherwise only be set one form at a time, and it is what
+    every voucher line posted against that account inherits.
+  */
+  'currencyCode',
+  'creditLimit',
+  'creditDays',
 ] as const;
 
 /**
@@ -118,6 +136,7 @@ export function ImportExportPanel({
   companyCode,
   groups,
   ledgers,
+  currencies,
   onImported,
 }: ImportExportPanelProps) {
   const [busy, setBusy] = useState(false);
@@ -125,6 +144,7 @@ export function ImportExportPanel({
   const [error, setError] = useState<string | null>(null);
 
   const groupCodeById = new Map(groups.map((group) => [group.id, group.code]));
+  const currencyCodeById = new Map(currencies.map((currency) => [currency.id, currency.code]));
 
   function exportGroups() {
     downloadCsv(
@@ -157,6 +177,9 @@ export function ImportExportPanel({
         ledger.address ?? '',
         ledger.contactEmail ?? '',
         ledger.contactPhone ?? '',
+        ledger.currencyId ? (currencyCodeById.get(ledger.currencyId) ?? '') : '',
+        ledger.creditLimit ?? '',
+        ledger.creditDays === undefined ? '' : String(ledger.creditDays),
       ]),
     );
   }
@@ -207,6 +230,52 @@ export function ImportExportPanel({
     ) as Partial<T>;
   }
 
+  /**
+   * What one cell of an optional field is asking for. Three states, not two: an absent column
+   * leaves the field alone, a present but empty cell asks for it to be cleared, and anything else
+   * sets it.
+   *
+   * The empty case is the one that was wrong, and it made the round trip useless for the books
+   * this panel exists to serve. `gstin: ''` is not "no GSTIN" to the server — it is a GSTIN that
+   * fails its pattern — so a chart exported and read straight back in had every row refused over
+   * columns it had never filled in. A personal ledger carries no GSTIN, no PAN and often no email
+   * on any account, so that was every row of it. Clearing is `null`, which is what the update DTO
+   * already documents.
+   */
+  function clearable(raw: string | undefined): string | null | undefined {
+    if (raw === undefined) return undefined;
+    return raw === '' ? null : raw;
+  }
+
+  /**
+   * The same three states for a number, refusing a cell that is not one.
+   *
+   * Left to `Number()`, "abc" becomes `NaN`, JSON writes it as `null`, and the server reads that
+   * as a request to clear the field — a typo silently wiping a credit limit. Throwing puts the row
+   * in the failed list with the reason on it, which is the whole point of reporting per row.
+   */
+  function clearableNumber(raw: string | undefined, column: string): number | null | undefined {
+    if (raw === undefined) return undefined;
+    if (raw === '') return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) throw new Error(`${column} is not a number: "${raw}"`);
+    return parsed;
+  }
+
+  /**
+   * A record being created has nothing to clear, and the create DTO takes no nulls.
+   *
+   * The return type drops `null` as well as dropping the values, so the create call type-checks
+   * against a DTO that never accepted one — rather than being asserted past.
+   */
+  function withoutNulls<T extends Record<string, unknown>>(
+    fields: T,
+  ): { [K in keyof T]?: Exclude<T[K], null> } {
+    return Object.fromEntries(
+      Object.entries(fields).filter(([, value]) => value !== null),
+    ) as { [K in keyof T]?: Exclude<T[K], null> };
+  }
+
   async function run(work: () => Promise<RowOutcome[]>) {
     setBusy(true);
     setError(null);
@@ -253,43 +322,56 @@ export function ImportExportPanel({
       */
       return mapWithLimit(rows, CONCURRENCY, async ({ line, code, row }) => {
         const at = (column: string) => value(row, column);
-        const opening = at('openingBalance');
-        const side = at('openingBalanceType');
-        const billwise = at('maintainBillwise');
-
-        const fields = present({
-          name: at('name'),
-          accountGroupCode: at('accountGroupCode'),
-          ledgerType: at('ledgerType') as Ledger['ledgerType'] | undefined,
-          openingBalance: opening === undefined || opening === '' ? undefined : Number(opening),
-          openingBalanceType:
-            side === undefined
-              ? undefined
-              : ((side.toUpperCase() === 'CREDIT'
-                  ? 'CREDIT'
-                  : 'DEBIT') as Ledger['openingBalanceType']),
-          maintainBillwise: billwise === undefined ? undefined : billwise.toLowerCase() === 'true',
-          gstin: at('gstin'),
-          pan: at('pan'),
-          address: at('address'),
-          contactEmail: at('contactEmail'),
-          contactPhone: at('contactPhone'),
-        });
-
         const already = existing.get(code);
 
         try {
+          const opening = at('openingBalance');
+          const side = at('openingBalanceType');
+          const billwise = at('maintainBillwise');
+
+          const fields = present({
+            /*
+              These four cannot be cleared — the server requires each to be something — so an empty
+              cell reads as "leave it as it was" rather than as a request to blank a ledger's name.
+              Creating still refuses a blank name, which is where a missing one actually matters.
+            */
+            name: at('name') || undefined,
+            accountGroupCode: at('accountGroupCode') || undefined,
+            ledgerType: (at('ledgerType') || undefined) as Ledger['ledgerType'] | undefined,
+            openingBalance: opening === undefined || opening === '' ? undefined : Number(opening),
+            openingBalanceType:
+              side === undefined || side === ''
+                ? undefined
+                : ((side.toUpperCase() === 'CREDIT'
+                    ? 'CREDIT'
+                    : 'DEBIT') as Ledger['openingBalanceType']),
+            maintainBillwise:
+              billwise === undefined || billwise === ''
+                ? undefined
+                : billwise.toLowerCase() === 'true',
+            gstin: clearable(at('gstin')),
+            pan: clearable(at('pan')),
+            address: clearable(at('address')),
+            contactEmail: clearable(at('contactEmail')),
+            contactPhone: clearable(at('contactPhone')),
+            // Upper-cased because a currency is known by its code and nobody types it in caps.
+            currencyCode: clearable(at('currencyCode')?.toUpperCase()),
+            creditLimit: clearableNumber(at('creditLimit'), 'creditLimit'),
+            creditDays: clearableNumber(at('creditDays'), 'creditDays'),
+          });
+
           if (already) {
             await updateLedger(companyId, already.id, fields);
             return { line, code, error: null, created: false };
           }
 
+          const fresh = withoutNulls(fields);
           await createLedger(companyId, {
             code,
-            name: fields.name ?? '',
-            accountGroupCode: fields.accountGroupCode ?? '',
-            ledgerType: fields.ledgerType ?? 'GENERAL',
-            ...fields,
+            name: fresh.name ?? '',
+            accountGroupCode: fresh.accountGroupCode ?? '',
+            ledgerType: fresh.ledgerType ?? 'GENERAL',
+            ...fresh,
           });
           return { line, code, error: null, created: true };
         } catch (err) {
