@@ -122,38 +122,6 @@
   font-size: 0.875rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.tab {
-  padding: 0.625rem 0.25rem;
-  margin-bottom: -1px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.tab + .tab {
-  margin-left: 1.25rem;
-}
-
-.tab:hover {
-  color: var(--ink);
-}
-
-.tabActive {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-}
-
 /* A balance sheet is read as two facing columns; it collapses to one on a narrow screen. */
 .twoColumn {
   display: grid;
@@ -278,12 +246,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.treeSide {
-  margin-left: 0.25rem;
-  font-size: 0.6875rem;
-  color: var(--ink-faint);
 }
 
 .derivedRow {
@@ -761,12 +723,11 @@
 }
 
 /*
- * Printing a statement should produce the statement, not the application around it. The tabs and
- * toolbar are controls, not content, and a table that scrolls on screen has to be allowed to run
- * over as many pages as it needs on paper.
+ * Printing a statement should produce the statement, not the application around it. The toolbar is
+ * a control, not content, and a table that scrolls on screen has to be allowed to run over as many
+ * pages as it needs on paper.
  */
 @media print {
-  .tabs,
   .toolbar,
   .closeLink {
     display: none !important;
@@ -847,21 +808,6 @@
 
   .twoColumn {
     grid-template-columns: 1fr 1fr;
-  }
-}
-
-/*
-  Matches the shell's breakpoint. The statement columns already collapse on their own — .twoColumn
-  is auto-fit — so what is left is the tab strip, which has more labels than a phone is wide.
-*/
-@media (max-width: 60rem) {
-  .tabs {
-    overflow-x: auto;
-    scrollbar-width: thin;
-  }
-
-  .tab {
-    white-space: nowrap;
   }
 }
 

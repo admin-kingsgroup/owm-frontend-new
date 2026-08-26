@@ -5,12 +5,12 @@ import { NotFoundPage } from '@/pages/not-found';
 import { CompaniesPage } from '@/pages/companies';
 import { CompanyDashboardPage } from '@/pages/company';
 import { VouchersPage } from '@/pages/vouchers';
-import { ReportsPage } from '@/pages/reports';
 import { KgPage } from '@/pages/kg';
 import { ReportedErrorsPage } from '@/pages/reported-errors';
 import { AppShell } from '@/widgets/app-shell';
 
 import { RequireAuth } from './RequireAuth';
+import { ReportsRoute } from './ReportsRoute';
 
 export const routes: RouteObject[] = [
   {
@@ -29,7 +29,8 @@ export const routes: RouteObject[] = [
           { path: '/reported-errors', element: <ReportedErrorsPage /> },
           { path: '/companies/:companyId', element: <CompanyDashboardPage /> },
           { path: '/companies/:companyId/vouchers', element: <VouchersPage /> },
-          { path: '/companies/:companyId/reports', element: <ReportsPage /> },
+          /* Fetched on first open rather than with everything else — see ReportsRoute. */
+          { path: '/companies/:companyId/reports', element: <ReportsRoute /> },
           { path: '/companies/:companyId/kg', element: <KgPage /> },
         ],
       },

@@ -213,8 +213,18 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
         </form>
       )}
 
+      {/*
+        The empty state names the way out, the way every other empty grid in the product does. "No
+        other currencies yet" on its own is a fact about the screen; a reader who has just switched
+        multi-currency on is looking for what to do next, and the rates form below stays hidden
+        until there is a currency to rate — so without it the tab reads as unfinished, not empty.
+      */}
       {currencies.length === 0 ? (
-        <p className={styles.hint}>No other currencies yet.</p>
+        <p className={styles.hint}>
+          No other currencies yet. Use <strong>Add currency</strong> above to add the first one —
+          then give it a rate for each date you post on, and a voucher takes the rate in force on
+          its own date.
+        </p>
       ) : (
         <table className={styles.table}>
           <thead>

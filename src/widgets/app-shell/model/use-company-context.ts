@@ -49,7 +49,21 @@ export function useCompanyReadoutState(companyId: string | undefined): CompanyRe
 
     getCompanyContext(id)
       .then((context) => {
-        if (!cancelled) setState({ companyId: id, context });
+        /*
+          A 200 is not proof of a body. Answer an API path with the app's own HTML — a proxy rule
+          that falls through to index.html, a gateway rewriting a rejected response — and this
+          resolves carrying nothing at all. Stored, that makes the type above a lie: `context` is
+          declared as the readout or null, every consumer reads it on that promise, and the first
+          one to reach for a field on it throws. The strip that shows the draft count is rendered
+          outside the boundary that catches such a throw, so what a reader gets is not a panel with
+          a message in it but the whole screen gone.
+
+          Treated as a miss instead. Chrome, not content: the strip says less, exactly as it does
+          after a request that failed outright.
+        */
+        if (!cancelled && context && typeof context === 'object') {
+          setState({ companyId: id, context });
+        }
       })
       .catch(() => {
         // Chrome, not content — see above.
