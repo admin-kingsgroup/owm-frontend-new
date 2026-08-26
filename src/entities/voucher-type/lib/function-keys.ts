@@ -30,21 +30,27 @@ export const VOUCHER_FUNCTION_KEYS = [
   { key: 'F8', code: 'INCOME', label: 'Income' },
   { key: 'F9', code: 'EXPENSE', label: 'Expense' },
   /*
-    F4 to F7 again, for a portfolio workspace.
+    The four a portfolio workspace files about the businesses it tracks.
 
-    The same reasoning as the household pair above, and the same guarantee: a company either keeps
-    its own books or measures other people's, so these four can never be seeded alongside Contra,
-    Payment, Receipt and Journal. What a portfolio files under the four keys under the hand is
-    capital going in, profit reported, profit shared out, and a correction — which is the whole of
-    what it files.
+    On the Ctrl row, not on F4 to F7, and that is a correction rather than a preference. They held
+    the plain keys while a portfolio was the one kind of company with no Contra, Payment, Receipt or
+    Journal of its own — so nothing could contend for them. A workspace has all four of those now,
+    and they claim F4 to F7 first, being earlier in this table; leaving these here left every one of
+    them keyless, which is the four documents that workspace exists for losing the keyboard.
+
+    Ctrl+F6 to Ctrl+F9 rather than Ctrl+F4 to Ctrl+F7: Ctrl+F4 closes the tab in Chrome and Edge on
+    Windows and Ctrl+F5 is a hard reload, and a shortcut that throws away a half-keyed voucher is
+    worse than no shortcut. Ctrl+F8 and Ctrl+F9 are shared with Credit Note and Debit Note on the
+    same guarantee the household pair relies on — those two are `TRADING` only, so a portfolio can
+    never hold both — and the de-duplication below covers it if a company ever invents one.
 
     Listed in the order they are worked in rather than alphabetically, so reading the strip down is
     the order a month is actually recorded: money in, profit earned, profit allocated, fixes last.
   */
-  { key: 'F4', code: 'CAPITAL_INTRODUCTION', label: 'Capital Introduction' },
-  { key: 'F5', code: 'BUSINESS_PROFIT', label: 'Business Profit' },
-  { key: 'F6', code: 'PROFIT_ALLOCATION', label: 'Profit Allocation' },
-  { key: 'F7', code: 'ADJUSTMENT', label: 'Adjustment' },
+  { key: 'Ctrl+F6', code: 'CAPITAL_INTRODUCTION', label: 'Capital Introduction' },
+  { key: 'Ctrl+F7', code: 'BUSINESS_PROFIT', label: 'Business Profit' },
+  { key: 'Ctrl+F8', code: 'PROFIT_ALLOCATION', label: 'Profit Allocation' },
+  { key: 'Ctrl+F9', code: 'ADJUSTMENT', label: 'Adjustment' },
 ] as const;
 
 /**
@@ -68,12 +74,17 @@ export const ALWAYS_SEEDED_VOUCHER_CODES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The same, for a portfolio workspace — which is seeded with four of its own and none of the above.
+ * The same, for a portfolio workspace — the four it files about the businesses it tracks.
  *
  * A separate set rather than a company-type check inside the stand-in, because the caller already
  * knows which kind of company is open and this file deliberately knows nothing about companies.
- * Offering a portfolio the books' four would be the strip naming documents it certainly does not
- * hold, which is the one thing the stand-in exists to avoid.
+ *
+ * Deliberately only these four, though a workspace also holds Contra, Payment, Receipt and Journal
+ * once it reaches v6. This is what stands in while the real list is *unknown*, so it names what a
+ * portfolio certainly has whatever version it sits at — and a workspace still on v5 has exactly
+ * these. Naming the other four as well would offer documents an unsynced workspace does not hold,
+ * which is the one thing the stand-in exists to avoid; naming too few merely means a shorter bar
+ * for the moment before the real list lands.
  */
 export const ALWAYS_SEEDED_PORTFOLIO_CODES: ReadonlySet<string> = new Set([
   'CAPITAL_INTRODUCTION',

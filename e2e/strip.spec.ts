@@ -179,7 +179,7 @@ test.describe('the data entry strip', () => {
  * it used to turn away at the door.
  */
 test.describe('the data entry strip in a portfolio workspace', () => {
-  test('offers the four it is seeded with, on F4 to F7', async ({ page }) => {
+  test('offers the four it is seeded with, on the Ctrl row', async ({ page }) => {
     const faults: string[] = [];
     page.on('pageerror', (error) => faults.push(error.message));
     page.on('console', (message) => {
@@ -194,10 +194,10 @@ test.describe('the data entry strip in a portfolio workspace', () => {
 
     // In the order a month is worked, not alphabetically: money in, earned, allocated, fixes last.
     expect(await group.getByRole('button').allTextContents()).toEqual([
-      'Capital IntroductionF4',
-      'Business ProfitF5',
-      'Profit AllocationF6',
-      'AdjustmentF7',
+      'Capital IntroductionCtrl+F6',
+      'Business ProfitCtrl+F7',
+      'Profit AllocationCtrl+F8',
+      'AdjustmentCtrl+F9',
     ]);
 
     expect(faults, `the workspace reported ${faults.length} fault(s)`).toEqual([]);
@@ -214,10 +214,10 @@ test.describe('the data entry strip in a portfolio workspace', () => {
     expect(await page.getByRole('menuitem').allTextContents()).toEqual([
       'Portfolio',
       'Vouchers',
-      'Capital IntroductionF4',
-      'Business ProfitF5',
-      'Profit AllocationF6',
-      'AdjustmentF7',
+      'Capital IntroductionCtrl+F6',
+      'Business ProfitCtrl+F7',
+      'Profit AllocationCtrl+F8',
+      'AdjustmentCtrl+F9',
     ]);
   });
 
@@ -256,7 +256,13 @@ test.describe('the data entry strip in a portfolio workspace', () => {
       .getByRole('button', { name: 'Business Profit' })
       .waitFor();
 
-    await page.keyboard.press('F5');
+    /*
+      Ctrl+F7, not F5. A workspace holds Contra, Payment, Receipt and Journal of its own now, and
+      those take F4 to F7 — so the four it files about the businesses it tracks moved to the Ctrl
+      row rather than lose the keyboard to them. Ctrl+F6 to Ctrl+F9 deliberately: Ctrl+F4 closes the
+      tab in Chrome on Windows and Ctrl+F5 is a hard reload.
+    */
+    await page.keyboard.press('Control+F7');
 
     await expect(page).toHaveURL(/kg\?raise=BUSINESS_PROFIT/);
   });

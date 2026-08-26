@@ -255,10 +255,10 @@ describe('the menus an analytics workspace gets', () => {
       undefined,
       // Alt+V still reaches the registry for this kind of company, so Vouchers prints no key here.
       undefined,
-      'F4',
-      'F5',
-      'F6',
-      'F7',
+      'Ctrl+F6',
+      'Ctrl+F7',
+      'Ctrl+F8',
+      'Ctrl+F9',
     ]);
   });
 

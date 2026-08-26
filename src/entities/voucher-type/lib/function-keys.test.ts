@@ -147,7 +147,7 @@ describe('the voucher function keys', () => {
       expect(raisableVoucherTypes([], true)).toEqual([]);
     });
 
-    it("gives a portfolio workspace its own four, on the keys the books' four would have used", () => {
+    it('gives a portfolio workspace its own four, on the Ctrl row', () => {
       /*
         A company either keeps its own books or measures other people's, so these can never be
         seeded alongside Contra, Payment, Receipt and Journal — the same guarantee that lets Income
@@ -165,20 +165,20 @@ describe('the voucher function keys', () => {
 
       // Alphabetical in, worked order out: money in, profit earned, profit allocated, fixes last.
       expect(raisable).toEqual([
-        { code: 'CAPITAL_INTRODUCTION', name: 'Capital Introduction', key: 'F4' },
-        { code: 'BUSINESS_PROFIT', name: 'Business Profit', key: 'F5' },
-        { code: 'PROFIT_ALLOCATION', name: 'Profit Allocation', key: 'F6' },
-        { code: 'ADJUSTMENT', name: 'Adjustment', key: 'F7' },
+        { code: 'CAPITAL_INTRODUCTION', name: 'Capital Introduction', key: 'Ctrl+F6' },
+        { code: 'BUSINESS_PROFIT', name: 'Business Profit', key: 'Ctrl+F7' },
+        { code: 'PROFIT_ALLOCATION', name: 'Profit Allocation', key: 'Ctrl+F8' },
+        { code: 'ADJUSTMENT', name: 'Adjustment', key: 'Ctrl+F9' },
       ]);
     });
 
     it("stands in a portfolio's own four, never the books' four, while its list is unknown", () => {
       // Offering a workspace Contra and Payment would name documents it certainly does not hold.
       expect(raisableVoucherTypes([], false, ALWAYS_SEEDED_PORTFOLIO_CODES)).toEqual([
-        { code: 'CAPITAL_INTRODUCTION', name: 'Capital Introduction', key: 'F4' },
-        { code: 'BUSINESS_PROFIT', name: 'Business Profit', key: 'F5' },
-        { code: 'PROFIT_ALLOCATION', name: 'Profit Allocation', key: 'F6' },
-        { code: 'ADJUSTMENT', name: 'Adjustment', key: 'F7' },
+        { code: 'CAPITAL_INTRODUCTION', name: 'Capital Introduction', key: 'Ctrl+F6' },
+        { code: 'BUSINESS_PROFIT', name: 'Business Profit', key: 'Ctrl+F7' },
+        { code: 'PROFIT_ALLOCATION', name: 'Profit Allocation', key: 'Ctrl+F8' },
+        { code: 'ADJUSTMENT', name: 'Adjustment', key: 'Ctrl+F9' },
       ]);
     });
 
