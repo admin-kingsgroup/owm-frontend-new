@@ -4,7 +4,7 @@ import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
 import {
-  ALWAYS_SEEDED_PORTFOLIO_CODES,
+  PORTFOLIO_BUSINESS_CODES,
   ALWAYS_SEEDED_VOUCHER_CODES,
   raisableVoucherTypes,
 } from '@/entities/voucher-type';
@@ -261,14 +261,14 @@ export function AppShell() {
     return raisableVoucherTypes(
       voucherTypes,
       voucherTypesKnown,
-      isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
+      isPortfolio ? PORTFOLIO_BUSINESS_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
     ).map((type) => ({
       group: 'Data entry',
       key: type.key,
       label: type.name,
       // The same destination the Transactions menu uses — see raiseVoucherPath, which is also why a
       // portfolio's four go to its registry rather than to a voucher form that cannot accept them.
-      onSelect: () => navigate(raiseVoucherPath(base, type.code, isPortfolio)),
+      onSelect: () => navigate(raiseVoucherPath(base, type.code)),
     }));
   }, [company, companyId, isPortfolio, navigate, voucherTypes, voucherTypesKnown]);
 

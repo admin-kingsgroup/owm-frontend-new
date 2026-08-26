@@ -74,19 +74,21 @@ export const ALWAYS_SEEDED_VOUCHER_CODES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The same, for a portfolio workspace — the four it files about the businesses it tracks.
+ * The four a portfolio files **about a business it tracks** — as opposed to about its own money.
  *
- * A separate set rather than a company-type check inside the stand-in, because the caller already
- * knows which kind of company is open and this file deliberately knows nothing about companies.
+ * Two callers, one meaning. It decides where raising one begins: these need a business, a period
+ * and a profit split, none of which the voucher form has any notion of, and they post to accounts
+ * the registry mints with a slash in the code that the voucher API refuses outright — so they go
+ * to the registry, while a workspace's own Contra, Payment, Receipt and Journal are ordinary
+ * vouchers and go to the form like anyone else's.
  *
- * Deliberately only these four, though a workspace also holds Contra, Payment, Receipt and Journal
- * once it reaches v6. This is what stands in while the real list is *unknown*, so it names what a
- * portfolio certainly has whatever version it sits at — and a workspace still on v5 has exactly
- * these. Naming the other four as well would offer documents an unsynced workspace does not hold,
- * which is the one thing the stand-in exists to avoid; naming too few merely means a shorter bar
- * for the moment before the real list lands.
+ * It is also the stand-in while a workspace's real list has not arrived. Deliberately only these
+ * four there, though a workspace holds eight once it reaches v6: this names what a portfolio
+ * certainly has whatever version it sits at, and one still on v5 has exactly these. Naming the
+ * other four would offer documents an unsynced workspace does not hold, which is the one thing the
+ * stand-in exists to avoid; naming too few is only a shorter bar for a moment.
  */
-export const ALWAYS_SEEDED_PORTFOLIO_CODES: ReadonlySet<string> = new Set([
+export const PORTFOLIO_BUSINESS_CODES: ReadonlySet<string> = new Set([
   'CAPITAL_INTRODUCTION',
   'BUSINESS_PROFIT',
   'PROFIT_ALLOCATION',

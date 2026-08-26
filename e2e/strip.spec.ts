@@ -173,13 +173,25 @@ test.describe('the data entry strip', () => {
  * The same strip, for the workspace that measures other people's businesses.
  *
  * It was skipped entirely while nothing was ever posted to one — no Data entry group at all, and a
- * Transactions menu naming only the registry. That stopped being true when the workspace was seeded
- * with four voucher types of its own, and nothing in the unit suites can show that the four are on
- * screen, on the keys the books' four would have used, or that the vouchers screen accepts a company
- * it used to turn away at the door.
+ * Transactions menu naming only the registry. A workspace holds eight documents now: the four it
+ * files about a business it tracks, and from seed v6 the four every posting company has for its own
+ * money. Nothing in the unit suites can show that all eight are on screen, that the two sets keep
+ * separate keys, or that each goes to the door that can actually accept it.
  */
+const PORTFOLIO_STRIP = [
+  'ContraF4',
+  'PaymentF5',
+  'ReceiptF6',
+  'JournalF7',
+  // On the Ctrl row: the four above claim F4 to F7, being earlier in the key table.
+  'Capital IntroductionCtrl+F6',
+  'Business ProfitCtrl+F7',
+  'Profit AllocationCtrl+F8',
+  'AdjustmentCtrl+F9',
+];
+
 test.describe('the data entry strip in a portfolio workspace', () => {
-  test('offers the four it is seeded with, on the Ctrl row', async ({ page }) => {
+  test('offers all eight, with the two sets on separate keys', async ({ page }) => {
     const faults: string[] = [];
     page.on('pageerror', (error) => faults.push(error.message));
     page.on('console', (message) => {
@@ -192,14 +204,7 @@ test.describe('the data entry strip in a portfolio workspace', () => {
     const group = page.getByRole('group', { name: 'Data entry' });
     await group.getByRole('button', { name: 'Adjustment' }).waitFor();
 
-    // In the order a month is worked, not alphabetically: money in, earned, allocated, fixes last.
-    expect(await group.getByRole('button').allTextContents()).toEqual([
-      'Capital IntroductionCtrl+F6',
-      'Business ProfitCtrl+F7',
-      'Profit AllocationCtrl+F8',
-      'AdjustmentCtrl+F9',
-    ]);
-
+    expect(await group.getByRole('button').allTextContents()).toEqual(PORTFOLIO_STRIP);
     expect(faults, `the workspace reported ${faults.length} fault(s)`).toEqual([]);
   });
 
@@ -214,38 +219,40 @@ test.describe('the data entry strip in a portfolio workspace', () => {
     expect(await page.getByRole('menuitem').allTextContents()).toEqual([
       'Portfolio',
       'Vouchers',
-      'Capital IntroductionCtrl+F6',
-      'Business ProfitCtrl+F7',
-      'Profit AllocationCtrl+F8',
-      'AdjustmentCtrl+F9',
+      ...PORTFOLIO_STRIP,
     ]);
   });
 
-  test('reads its vouchers on the vouchers screen, and is sent elsewhere to write them', async ({
-    page,
-  }) => {
+  test('raises its own money-movement vouchers on the vouchers screen', async ({ page }) => {
     /*
-      The screen refused this company outright before, which made its own vouchers unreadable. It
-      lists them now — but raising one here cannot work: the accounts are namespaced with a slash
-      by the business registry and the voucher API validates `ledgerCode` as `[A-Z0-9_]+`, so the
-      form balances and then answers `ledgerCode must be alphanumeric` on accept.
+      The screen refused this company outright once, which made its own vouchers unreadable, and
+      then offered only a way out to the registry — right while the four it files about a business
+      were all it held, wrong the moment it gained a Contra, Payment, Receipt and Journal of its
+      own. Those are ordinary vouchers against ordinary accounts and this is where they are raised.
     */
     await signIn(page);
     await page.goto(`/companies/${portfolioId}/vouchers`);
 
     await expect(page.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
     await expect(page.getByText('This company does not post vouchers')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /New voucher/ })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Open the portfolio/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /New voucher/ })).toBeVisible();
   });
 
-  test('cannot be talked into the voucher form by an old bookmark', async ({ page }) => {
+  test('sends only the four it files about a business to the registry', async ({ page }) => {
     await signIn(page);
-    await page.goto(`/companies/${portfolioId}/vouchers?new=CAPITAL_INTRODUCTION`);
+    const group = page.getByRole('group', { name: 'Data entry' });
 
-    await expect(page.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
-    // The form would fill and balance and then be refused, so it is never opened at all.
-    await expect(page.getByLabel('Voucher type')).toHaveCount(0);
+    // Waited for the settled list each time: the stand-in draws four before the real eight land,
+    // and clicking across that re-render is how this caught the wrong button.
+    await page.goto(`/companies/${portfolioId}`);
+    await group.getByRole('button', { name: 'Adjustment' }).waitFor();
+    await group.getByRole('button', { name: 'Payment' }).click();
+    await expect(page).toHaveURL(/vouchers\?new=PAYMENT/);
+
+    await page.goto(`/companies/${portfolioId}`);
+    await group.getByRole('button', { name: 'Adjustment' }).waitFor();
+    await group.getByRole('button', { name: 'Capital Introduction' }).click();
+    await expect(page).toHaveURL(/kg\?raise=CAPITAL_INTRODUCTION/);
   });
 
   test('still answers its function keys from the registry screen', async ({ page }) => {

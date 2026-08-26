@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
@@ -26,7 +26,6 @@ const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
-  const navigate = useNavigate();
 
   // Held as one value tagged with the company it was fetched for. Tagging lets the render derive
   // "is this the company on screen?" instead of clearing state from inside an effect, which would
@@ -287,25 +286,6 @@ export function VouchersPage() {
     return <Loading label="Loading vouchers…" />;
   }
 
-  /**
-   * Whether a voucher can be *raised* here, as opposed to merely read.
-   *
-   * A portfolio workspace used to be turned away from this screen outright, on the reasoning that
-   * it keeps no double-entry books. That reasoning ended when it was seeded with four voucher types
-   * of its own, so the list below is now worth reading for one: those vouchers are its month.
-   *
-   * Raising one here is a different matter, and it cannot work. Its accounts are minted by the
-   * business registry and namespaced with a slash — `KG_TEXTILES/CAP/PTR_A` — while the voucher
-   * API validates `ledgerCode` as `[A-Z0-9_]+` and refuses anything else. The form fills and
-   * balances and then answers `ledgerCode must be alphanumeric` on accept, which is a dead end
-   * reached only after the work is done. Those entries also need a business, a period and a profit
-   * split that this form has no notion of.
-   *
-   * So the screen reads, and points at the registry to write. Reading `company` rather than a
-   * feature flag because it is the company's kind that decides it, exactly as the shell does.
-   */
-  const raisesVouchersHere = company?.type !== 'ANALYTICS';
-
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -314,57 +294,35 @@ export function VouchersPage() {
           {/* The reason the action is unavailable has to be readable, not just a tooltip: a
               disabled button takes no focus, so screen readers never reach its title. */}
           <p className={styles.subtitle} id="vouchers-subtitle">
-            {!raisesVouchersHere
-              ? 'Capital, profit and allocations are entered against a business in the portfolio. They are listed here once posted.'
-              : setupIncomplete
-                ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
-                : 'Double-entry transactions for this company.'}
+            {setupIncomplete
+              ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
+              : 'Double-entry transactions for this company.'}
           </p>
         </div>
         {/*
-          A workspace is sent to where its documents are actually raised rather than given a
-          disabled button — see raisesVouchersHere. A dead control says "not now"; a link says
-          where, and where is a real screen.
+          Offered to every company again. A portfolio workspace was sent to the registry from here
+          instead, correctly, while the only documents it held were the four it files about a
+          business — those cannot use this form at all. It has its own Contra, Payment, Receipt and
+          Journal from seed v6, and those are ordinary vouchers against ordinary accounts, so a
+          screen that refused to raise one was refusing the only thing it could actually do. The
+          four that still need the registry are routed there by the menu and the strip instead —
+          see raiseVoucherPath, which decides by document rather than by company.
         */}
-        {raisesVouchersHere ? (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => openCreate(null)}
-            /*
-              Also while the setup is still in flight. `setupMissing` is empty until it lands, so
-              this read as "nothing missing" and let the form open on no ledgers and no voucher
-              types — where it announced "Finish setting up this company" about a company that is
-              set up perfectly well. The same distinction the subtitle above already draws.
-            */
-            disabled={!setupLoadedOk || setupIncomplete}
-            aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
-          >
-            <Plus size={16} /> New voucher
-          </Button>
-        ) : (
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => openCreate(null)}
           /*
-            A button that navigates, not a Link wrapped round a Button.
-
-            Wrapped, it renders <a><button> — interactive content inside an anchor, which is invalid
-            and cost two tab stops for one control: the keyboard stopped on the link and again on
-            the button inside it, and a reader announced the same destination twice. That shape is
-            survivable in an EmptyState nobody reaches twice; this sits in the header of a screen a
-            workspace lands on routinely.
-
-            A button rather than a bare styled link because the shell's own strip already reaches
-            this exact destination with one — "Go to · Portfolio" — so it is the pattern the product
-            uses for this, and it keeps the header identical to the New voucher button it stands in
-            for without a second copy of that button's styling.
+            Also while the setup is still in flight. `setupMissing` is empty until it lands, so
+            this read as "nothing missing" and let the form open on no ledgers and no voucher
+            types — where it announced "Finish setting up this company" about a company that is
+            set up perfectly well. The same distinction the subtitle above already draws.
           */
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => navigate(`/companies/${companyId}/kg`)}
-          >
-            Open the portfolio <ArrowRight size={16} />
-          </Button>
-        )}
+          disabled={!setupLoadedOk || setupIncomplete}
+          aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
+        >
+          <Plus size={16} /> New voucher
+        </Button>
       </div>
 
       <div className={styles.filters}>
@@ -417,11 +375,7 @@ export function VouchersPage() {
           title="No vouchers found"
           /* Not "create one to get started" for a workspace that cannot create one here — the
              header directly above already says where they are entered. */
-          description={
-            raisesVouchersHere
-              ? 'Create a voucher to get started.'
-              : 'Entries made against a business in the portfolio appear here once posted.'
-          }
+          description="Create a voucher to get started."
         />
       ) : (
         <>
@@ -504,16 +458,7 @@ export function VouchersPage() {
         </>
       )}
 
-      {/*
-        `raisesVouchersHere` as well, so a bookmarked ?new= from before the shell stopped producing
-        one for a workspace cannot open a form whose every accept is refused — see the note on it.
-      */}
-      <Modal
-        open={createModalOpen && raisesVouchersHere}
-        onClose={() => closeCreate()}
-        title="New voucher"
-        size="wide"
-      >
+      <Modal open={createModalOpen} onClose={() => closeCreate()} title="New voucher" size="wide">
         {/*
           Held back until the masters are in.
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  ALWAYS_SEEDED_PORTFOLIO_CODES,
+  PORTFOLIO_BUSINESS_CODES,
   VOUCHER_FUNCTION_KEYS,
   functionKeyFor,
   inFunctionKeyOrder,
@@ -174,7 +174,7 @@ describe('the voucher function keys', () => {
 
     it("stands in a portfolio's own four, never the books' four, while its list is unknown", () => {
       // Offering a workspace Contra and Payment would name documents it certainly does not hold.
-      expect(raisableVoucherTypes([], false, ALWAYS_SEEDED_PORTFOLIO_CODES)).toEqual([
+      expect(raisableVoucherTypes([], false, PORTFOLIO_BUSINESS_CODES)).toEqual([
         { code: 'CAPITAL_INTRODUCTION', name: 'Capital Introduction', key: 'Ctrl+F6' },
         { code: 'BUSINESS_PROFIT', name: 'Business Profit', key: 'Ctrl+F7' },
         { code: 'PROFIT_ALLOCATION', name: 'Profit Allocation', key: 'Ctrl+F8' },

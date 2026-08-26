@@ -13,7 +13,7 @@ export { previewVoucherNumber } from './lib/preview-number';
 export {
   VOUCHER_FUNCTION_KEYS,
   ALWAYS_SEEDED_VOUCHER_CODES,
-  ALWAYS_SEEDED_PORTFOLIO_CODES,
+  PORTFOLIO_BUSINESS_CODES,
   functionKeyFor,
   inFunctionKeyOrder,
   raisableVoucherTypes,

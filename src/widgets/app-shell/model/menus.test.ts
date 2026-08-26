@@ -293,6 +293,28 @@ describe('the menus an analytics workspace gets', () => {
     expect(created.map((item) => item.to)).toEqual(['/companies/c1/kg?raise=CAPITAL_INTRODUCTION']);
   });
 
+  it("sends a workspace's own Payment to the voucher form, not to the registry", () => {
+    /*
+      The destination turns on the document, not on the company. A workspace has its own Contra,
+      Payment, Receipt and Journal from seed v6 and those are ordinary vouchers against ordinary
+      accounts — routed to the registry with the other four they were unreachable, and F5 opened a
+      portfolio screen instead of a payment.
+    */
+    const types = [
+      voucherType('PAYMENT', 'Payment'),
+      voucherType('CAPITAL_INTRODUCTION', 'Capital Introduction'),
+    ];
+    const created =
+      buildMenus('c1', portfolio, '/companies/c1', false, types)
+        .find((menu) => menu.id === 'transactions')
+        ?.items.filter((item) => /vouchers\?new=|raise=/.test(item.to)) ?? [];
+
+    expect(created.map((item) => `${item.label} -> ${item.to}`)).toEqual([
+      'Payment -> /companies/c1/vouchers?new=PAYMENT',
+      'Capital Introduction -> /companies/c1/kg?raise=CAPITAL_INTRODUCTION',
+    ]);
+  });
+
   it('still sends a company that keeps books to the voucher form', () => {
     const types = [voucherType('PAYMENT', 'Payment')];
     const created =

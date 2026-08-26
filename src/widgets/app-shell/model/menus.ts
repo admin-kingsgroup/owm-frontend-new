@@ -1,6 +1,6 @@
 import type { Company } from '@/entities/company';
 import {
-  ALWAYS_SEEDED_PORTFOLIO_CODES,
+  PORTFOLIO_BUSINESS_CODES,
   ALWAYS_SEEDED_VOUCHER_CODES,
   inFunctionKeyOrder,
   raisableVoucherTypes,
@@ -51,27 +51,33 @@ export function periodQuery(here: string): string {
 }
 
 /**
- * Where raising this document begins, for a company of this kind.
+ * Where raising this document begins.
  *
  * Shared by the Transactions menu and the button bar so the two doors cannot send the same document
  * to two different places.
  *
- * A set of books goes to the voucher form, which is what that form is for. A portfolio workspace
- * goes to its registry instead, and that is not a preference — the generic form **cannot** post its
- * documents. The accounts a portfolio posts to are minted by the business registry and namespaced
- * with a slash (`KG_TEXTILES/INV`, `KG_TEXTILES/CAP/PTR_A`), while the voucher API validates
- * `ledgerCode` as `[A-Z0-9_]+`. So every entry against them is refused, and refused late: the form
- * fills, balances, and answers `ledgerCode must be alphanumeric` on accept. Sending someone there
- * is sending them to a dead end with a developer's error message at the bottom of it.
+ * **Decided by the document, not by the company.** It turned on the company's kind while a
+ * portfolio held nothing but the four it files about a business — every document it had wanted the
+ * registry, so the two questions had the same answer. A workspace has its own Contra, Payment,
+ * Receipt and Journal from seed v6, and those are ordinary vouchers against ordinary accounts: sent
+ * to the registry they were unreachable, and F5 on a workspace opened a portfolio screen instead of
+ * a payment.
+ *
+ * So only `PORTFOLIO_BUSINESS_CODES` go to the registry, and everything else goes to the voucher
+ * form. Those four cannot use that form even in principle — the accounts they post to are minted by
+ * the registry and namespaced with a slash (`KG_TEXTILES/INV`), while the voucher API validates
+ * `ledgerCode` as `[A-Z0-9_]+`, so an entry against them is refused, and refused late: the form
+ * fills, balances, and answers `ledgerCode must be alphanumeric` on accept. They also need a
+ * business, a period and a profit split the form has no notion of.
  *
  * The document asked for rides along in `raise`. The registry ignores a parameter it does not know,
  * so today this simply lands there — and when the workspace grows an entry screen of its own it can
- * open on the right document without the shell being touched again. Those entries also need a
- * business, a period and a profit split, none of which the generic form has any notion of, which is
- * why the registry is where they belong rather than somewhere the voucher form could be taught.
+ * open on the right document without the shell being touched again.
  */
-export function raiseVoucherPath(base: string, code: string, isPortfolio: boolean): string {
-  return isPortfolio ? `${base}/kg?raise=${code}` : `${base}/vouchers?new=${code}`;
+export function raiseVoucherPath(base: string, code: string): string {
+  return PORTFOLIO_BUSINESS_CODES.has(code)
+    ? `${base}/kg?raise=${code}`
+    : `${base}/vouchers?new=${code}`;
 }
 
 /**
@@ -166,7 +172,7 @@ export function buildMenus(
       : raisableVoucherTypes(
           voucherTypes,
           voucherTypesKnown,
-          isPortfolio ? ALWAYS_SEEDED_PORTFOLIO_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
+          isPortfolio ? PORTFOLIO_BUSINESS_CODES : ALWAYS_SEEDED_VOUCHER_CODES,
         );
 
   return [
@@ -259,7 +265,7 @@ export function buildMenus(
         */
         ...raisable.map((type, index) => ({
           label: type.name,
-          to: raiseVoucherPath(base, type.code, isPortfolio),
+          to: raiseVoucherPath(base, type.code),
           ...(type.key ? { hint: type.key } : {}),
           ...(index === 0 ? { section: 'Create' } : {}),
         })),
