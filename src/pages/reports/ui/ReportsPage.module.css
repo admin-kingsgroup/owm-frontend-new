@@ -5,10 +5,23 @@
   width: 100%;
   /*
     Fills the pane it sits in, so the grid below can reach the bottom of the frame rather than
-    leaving a third of the screen blank under a short statement. `min-height` rather than `height`:
-    a statement longer than the pane still grows past it and scrolls, as it always did.
+    leaving a third of the screen blank under a short statement.
+
+    `height` rather than `min-height`, and that distinction is the whole of whether the heading
+    below stays on the statement. `min-height` fills the pane but does not bound it: a statement
+    longer than the pane grew past it, the panel grew with it, and `flex: 1` on a parent with no
+    height of its own is just content height — so the grid's frame never became a scroller, and a
+    heading pinned inside a box that never scrolls slides off the top with everything else. It
+    failed only once a statement was long enough to need it, which is the worst way to fail.
+
+    Bounded, the chain means what it says: the pane's height reaches the panel, the panel gives the
+    rest to the grid, the grid scrolls inside its frame with its heading and totals held on it, and
+    the controls above stay put. Taller than the pane can hold, the children overflow and the pane
+    scrolls exactly as it used to — see the floor on the frame below, which is what keeps that
+    escape open.
   */
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 /*
@@ -47,7 +60,14 @@
 .page > section.panel:last-child > .tableWrap,
 .page > section.panel:last-of-type > .tableWrap {
   flex: 1;
-  min-height: 0;
+  /*
+    A floor rather than zero. What sits above a grid varies — a period bar, a comparison notice, an
+    exception count — and on a short screen it can leave the grid nothing at all, which would hide
+    the figures rather than merely crowd them. Below this the page stops fitting, its children
+    overflow, and the pane scrolls the way it did before any of this; the statement is always
+    reachable, whichever of the two is doing the scrolling.
+  */
+  min-height: 9rem;
   /* It is bounded by the panel now, so the blanket cap below would only re-introduce the gap. */
   max-height: none;
 }
