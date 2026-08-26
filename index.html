@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Installed-app metadata for iOS. The manifest link is injected at build time by
+      vite-plugin-pwa and covers Android on its own, but Safari reads almost none of the manifest:
+      without these three lines "Add to Home Screen" saves a screenshot as the icon and reopens the
+      site in a browser tab, which is the thing installing was meant to avoid.
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="OWM" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Colours the address bar on Android, and the status bar once installed. Matches
+         theme_color in the manifest and the accent token in app/styles/globals.css. -->
+    <meta name="theme-color" content="#1a52c4" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

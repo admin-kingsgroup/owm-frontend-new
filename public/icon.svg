@@ -1,0 +1,29 @@
+<!--
+  Source artwork for the installed-app icons. Everything under it — pwa-*.png,
+  maskable-icon-512x512.png, apple-touch-icon-180x180.png — is generated from this file by
+  `npm run icons`, so this is the only one to edit.
+
+  The wordmark is drawn as strokes rather than <text>. The rasteriser runs wherever the command is
+  run, including CI, and it has no reason to have Inter installed; a font it cannot find is
+  silently substituted and the icon ships wrong. Geometry renders the same everywhere.
+
+  The blue is the accent token from app/styles/globals.css.
+
+  All three glyphs are meant to read at one cap height, 208 to 304. The stroke endpoints are inset
+  by half the stroke width because the round caps overhang it: written at the cap line the W and M
+  stood 26px taller than the O, which read as a typo rather than a wordmark.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1a52c4" />
+  <g
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="26"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="106" cy="256" r="35" />
+    <path d="M191 221 L216 291 L241 240 L266 291 L291 221" />
+    <path d="M341 291 L366 221 L391 272 L416 221 L441 291" />
+  </g>
+</svg>

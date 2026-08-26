@@ -1,0 +1,54 @@
+/*
+  Bottom centre, above everything. Colours all come from the theme tokens, so the bar follows the
+  light/dark choice without knowing which one is in force.
+*/
+.prompt {
+  position: fixed;
+  z-index: 100;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  /* Clear of the home indicator on an installed iOS app, where there is no browser chrome left to
+     sit above and the bar would otherwise land under the gesture area. */
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background-color: var(--paper-card);
+  box-shadow: var(--shadow-2);
+}
+
+.message {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Narrow screens: stack, and span the width rather than letting the buttons squeeze the sentence
+   onto three lines. */
+@media (max-width: 30rem) {
+  .prompt {
+    right: 1rem;
+    left: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+    transform: none;
+    padding: 0.875rem 1rem;
+  }
+
+  .actions {
+    justify-content: flex-end;
+  }
+}
