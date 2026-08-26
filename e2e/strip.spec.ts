@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 
 import { seed, seedAnalytics, seedInvented } from './seed';
 
+const API = process.env.VITE_API_BASE_URL ?? 'http://localhost:5099/api/v1';
+
 let companyId: string;
 let portfolioId: string;
 let token: string;
@@ -17,6 +19,49 @@ async function signIn(page: Page) {
   await page.addInitScript((value) => {
     window.localStorage.setItem('owm_access_token', value);
   }, token);
+}
+
+async function api(path: string, init: { method?: string; body?: unknown } = {}) {
+  const response = await fetch(`${API}${path}`, {
+    method: init.method ?? 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: init.body ? JSON.stringify(init.body) : undefined,
+  });
+  return { status: response.status, body: await response.json().catch(() => null) };
+}
+
+/**
+ * A bank account and an expense head for the workspace itself.
+ *
+ * Deliberately not in `seedAnalytics`: every other check draws that company, and two more ledgers
+ * would move the pictures and the counts they assert. What these are for is the one thing seed v6
+ * exists to allow — a workspace filing its *own* money, which needs somewhere for it to come from
+ * and somewhere for it to go.
+ */
+async function giveThePortfolioItsOwnAccounts() {
+  const held = (await api(`/companies/${portfolioId}/ledgers`)).body?.data ?? [];
+  if (held.some((ledger: { code: string }) => ledger.code === 'KG_BANK')) return;
+
+  const groups = (await api(`/companies/${portfolioId}/account-groups`)).body?.data ?? [];
+  const groupCode = (code: string) =>
+    groups.find((group: { code: string }) => group.code === code)?.code;
+
+  await api(`/companies/${portfolioId}/ledgers`, {
+    method: 'POST',
+    body: {
+      code: 'KG_BANK',
+      name: 'Workspace Current Account',
+      accountGroupCode: groupCode('BANK_ACCOUNTS'),
+    },
+  });
+  await api(`/companies/${portfolioId}/ledgers`, {
+    method: 'POST',
+    body: {
+      code: 'KG_FEES',
+      name: 'Professional Fees',
+      accountGroupCode: groupCode('INDIRECT_EXPENSES'),
+    },
+  });
 }
 
 /**
@@ -253,6 +298,56 @@ test.describe('the data entry strip in a portfolio workspace', () => {
     await group.getByRole('button', { name: 'Adjustment' }).waitFor();
     await group.getByRole('button', { name: 'Capital Introduction' }).click();
     await expect(page).toHaveURL(/kg\?raise=CAPITAL_INTRODUCTION/);
+  });
+
+  /*
+    The whole point of seed v6, followed all the way through rather than only to the right URL.
+
+    A workspace could not file its own money at all before it: no Contra, Payment, Receipt or
+    Journal existed for it. Reaching the form is not the same as the entry landing — the four it
+    files about a business cannot use that form even in principle, so "it opened" was never
+    sufficient evidence that these four could.
+  */
+  test('files its own money, from the key to a posted voucher', async ({ page }) => {
+    await giveThePortfolioItsOwnAccounts();
+    const before = (await api(`/companies/${portfolioId}/vouchers?limit=1`)).body?.data?.total ?? 0;
+
+    await signIn(page);
+    await page.goto(`/companies/${portfolioId}`);
+    await page
+      .getByRole('group', { name: 'Data entry' })
+      .getByRole('button', { name: 'Adjustment' })
+      .waitFor();
+
+    await page.keyboard.press('F5');
+    await expect(page).toHaveURL(/vouchers\?new=PAYMENT/);
+
+    const type = page.getByLabel('Voucher type');
+    await type.waitFor({ timeout: 20_000 });
+    await expect(type).toHaveValue('PAYMENT');
+
+    const accounts = page.locator('table tbody select');
+    await accounts.first().selectOption('KG_FEES');
+    await accounts.nth(1).selectOption('KG_BANK');
+    await page.locator('table tbody input[aria-label^="Debit"]').first().fill('5000');
+    await page.locator('table tbody input[aria-label^="Credit"]').nth(1).fill('5000');
+    await page.getByRole('button', { name: 'Accept voucher' }).click();
+
+    await expect
+      .poll(async () => (await api(`/companies/${portfolioId}/vouchers?limit=1`)).body?.data?.total)
+      .toBe(before + 1);
+
+    // And it reaches the books, on the right side of each account.
+    const raised = (await api(`/companies/${portfolioId}/vouchers?limit=1`)).body.data.items[0];
+    await api(`/companies/${portfolioId}/vouchers/${raised.id}/post`, { method: 'POST' });
+
+    const trial = await api(`/companies/${portfolioId}/reports/trial-balance`);
+    const byCode = new Map(
+      (trial.body?.data?.rows ?? []).map((row: { code: string }) => [row.code, row]),
+    );
+    expect(byCode.get('KG_FEES')).toMatchObject({ closingDebit: '5000.00' });
+    expect(byCode.get('KG_BANK')).toMatchObject({ closingCredit: '5000.00' });
+    expect(trial.body.data.totals.difference).toBe('0.00');
   });
 
   test('still answers its function keys from the registry screen', async ({ page }) => {
