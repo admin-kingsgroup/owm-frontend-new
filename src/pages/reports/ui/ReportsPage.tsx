@@ -992,6 +992,13 @@ export function ReportsPage() {
         open={statement !== null}
         onClose={() => setStatement(null)}
         title={statement ? `${statement.ledger.name} (${statement.ledger.code})` : ''}
+        /*
+          A statement is five columns of figures — date, voucher, debit, credit, running balance —
+          which is exactly the case the wide dialog exists for. At the default 28rem it was the
+          narrower box that made the overflow visible, and squeezed to fit it would have been five
+          columns scrolling sideways inside a dialog instead.
+        */
+        size="wide"
       >
         {statement && (
           <>

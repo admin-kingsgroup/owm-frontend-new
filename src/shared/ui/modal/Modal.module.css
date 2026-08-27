@@ -64,6 +64,19 @@
 
 .content {
   padding: 1rem;
+  /*
+    Content too wide for the dialog scrolls inside it rather than escaping over the page.
+
+    A dialog is a fixed box and its contents are not always willing to fit: the ledger statement
+    asks for a 38rem minimum, and opened in the default 28rem box its header row and its opening
+    and closing bars simply painted outside the white card and over the page behind. Nothing was
+    clipped, nothing scrolled — it just spilled.
+
+    Sizing the dialog to its content is the other fix, and the right one where the content deserves
+    the room; this is the floor under every dialog that has not thought about it. `auto`, so a
+    dialog whose content fits — which is nearly all of them — gets no scrollbar and no change.
+  */
+  overflow-x: auto;
 }
 
 /*

@@ -495,6 +495,13 @@ export function VouchersPage() {
         open={selectedVoucher !== null || detailLoading}
         onClose={() => setSelectedVoucher(null)}
         title={selectedVoucher ? `Voucher ${selectedVoucher.voucherNumber}` : 'Loading…'}
+        /*
+          Its entries are a table — line, ledger, debit, credit — which is the same shape as a
+          statement and wants the same room. It was not overflowing the default box, because the
+          grid scrolls inside itself, but four columns of figures inside 28rem meant reading a
+          voucher by dragging it sideways.
+        */
+        size="wide"
       >
         {detailLoading || !selectedVoucher ? (
           <Loading />

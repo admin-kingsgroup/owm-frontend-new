@@ -455,7 +455,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-width: min(38rem, 80vw);
+  /*
+    Wide enough to read five columns of figures, and never wider than whatever holds it.
+
+    `100%` rather than `80vw`. A statement drawn inside a dialog is bounded by the dialog, not by
+    the window: at 80vw this asked for 38rem inside a 28rem box and simply overflowed it — the
+    header row and the opening and closing bars ran out over the page behind. The viewport knows
+    nothing about the box the statement is actually in; its own container does.
+
+    Where there is room — the Cash and Bank books, which draw these full width on the page — it
+    still takes its 38rem.
+  */
+  min-width: min(38rem, 100%);
 }
 
 .statementHead {
