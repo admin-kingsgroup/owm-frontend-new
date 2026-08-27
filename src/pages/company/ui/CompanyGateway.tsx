@@ -18,7 +18,7 @@ import { listVouchers } from '@/entities/voucher';
 import type { VoucherSummary } from '@/entities/voucher';
 import type { VoucherType } from '@/entities/voucher-type';
 import { cn, formatMoney, localeFor } from '@/shared/lib';
-import { ColumnChart } from '@/shared/ui';
+import { ColumnChart, Sparkline } from '@/shared/ui';
 import { useCompanyReadout } from '@/widgets/app-shell';
 import { DashboardHeader } from '@/widgets/dashboard-header';
 
@@ -229,6 +229,30 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
   const latestMonth = cashFlow?.monthly.at(-1) ?? null;
 
   /**
+   * The shape of the year behind a headline figure, for the tiles that have one.
+   *
+   * A running total rather than the month's own movement: the tile states a balance, and a line of
+   * per-month changes beside a balance is a different quantity drawn as though it were the same
+   * one. Cumulative, the line is the balance's own trajectory — which is what "is this going up"
+   * means when you glance at it.
+   *
+   * Normalised to its own range by Sparkline, so it reads as a direction of travel and never as an
+   * amount; the figure beside it is what carries the amount.
+   */
+  const runningTotal = (steps: number[]): number[] =>
+    steps.reduce<number[]>((into, step) => [...into, (into.at(-1) ?? 0) + step], []);
+
+  const cashTrend = cashFlow
+    ? runningTotal(cashFlow.monthly.map((month) => Number(month.netChange)))
+    : [];
+
+  const profitTrend = profitAndLoss
+    ? runningTotal(
+        profitAndLoss.monthly.map((month) => Number(month.income) - Number(month.expenses)),
+      )
+    : [];
+
+  /**
    * The company's own names for its voucher types, for the register rows below.
    *
    * A row names its type from this rather than printing the id it was stored against — an id says
@@ -340,6 +364,38 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
       )}
 
       {/*
+        What is outstanding, before anything it is outstanding about.
+
+        This used to be the first card of the right-hand column, below the tiles and the balance
+        sheet extract — which put the only part of the screen that wants doing below the fold on a
+        laptop. Absent entirely when there is nothing to report, so the band never becomes
+        furniture people stop reading.
+      */}
+      {attention.length > 0 && (
+        <div
+          className={cn(
+            styles.attention,
+            /* Anything actually wrong pitches the band from amber to red — see .attentionBad. */
+            attention.some((item) => item.tone === styles.bad) && styles.attentionBad,
+          )}
+        >
+          <span className={styles.attentionLabel}>Needs attention</span>
+          {attention.map((item) => (
+            <Link className={styles.attentionItem} key={item.key} to={item.to}>
+              <span
+                className={cn(
+                  styles.attentionDot,
+                  item.tone === styles.bad ? styles.attentionDotBad : styles.attentionDotWarn,
+                )}
+                aria-hidden="true"
+              />
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/*
         The four figures worth knowing before choosing where to go next. Each opens the statement it
         came from — a dashboard number nobody can question is a number nobody should trust.
       */}
@@ -377,6 +433,13 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
               {money(Math.abs(Number(cashFlow.totals.netChange)))} over the year
             </span>
           )}
+          {/* The trajectory behind the balance — see runningTotal. A data colour, not the accent,
+              so the line is never read as something to press. */}
+          <Sparkline
+            values={cashTrend}
+            color="var(--data-1)"
+            label="Cash and bank, month by month"
+          />
         </Link>
 
         <Link className={styles.kpi} to={`${base}/reports?report=profit-loss`}>
@@ -401,6 +464,11 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
               {money(profitAndLoss.totals.expenses)}
             </span>
           )}
+          <Sparkline
+            values={profitTrend}
+            color="var(--data-3)"
+            label="Profit accumulated month by month"
+          />
         </Link>
 
         <Link className={styles.kpi} to={`${base}/reports?report=receipts-payments`}>
@@ -604,22 +672,21 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
         </div>
 
         <div className={styles.column}>
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Needs attention</h2>
-            {attention.length === 0 ? (
+          {/*
+            Only the all-clear stays down here. Anything outstanding is in the band at the top of
+            the screen; "nothing outstanding" is worth being able to confirm but is not worth the
+            most valuable space on the page, which is exactly the wrong way round from before.
+          */}
+          {attention.length === 0 && (
+            <section className={styles.card}>
+              <h2 className={styles.cardTitle}>Needs attention</h2>
               <p className={styles.clear}>
                 {drafts === null && loading
                   ? 'Checking…'
                   : 'Nothing outstanding — the books are square.'}
               </p>
-            ) : (
-              attention.map((item) => (
-                <Link className={styles.item} key={item.key} to={item.to}>
-                  <span className={item.tone}>{item.label}</span>
-                </Link>
-              ))
-            )}
-          </section>
+            </section>
+          )}
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Recently filed</h2>

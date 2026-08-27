@@ -1,6 +1,7 @@
 import type { RatioReport } from '@/entities/report';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface RatioViewProps {
   report: RatioReport;
@@ -19,36 +20,34 @@ interface RatioViewProps {
 export function RatioView({ report, money }: RatioViewProps) {
   return (
     <section className={styles.panel}>
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Ratio</th>
-              <th className={styles.num}>Value</th>
-              <th className={styles.num}>From</th>
-              <th className={styles.num}>Over</th>
-              <th>What it says</th>
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Ratio</th>
+            <th data-num>Value</th>
+            <th data-num>From</th>
+            <th data-num>Over</th>
+            <th>What it says</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.ratios.map((line) => (
+            <tr key={line.key}>
+              <td>{line.label}</td>
+              <td data-num>
+                {line.value === null
+                  ? '—'
+                  : line.unit === 'PERCENT'
+                    ? `${line.value}%`
+                    : `${line.value}×`}
+              </td>
+              <td data-num>{money(line.numerator)}</td>
+              <td data-num>{money(line.denominator)}</td>
+              <td>{line.hint}</td>
             </tr>
-          </thead>
-          <tbody>
-            {report.ratios.map((line) => (
-              <tr key={line.key}>
-                <td>{line.label}</td>
-                <td className={styles.num}>
-                  {line.value === null
-                    ? '—'
-                    : line.unit === 'PERCENT'
-                      ? `${line.value}%`
-                      : `${line.value}×`}
-                </td>
-                <td className={styles.num}>{money(line.numerator)}</td>
-                <td className={styles.num}>{money(line.denominator)}</td>
-                <td>{line.hint}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
       <p className={styles.hint}>
         A dash means there was nothing to divide by. That is not the same as nil — a current ratio
         with no current liabilities cannot be answered rather than being perfect.

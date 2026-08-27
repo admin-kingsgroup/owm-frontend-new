@@ -1,0 +1,61 @@
+/*
+  A control that is only an icon — row actions, a close, a chip's dismiss.
+
+  Two copies of this existed (the company dashboard's and the companies list'), both drawing a
+  28px target with no border and no hover state worth the name.
+*/
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.iconButton:hover:not(:disabled) {
+  background-color: var(--hover-tint);
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* A destructive action reads as one on hover, rather than only in its tooltip. */
+.danger:hover:not(:disabled) {
+  background-color: var(--danger-bg-soft);
+  border-color: var(--danger-bd);
+  color: var(--danger-fg);
+}
+
+/*
+  Row actions sit together and are read as a group.
+
+  A phone gets a gap wide enough that the 44px targets globals.css gives them do not touch — two
+  adjacent 44px squares with no space between them is one 88px target as far as a thumb is
+  concerned, and the two mean "edit" and "delete".
+*/
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+@media screen and (pointer: coarse) {
+  .group {
+    gap: var(--space-2);
+  }
+}

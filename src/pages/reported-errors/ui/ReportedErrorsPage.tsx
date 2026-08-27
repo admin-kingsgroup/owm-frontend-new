@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
 import { listClientErrors } from '@/entities/client-error';
 import type { ClientError, ClientErrorKind } from '@/entities/client-error';
-import { useStackedTables } from '@/shared/hooks';
-import { Button, Select, Loading, EmptyState, Badge } from '@/shared/ui';
+import { Button, Select, Loading, EmptyState, Badge, Table } from '@/shared/ui';
 import { getErrorMessage, getErrorStatus } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
@@ -66,9 +65,6 @@ export function ReportedErrorsPage() {
   const [failure, setFailure] = useState<{ message: string; refused: boolean } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const pageRef = useRef<HTMLDivElement>(null);
-  useStackedTables(pageRef);
 
   /** Writes one parameter and drops it when it is the default, so the URL stays readable. */
   const setParam = useCallback(
@@ -182,7 +178,7 @@ export function ReportedErrorsPage() {
   }
 
   return (
-    <div className={styles.page} ref={pageRef}>
+    <div className={styles.page}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Reported errors</h1>
@@ -230,7 +226,7 @@ export function ReportedErrorsPage() {
         />
       ) : (
         <>
-          <table className={styles.table} data-stack>
+          <Table stack>
             <thead>
               <tr>
                 <th>Reference</th>
@@ -248,19 +244,21 @@ export function ReportedErrorsPage() {
                   /* The stack is the reason these are kept, but it is not what a list is for. */
                   onClick={() => setExpanded(expanded === record.id ? null : record.id)}
                 >
-                  <td className={styles.mono}>{record.reference}</td>
+                  <td data-mono>{record.reference}</td>
                   <td>{new Date(record.createdAt).toLocaleString()}</td>
                   <td>
                     <Badge variant={record.kind === 'RENDER' ? 'danger' : 'neutral'}>
                       {KIND_LABELS[record.kind]}
                     </Badge>
                   </td>
-                  <td className={styles.message}>{record.message}</td>
-                  <td className={styles.mono}>{new URL(record.url).pathname}</td>
+                  {/* The fault itself, in full — truncated, the part that says what went wrong is
+                      exactly the part that gets hidden. */}
+                  <td data-wrap>{record.message}</td>
+                  <td data-mono>{new URL(record.url).pathname}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
 
           {expanded && (
             <div className={styles.detail}>

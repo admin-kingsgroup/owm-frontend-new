@@ -1,4 +1,5 @@
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface MonthlyFiguresProps {
   /** One label per month, already written the way the company writes dates. */
@@ -23,34 +24,32 @@ interface MonthlyFiguresProps {
  */
 export function MonthlyFigures({ labels, series, format }: MonthlyFiguresProps) {
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table} data-stack>
-        <thead>
-          <tr>
-            <th>Month</th>
-            {series.map((entry) => (
-              <th key={entry.label} className={styles.num}>
-                {entry.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((label, index) => (
-            <tr key={label}>
-              <td>{label}</td>
-              {series.map((entry) => {
-                const value = entry.values[index];
-                return (
-                  <td key={entry.label} className={styles.num}>
-                    {value === null || value === undefined ? '—' : format(value)}
-                  </td>
-                );
-              })}
-            </tr>
+    <Table surface="plain" sticky className={styles.tableWrap} stack>
+      <thead>
+        <tr>
+          <th>Month</th>
+          {series.map((entry) => (
+            <th key={entry.label} data-num>
+              {entry.label}
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {labels.map((label, index) => (
+          <tr key={label}>
+            <td>{label}</td>
+            {series.map((entry) => {
+              const value = entry.values[index];
+              return (
+                <td key={entry.label} data-num>
+                  {value === null || value === undefined ? '—' : format(value)}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }

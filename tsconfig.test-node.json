@@ -1,0 +1,38 @@
+{
+  /*
+    Tests that read the repository rather than the DOM.
+
+    `grid-density.test.ts` walks every *.module.css and checks that no grid writes its own row
+    height — it needs node:fs, and the app project deliberately does not carry node types, so that
+    browser code importing node:fs is a compile error rather than a runtime one. Given its own
+    project, both stay true: the guard keeps working and the test can still read the files it
+    guards.
+
+    Without this `npm run build` failed on `tsc -b` with three "Cannot find name 'node:fs'" errors,
+    which meant the deploy could not run at all.
+  */
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test-node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*.node.test.ts"]
+}

@@ -1,6 +1,7 @@
 import type { AuditList } from '@/entities/report';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface AuditTrailViewProps {
   trail: AuditList;
@@ -50,30 +51,28 @@ export function AuditTrailView({ trail, day }: AuditTrailViewProps) {
         removed — a correction is itself recorded, rather than replacing what it corrects.
       </p>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>What</th>
-              <th>Action</th>
-              <th>Summary</th>
-              <th>Changed</th>
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>What</th>
+            <th>Action</th>
+            <th>Summary</th>
+            <th>Changed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trail.rows.map((entry) => (
+            <tr key={entry.id}>
+              <td>{day(entry.at)}</td>
+              <td>{ENTITY_LABELS[entry.entity] ?? entry.entity}</td>
+              <td>{ACTION_LABELS[entry.action] ?? entry.action}</td>
+              <td>{entry.summary}</td>
+              <td>{describeChange(entry) ?? '—'}</td>
             </tr>
-          </thead>
-          <tbody>
-            {trail.rows.map((entry) => (
-              <tr key={entry.id}>
-                <td>{day(entry.at)}</td>
-                <td>{ENTITY_LABELS[entry.entity] ?? entry.entity}</td>
-                <td>{ACTION_LABELS[entry.action] ?? entry.action}</td>
-                <td>{entry.summary}</td>
-                <td>{describeChange(entry) ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
 
       {trail.rows.length === 0 && (
         <p className={styles.empty}>Nothing has been changed in this period.</p>

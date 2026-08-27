@@ -2,6 +2,7 @@ import type { ExceptionReport } from '@/entities/report';
 import { cn } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface ExceptionViewProps {
   report: ExceptionReport;
@@ -54,35 +55,33 @@ export function ExceptionView({ report }: ExceptionViewProps) {
           unposted.
         </p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table} data-stack>
-            <thead>
-              <tr>
-                <th>Severity</th>
-                <th>Kind</th>
-                <th>What it is</th>
+        <Table surface="plain" sticky className={styles.tableWrap} stack>
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th>Kind</th>
+              <th>What it is</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordered.map((line, index) => (
+              <tr key={`${line.kind}-${line.entityId ?? index}`}>
+                <td>
+                  <span
+                    className={cn(
+                      styles.severity,
+                      line.severity === 'ERROR' ? styles.severityError : styles.severityQuestion,
+                    )}
+                  >
+                    {line.severity === 'ERROR' ? 'Error' : 'Question'}
+                  </span>
+                </td>
+                <td>{KIND_LABELS[line.kind] ?? line.kind}</td>
+                <td>{line.message}</td>
               </tr>
-            </thead>
-            <tbody>
-              {ordered.map((line, index) => (
-                <tr key={`${line.kind}-${line.entityId ?? index}`}>
-                  <td>
-                    <span
-                      className={cn(
-                        styles.severity,
-                        line.severity === 'ERROR' ? styles.severityError : styles.severityQuestion,
-                      )}
-                    >
-                      {line.severity === 'ERROR' ? 'Error' : 'Question'}
-                    </span>
-                  </td>
-                  <td>{KIND_LABELS[line.kind] ?? line.kind}</td>
-                  <td>{line.message}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
 
       {report.totals.omitted > 0 && (

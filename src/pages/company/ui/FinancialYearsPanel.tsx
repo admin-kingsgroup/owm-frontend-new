@@ -10,7 +10,17 @@ import {
   reopenFinancialYear,
 } from '@/entities/financial-year';
 import type { FinancialYear } from '@/entities/financial-year';
-import { Badge, Button, Input, Loading } from '@/shared/ui';
+import {
+  Badge,
+  Button,
+  Input,
+  Loading,
+  Table,
+  IconButton,
+  IconButtonGroup,
+  ConfirmDialog,
+  toast,
+} from '@/shared/ui';
 import { getErrorMessage, toCalendarDay } from '@/shared/lib';
 
 import styles from './FinancialYearsPanel.module.css';
@@ -43,6 +53,8 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** The year waiting on a yes. */
+  const [pendingDelete, setPendingDelete] = useState<FinancialYear | null>(null);
 
   const [adding, setAdding] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -107,16 +119,20 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
     }
   }
 
-  async function handleDelete(year: FinancialYear) {
-    if (!window.confirm(`Delete financial year ${year.label}? This can't be undone.`)) return;
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    const year = pendingDelete;
 
     setBusyId(year.id);
     setError(null);
     try {
       await deleteFinancialYear(companyId, year.id);
       setYears((current) => current.filter((entry) => entry.id !== year.id));
+      setPendingDelete(null);
+      toast.success(`Financial year ${year.label} deleted.`);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not delete financial year'));
+      /* The dialog stays open, still naming the year that is still in the list. */
+      toast.error(getErrorMessage(err, 'Could not delete financial year'));
     } finally {
       setBusyId(null);
     }
@@ -194,7 +210,7 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
         </form>
       )}
 
-      <table className={styles.table} data-stack>
+      <Table surface="plain" stack>
         <thead>
           <tr>
             <th>Year</th>
@@ -207,50 +223,68 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
         <tbody>
           {years.map((year) => (
             <tr key={year.id}>
-              <td data-label="Year">{year.label}</td>
-              <td data-label="Starts">{toCalendarDay(year.startDate)}</td>
-              <td data-label="Ends">{toCalendarDay(year.endDate)}</td>
-              <td data-label="Status">
+              <td>{year.label}</td>
+              <td>{toCalendarDay(year.startDate)}</td>
+              <td>{toCalendarDay(year.endDate)}</td>
+              <td>
                 <Badge variant={year.status === 'OPEN' ? 'success' : 'neutral'}>
                   {year.status}
                 </Badge>
               </td>
-              <td className={styles.actions}>
-                {year.status === 'OPEN' ? (
-                  <button
-                    type="button"
-                    className={styles.action}
+              <td>
+                <IconButtonGroup>
+                  {year.status === 'OPEN' ? (
+                    <IconButton
+                      label={`Close financial year ${year.label}`}
+                      disabled={busyId === year.id}
+                      onClick={() => runOn(year.id, () => closeFinancialYear(companyId, year.id))}
+                    >
+                      <Lock size={13} />
+                    </IconButton>
+                  ) : (
+                    <IconButton
+                      label={`Reopen financial year ${year.label}`}
+                      disabled={busyId === year.id}
+                      onClick={() => runOn(year.id, () => reopenFinancialYear(companyId, year.id))}
+                    >
+                      <LockOpen size={13} />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    label={`Delete financial year ${year.label}`}
+                    variant="danger"
                     disabled={busyId === year.id}
-                    title="Close this year"
-                    onClick={() => runOn(year.id, () => closeFinancialYear(companyId, year.id))}
+                    onClick={() => setPendingDelete(year)}
                   >
-                    <Lock size={13} />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.action}
-                    disabled={busyId === year.id}
-                    title="Reopen this year"
-                    onClick={() => runOn(year.id, () => reopenFinancialYear(companyId, year.id))}
-                  >
-                    <LockOpen size={13} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={styles.action}
-                  disabled={busyId === year.id}
-                  title="Delete this year"
-                  onClick={() => handleDelete(year)}
-                >
-                  <Trash2 size={13} />
-                </button>
+                    <Trash2 size={13} />
+                  </IconButton>
+                </IconButtonGroup>
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </Table>
+
+      {/*
+        Replaces window.confirm(). A financial year is the thing every voucher is filed into, so
+        the consequence is worth stating rather than leaving to "This can't be undone."
+      */}
+      {pendingDelete && (
+        <ConfirmDialog
+          open
+          destructive
+          busy={busyId === pendingDelete.id}
+          title={`Delete financial year ${pendingDelete.label}?`}
+          consequence="This cannot be undone."
+          confirmLabel="Delete year"
+          cancelLabel="Keep"
+          onConfirm={handleDelete}
+          onCancel={() => setPendingDelete(null)}
+        >
+          Vouchers are filed into the year covering their date. A year holding vouchers cannot be
+          deleted.
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

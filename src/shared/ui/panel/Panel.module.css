@@ -1,0 +1,76 @@
+/*
+  A titled box. Three copies of this existed — the company dashboard's, the reports', the
+  portfolio's — and they disagreed about padding, radius and whether the title was uppercase.
+*/
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-card);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--paper-sunken);
+  /* Follows the panel's own corners. */
+  border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  /* A long title gives way before the actions beside it do. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pushed to the end whatever the title's width. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-width: 0;
+}
+
+/*
+  For a body that is one grid. The table draws its own rules to the panel's edge rather than
+  floating inside a ring of padding, which is what a table in a card should look like.
+*/
+.flush {
+  padding: 0;
+  gap: 0;
+}
+
+/* The panel is the last thing in its column and a grid inside it needs the bottom corners. */
+.flush > :last-child {
+  border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+  overflow: hidden;
+}
+
+@media (max-width: 60rem) {
+  .body {
+    padding: var(--space-2);
+  }
+}

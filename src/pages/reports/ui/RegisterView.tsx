@@ -1,6 +1,7 @@
 import type { DayBookReport } from '@/entities/report';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface RegisterViewProps {
   register: DayBookReport;
@@ -25,30 +26,28 @@ export function RegisterView({ register, title, money, day }: RegisterViewProps)
         {title}
         <span className={styles.panelTotal}>{money(register.total)}</span>
       </h2>
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Number</th>
-              <th>Narration</th>
-              <th>Status</th>
-              <th className={styles.num}>Amount</th>
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Number</th>
+            <th>Narration</th>
+            <th>Status</th>
+            <th data-num>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {register.rows.map((row) => (
+            <tr key={row.voucherId}>
+              <td>{day(row.voucherDate)}</td>
+              <td>{row.voucherNumber}</td>
+              <td>{row.narration ?? '—'}</td>
+              <td>{row.status}</td>
+              <td data-num>{money(row.amount)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {register.rows.map((row) => (
-              <tr key={row.voucherId}>
-                <td>{day(row.voucherDate)}</td>
-                <td>{row.voucherNumber}</td>
-                <td>{row.narration ?? '—'}</td>
-                <td>{row.status}</td>
-                <td className={styles.num}>{money(row.amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
       {register.rows.length === 0 && (
         <p className={styles.empty}>Nothing of this type in the period.</p>
       )}

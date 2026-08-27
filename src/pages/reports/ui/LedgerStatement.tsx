@@ -2,6 +2,7 @@ import type { LedgerStatementReport } from '@/entities/report';
 
 import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface LedgerStatementProps {
   statement: LedgerStatementReport;
@@ -41,30 +42,28 @@ export function LedgerStatement({ statement, money, day, heading = false }: Ledg
         </span>
       </div>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Voucher</th>
-              <th className={styles.num}>Debit</th>
-              <th className={styles.num}>Credit</th>
-              <th className={styles.num}>Balance</th>
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Voucher</th>
+            <th data-num>Debit</th>
+            <th data-num>Credit</th>
+            <th data-num>Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {statement.lines.map((line, index) => (
+            <tr key={`${line.voucherId}-${index}`}>
+              <td>{day(line.voucherDate)}</td>
+              <td>{line.voucherNumber}</td>
+              <td data-num>{money(line.debit)}</td>
+              <td data-num>{money(line.credit)}</td>
+              <td data-num>{money(line.runningBalance)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {statement.lines.map((line, index) => (
-              <tr key={`${line.voucherId}-${index}`}>
-                <td>{day(line.voucherDate)}</td>
-                <td>{line.voucherNumber}</td>
-                <td className={styles.num}>{money(line.debit)}</td>
-                <td className={styles.num}>{money(line.credit)}</td>
-                <td className={styles.num}>{money(line.runningBalance)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
 
       {statement.lines.length === 0 && <p className={styles.empty}>No postings in this period.</p>}
 

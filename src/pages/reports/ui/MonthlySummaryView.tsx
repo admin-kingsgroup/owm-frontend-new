@@ -2,6 +2,7 @@ import type { MonthlySummaryReport } from '@/entities/report';
 
 import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface MonthlySummaryViewProps {
   report: MonthlySummaryReport;
@@ -29,48 +30,46 @@ export function MonthlySummaryView({ report, money, monthLabel }: MonthlySummary
         </span>
       </h2>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th className={styles.num}>Debit</th>
-              <th className={styles.num}>Credit</th>
-              <th className={styles.num}>Closing</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Opening</td>
-              <td className={styles.num}>—</td>
-              <td className={styles.num}>—</td>
-              <td className={styles.num}>
-                <Figure amount={money(report.opening)} side={report.openingSide} />
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th data-num>Debit</th>
+            <th data-num>Credit</th>
+            <th data-num>Closing</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Opening</td>
+            <td data-num>—</td>
+            <td data-num>—</td>
+            <td data-num>
+              <Figure amount={money(report.opening)} side={report.openingSide} />
+            </td>
+          </tr>
+          {report.months.map((month) => (
+            <tr key={month.month}>
+              <td>{monthLabel(month.month)}</td>
+              <td data-num>{money(month.debit)}</td>
+              <td data-num>{money(month.credit)}</td>
+              <td data-num>
+                <Figure amount={money(month.closing)} side={month.closingSide} />
               </td>
             </tr>
-            {report.months.map((month) => (
-              <tr key={month.month}>
-                <td>{monthLabel(month.month)}</td>
-                <td className={styles.num}>{money(month.debit)}</td>
-                <td className={styles.num}>{money(month.credit)}</td>
-                <td className={styles.num}>
-                  <Figure amount={money(month.closing)} side={month.closingSide} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>Total</td>
-              <td className={styles.num}>{money(report.totals.debit)}</td>
-              <td className={styles.num}>{money(report.totals.credit)}</td>
-              <td className={styles.num}>
-                <Figure amount={money(report.totals.closing)} side={report.totals.closingSide} />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td data-num>{money(report.totals.debit)}</td>
+            <td data-num>{money(report.totals.credit)}</td>
+            <td data-num>
+              <Figure amount={money(report.totals.closing)} side={report.totals.closingSide} />
+            </td>
+          </tr>
+        </tfoot>
+      </Table>
     </section>
   );
 }

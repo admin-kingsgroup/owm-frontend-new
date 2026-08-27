@@ -3,6 +3,7 @@ import { cn } from '@/shared/lib';
 
 import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface BankReconciliationViewProps {
   report: BankReconciliationReport;
@@ -87,52 +88,50 @@ export function BankReconciliationView({
         </span>
       </h2>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Number</th>
-              <th>Type</th>
-              <th>Instrument</th>
-              <th>Narration</th>
-              <th className={styles.num}>Debit</th>
-              <th className={styles.num}>Credit</th>
-              <th>Bank date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.unreconciled.map((row) => (
-              <tr key={`${row.voucherId}-${row.instrumentNumber ?? ''}-${row.debit}${row.credit}`}>
-                <td>{day(row.voucherDate)}</td>
-                <td>{row.voucherNumber}</td>
-                <td>{typeName(row.voucherTypeCode)}</td>
-                {/* An em dash, not a blank: a line with no instrument is a fact, not a gap. */}
-                <td>{row.instrumentNumber ?? '—'}</td>
-                <td>{row.narration ?? '—'}</td>
-                <td className={styles.num}>{money(row.debit)}</td>
-                <td className={styles.num}>{money(row.credit)}</td>
-                <td>
-                  {/*
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Number</th>
+            <th>Type</th>
+            <th>Instrument</th>
+            <th>Narration</th>
+            <th data-num>Debit</th>
+            <th data-num>Credit</th>
+            <th>Bank date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.unreconciled.map((row) => (
+            <tr key={`${row.voucherId}-${row.instrumentNumber ?? ''}-${row.debit}${row.credit}`}>
+              <td>{day(row.voucherDate)}</td>
+              <td>{row.voucherNumber}</td>
+              <td>{typeName(row.voucherTypeCode)}</td>
+              {/* An em dash, not a blank: a line with no instrument is a fact, not a gap. */}
+              <td>{row.instrumentNumber ?? '—'}</td>
+              <td>{row.narration ?? '—'}</td>
+              <td data-num>{money(row.debit)}</td>
+              <td data-num>{money(row.credit)}</td>
+              <td>
+                {/*
                     Typing the day the bank showed it is the whole of reconciling, exactly as it is
                     on paper: the line leaves this list the moment it has a date.
                   */}
-                  <input
-                    type="date"
-                    className={styles.select}
-                    aria-label={`Bank date for ${row.voucherNumber}`}
-                    disabled={saving}
-                    defaultValue=""
-                    onChange={(event) =>
-                      onReconcile(row.voucherId, row.entryId, event.target.value || null)
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                <input
+                  type="date"
+                  className={styles.select}
+                  aria-label={`Bank date for ${row.voucherNumber}`}
+                  disabled={saving}
+                  defaultValue=""
+                  onChange={(event) =>
+                    onReconcile(row.voucherId, row.entryId, event.target.value || null)
+                  }
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
 
       {report.unreconciled.length === 0 && (
         <p className={styles.empty}>

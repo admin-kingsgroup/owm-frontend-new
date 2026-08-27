@@ -15,7 +15,7 @@ import { listCurrencies } from '@/entities/currency';
 import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
-import { Button, Modal, Select, Loading, EmptyState, Badge } from '@/shared/ui';
+import { Button, Modal, Select, Loading, EmptyState, Badge, Table, toast } from '@/shared/ui';
 import { getErrorMessage, formatCalendarDay, formatMoney, formatMoneyWithSide } from '@/shared/lib';
 import { useCompanyReadout } from '@/widgets/app-shell';
 
@@ -190,7 +190,13 @@ export function VouchersPage() {
       const voucher = await getVoucher(companyId, id);
       setSelectedVoucher(voucher);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load voucher'));
+      /*
+        A toast rather than the page's error paragraph. That paragraph sits above the register and
+        means "this list could not be read"; a voucher that would not open says nothing about the
+        list, which is still on screen and still correct. Put there, it also pushed every row down
+        by a line at the moment the reader was pointing at one.
+      */
+      toast.error(getErrorMessage(err, 'Could not open voucher'));
     } finally {
       setDetailLoading(false);
     }
@@ -383,54 +389,44 @@ export function VouchersPage() {
               a long one scrolls under a heading that stays put — the same treatment the statements
               got. The pagination below stays outside it, where it belongs to the page rather than
               to the rows. */}
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-stack>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Narration</th>
-                  <th className={styles.amountHead}>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vouchers.map((voucher) => (
-                  <tr
-                    key={voucher.id}
-                    className={styles.row}
-                    onClick={() => openVoucher(voucher.id)}
-                  >
-                    <td className={styles.mono} data-label="ID" title={voucher.id}>
-                      {voucher.voucherNumber}
-                    </td>
-                    <td data-label="Date">
-                      {formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}
-                    </td>
-                    <td data-label="Type">{typeName(voucher.voucherTypeId)}</td>
-                    <td className={styles.narration} data-label="Narration">
-                      {voucher.narration ?? '—'}
-                    </td>
-                    {/* What the voucher is worth. A list of postings without amounts is a list of
+          <Table stack sticky className={styles.registerGrid}>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Narration</th>
+                <th data-num>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vouchers.map((voucher) => (
+                <tr key={voucher.id} className={styles.row} onClick={() => openVoucher(voucher.id)}>
+                  <td data-mono title={voucher.id}>
+                    {voucher.voucherNumber}
+                  </td>
+                  <td>{formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}</td>
+                  <td>{typeName(voucher.voucherTypeId)}</td>
+                  <td data-clip>{voucher.narration ?? '—'}</td>
+                  {/* What the voucher is worth. A list of postings without amounts is a list of
                       dates and narrations, and nobody scanning a day of them is looking for those. */}
-                    <td className={styles.amount} data-label="Amount">
-                      {/* No symbol. Inside a company every figure is in that company's currency, the
+                  <td data-num>
+                    {/* No symbol. Inside a company every figure is in that company's currency, the
                         status strip says which, and the reports have written them bare since the
                         density pass — this column was the one place left repeating it, so the same
                         amount was written two ways depending on which screen you were on. Where
                         companies are listed side by side the symbol stays, because there it is
                         telling you something. */}
-                      {formatMoney(voucher.amount, { country: loaded?.company?.country })}
-                    </td>
-                    <td data-label="Status">
-                      <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {formatMoney(voucher.amount, { country: loaded?.company?.country })}
+                  </td>
+                  <td>
+                    <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
 
           <div className={styles.pagination}>
             <span className={styles.pageLabel}>
@@ -519,22 +515,22 @@ export function VouchersPage() {
               <p className={styles.detailNarration}>{selectedVoucher.narration}</p>
             )}
 
-            <table className={styles.table} data-stack>
+            <Table stack>
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Ledger</th>
-                  <th>Debit</th>
-                  <th>Credit</th>
+                  <th data-num>Debit</th>
+                  <th data-num>Credit</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedVoucher.entries.map((entry, index) => (
                   <tr key={entry.id}>
-                    <td className={styles.mono} data-label="ID" title={entry.id}>
+                    <td data-mono title={entry.id}>
                       {selectedVoucher.voucherNumber}/{index + 1}
                     </td>
-                    <td data-label="Ledger">
+                    <td>
                       {entry.ledgerCode}
                       {/*
                         A foreign line shows what was actually typed and the rate it was converted
@@ -555,12 +551,12 @@ export function VouchersPage() {
                     </td>
                     {/* Bare, like the list this drawer opened from. The same amount carrying a
                         symbol here and none one click away is the inconsistency, not the symbol. */}
-                    <td className={styles.mono} data-label="Debit">
+                    <td data-num>
                       {Number(entry.debit) > 0
                         ? formatMoney(entry.debit, { country: loaded?.company?.country })
                         : ''}
                     </td>
-                    <td className={styles.mono} data-label="Credit">
+                    <td data-num>
                       {Number(entry.credit) > 0
                         ? formatMoney(entry.credit, { country: loaded?.company?.country })
                         : ''}
@@ -568,7 +564,7 @@ export function VouchersPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
 
             <VoucherActions
               companyId={companyId}

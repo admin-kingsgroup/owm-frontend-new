@@ -5,8 +5,8 @@ import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listBusinesses, listPartners } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
-import { Loading, EmptyState, Button } from '@/shared/ui';
-import { getErrorMessage, cn } from '@/shared/lib';
+import { Loading, EmptyState, Button, Tabs } from '@/shared/ui';
+import { getErrorMessage } from '@/shared/lib';
 
 import { PartnersPanel } from './PartnersPanel';
 import { BusinessesPanel } from './BusinessesPanel';
@@ -133,24 +133,16 @@ export function KgPage() {
         </div>
       </div>
 
-      <div className={styles.tabs}>
-        {(
-          [
-            ['portfolio', 'Portfolio'],
-            ['businesses', 'Businesses'],
-            ['partners', 'Partners'],
-          ] as Array<[Tab, string]>
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className={cn(styles.tab, tab === value && styles.tabActive)}
-            onClick={() => setTab(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="Portfolio views"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: 'portfolio', label: 'Portfolio' },
+          { id: 'businesses', label: 'Businesses' },
+          { id: 'partners', label: 'Partners' },
+        ]}
+      />
 
       {tab === 'portfolio' && (
         <PortfolioPanel

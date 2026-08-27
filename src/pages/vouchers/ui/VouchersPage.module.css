@@ -1,3 +1,10 @@
+/*
+  What is left after the grid moved into shared/ui.
+
+  The table, its sticky heading, its zebra and its amount column are Table's now — see
+  Table.module.css. What remains is this screen's layout and the register's own marks.
+*/
+
 .page {
   display: flex;
   flex-direction: column;
@@ -9,40 +16,29 @@
 }
 
 /*
-  The grid's frame — the same one the statements have.
+  The register takes the room left over.
 
   A list of six vouchers was a small table with a third of the screen empty beneath it. This takes
-  the room left over, and the rows scroll inside it while the heading holds the top.
+  the rest, and the rows scroll inside it while the heading holds the top — Table's `sticky` draws
+  the heading; this is what gives it something to scroll within.
 */
-.tableWrap {
+.registerGrid {
   flex: 1;
   min-height: 0;
   overflow: auto;
 }
 
-.tableWrap .table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: var(--paper-sunken);
-  box-shadow: inset 0 -1px 0 var(--border);
-}
-
 /* A card list on a phone is a page, not a frame, and must not be boxed into a scroller. */
 @media screen and (max-width: 48rem) {
-  .tableWrap {
+  .registerGrid {
     flex: none;
     overflow: visible;
   }
 }
 
 @media print {
-  .tableWrap {
+  .registerGrid {
     overflow: visible;
-  }
-
-  .tableWrap .table thead th {
-    position: static;
   }
 }
 
@@ -56,14 +52,14 @@
 .title {
   font-family: var(--font-display);
   letter-spacing: var(--display-tracking);
-  font-size: 1.75rem;
+  font-size: var(--text-2xl);
   font-weight: 600;
   color: var(--ink);
   margin: 0 0 0.25rem;
 }
 
 .subtitle {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--ink-soft);
   margin: 0;
 }
@@ -76,89 +72,28 @@
 
 .error {
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background-color: var(--danger-bg-soft);
   color: var(--danger-fg);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-  background-color: var(--paper-card);
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  overflow: hidden;
-}
-
-.table th {
-  padding: var(--grid-head-padding);
-  text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  border-bottom: 1px solid var(--border);
-}
-
-/*
-  The amount heading sits over its amounts.
-
-  `.amountHead` already said `text-align: right`, but it is (0,1,0) and `.table th` is (0,1,1), so
-  the heading lost and the column's label sat at the far left of a column of right-aligned figures.
-  The same cascade caught the reports module — see the note beside `.table th.num` there.
-*/
-.table th.amountHead {
-  text-align: right;
-}
-
-.table td {
-  padding: var(--grid-cell-padding);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-}
-
-/* A voucher list runs to hundreds of rows; the eye needs a rail to carry one across six columns.
-   Hover is already handled by .row, which every clickable row carries. */
-.table tbody tr:nth-child(even) td {
-  background-color: var(--paper);
-}
-
-.table tr:last-child td {
-  border-bottom: none;
-}
-
+/* A row that opens the voucher it names. */
 .row {
   cursor: pointer;
   transition: background-color 0.1s ease;
-}
-
-.row:hover td {
-  background-color: var(--hover-tint);
-}
-
-.mono {
-  font-variant-numeric: tabular-nums;
-}
-
-.narration {
-  max-width: 20rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-soft);
 }
 
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .pageLabel {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
 }
 
@@ -176,14 +111,15 @@
 .detailMeta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
 }
 
 .detailNarration {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--ink-soft);
 }
 
@@ -193,10 +129,10 @@
   gap: 0.5rem;
   height: 2.5rem;
   padding: 0 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: var(--brand-gradient);
   color: var(--on-accent);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 600;
   text-decoration: none;
 }
@@ -205,20 +141,12 @@
   filter: brightness(0.94);
 }
 
-/*
-  A ledger row is wider than a phone. Scrolling the table inside its own panel keeps the columns
-  legible and stops the page itself from scrolling sideways.
-
-  `screen` only — a printed table must stay a table, with the header row globals.css restores for
-  print. A sideways scroll on paper is just columns cut off the edge of the page.
-*/
-@media screen and (max-width: 60rem) {
-  .table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
+/* What a foreign line was typed in, beside the ledger it was posted to. Recessive: the base-currency
+   figures in the Debit and Credit columns are still the ones that add up. */
+.entryForeign {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
 }
 
 /*
@@ -236,24 +164,14 @@
     flex-direction: column;
     max-width: none;
   }
-}
 
-/* What a foreign line was typed in, beside the ledger it was posted to. Recessive: the base-currency
-   figures in the Debit and Credit columns are still the ones that add up. */
-.entryForeign {
-  font-size: 0.75rem;
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
+  /* The page count above the arrows rather than beside them, so neither is squeezed. */
+  .pagination {
+    justify-content: center;
+  }
 
-/* Figures line up down the column and are read right to left, like every other amount here. */
-.amountHead {
-  text-align: right;
-}
-
-.amount {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
+  .pageButtons {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

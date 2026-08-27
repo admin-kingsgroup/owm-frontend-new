@@ -296,38 +296,6 @@
   max-height: 70dvh;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.table th {
-  padding: var(--grid-head-padding);
-  text-align: left;
-  background-color: var(--paper-sunken);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-/*
-  A numeric heading sits over its numbers.
-
-  `.num` already said `text-align: right`, and every view already tags its numeric headers with it
-  — but `.table th` is (0,1,1) and `.num` is (0,1,0), so the heading lost and every figure column
-  in the module carried its label a hundred pixels to the left of the column it named. This is
-  (0,2,1) and settles it, for the headers and for the prior-year column alike.
-*/
-.table th.num,
-.table th.numPrior {
-  text-align: right;
-}
-
 /*
   The column labels stay put while the rows go past.
 
@@ -339,53 +307,16 @@
   belongs to the collapsed grid and stays behind while the cell travels, which prints as a hairline
   adrift in the middle of the table.
 */
-.table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  box-shadow: inset 0 -1px 0 var(--border);
-}
-
 /*
   The totals stay put too. A statement is read for the figure at its foot as often as for the rows
   above it, and on a long one that figure was a scroll away from the rows it totals.
 */
-.table tfoot td {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-}
-
-.table td {
-  padding: var(--grid-cell-padding);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-  white-space: nowrap;
-}
-
 /* Alternating fill, so the eye can carry a row across six columns of figures without losing it. */
-.table tbody tr:nth-child(even) td {
-  background-color: var(--paper);
-}
-
-.table tbody tr:hover td {
-  background-color: var(--hover-tint);
-}
-
 /*
   The closing rule. Heavier than a divider and in --ink rather than --border, because the line above
   a total is the one rule on a statement that means something: everything above it adds up to what
   is below it.
 */
-.table tfoot td {
-  border-bottom: none;
-  /* Drawn on the cell, not on the collapsed grid, so it travels with the row it belongs to. */
-  border-top: none;
-  box-shadow: inset 0 2px 0 var(--ink);
-  background-color: var(--paper-sunken);
-  font-weight: 700;
-}
-
 /*
   The chosen date, spelled out under its box.
 
@@ -402,25 +333,6 @@
   font-size: var(--text-xs);
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
-}
-
-.num {
-  text-align: right;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/*
-  A figure of nil is shown as a dot, not as 0.00.
-
-  A trial balance of eight ledgers has five columns that are entirely zero, and printing forty
-  copies of "0.00" hides the four figures that are not. Tally suppresses them; the dot keeps the
-  cell visibly present, so a blank never reads as a column that failed to load. `money` returns an
-  empty string for nil — see the note where it is built.
-*/
-.num:empty::before {
-  content: '·';
-  color: var(--ink-faint);
 }
 
 /* Last year, in a table. Muted the same amount as .treePriorAmount so a reader's eye lands on
@@ -472,11 +384,16 @@
   opacity: 0.8;
 }
 
+/*
+  Last year's figure, beside this year's.
+
+  Only the tint is the reports' own — the alignment and the tabular figures come from Table, since
+  these cells carry `data-num` like every other figure in the grid. Muted the same amount as
+  .treePriorAmount, so a reader's eye lands on this year's number first whichever shape the report
+  takes.
+*/
 .numPrior {
-  text-align: right;
   color: var(--ink-faint);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -531,11 +448,6 @@
     display: block;
     width: 100%;
     padding: 0.5rem 0;
-  }
-
-  .table td {
-    padding-top: 0.4375rem;
-    padding-bottom: 0.4375rem;
   }
 }
 
@@ -697,7 +609,19 @@
   border-color: var(--warning-bd);
 }
 
-.overdue {
+/*
+  A figure that is bad news — a bill past its due date, an error count above zero.
+
+  One name for it. There were two: `.overdue`, which was defined and worked, and
+  `.figureNegative`, which three views referred to and which had never existed at all — so an
+  overdue day count on the statement of account and a non-zero error total on the exception report
+  were both asking to be drawn in red and rendering in ordinary ink. CSS modules resolve a missing
+  class to `undefined`, so nothing anywhere said so.
+
+  `.figureNegative` is the name kept, being the one that also describes the exception count; an
+  error total is not "overdue".
+*/
+.figureNegative {
   color: var(--danger-fg);
 }
 
@@ -788,23 +712,12 @@
     overflow: visible;
   }
 
-  .table {
-    font-size: 0.6875rem;
-  }
-
-  .table thead {
-    display: table-header-group;
-  }
-
-  /* Nothing sticks to a sheet of paper; the header repeats per page instead, above. */
-  .table thead th,
-  .table tfoot td {
-    position: static;
-  }
-
-  .table tr {
-    break-inside: avoid;
-  }
+  /*
+    Repeating the heading on each printed page, and keeping rows whole, are both handled for every
+    table in the product by the print block in globals.css — and unsticking the heading is handled
+    by Table's own. This module used to restate all three for its own grid; a rule that only fixes
+    one screen's tables is how the other six ended up printing differently.
+  */
 
   .twoColumn {
     grid-template-columns: 1fr 1fr;

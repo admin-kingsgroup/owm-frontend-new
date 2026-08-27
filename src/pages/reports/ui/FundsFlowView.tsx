@@ -2,6 +2,7 @@ import type { FundsFlowReport } from '@/entities/report';
 import { cn } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface FundsFlowViewProps {
   report: FundsFlowReport;
@@ -27,16 +28,16 @@ export function FundsFlowView({ report, money }: FundsFlowViewProps) {
             Sources of funds
             <span className={styles.panelTotal}>{money(report.totals.sources)}</span>
           </h2>
-          <table className={styles.table} data-stack>
+          <Table surface="plain" stack>
             <tbody>
               {report.sources.map((line) => (
                 <tr key={`s-${line.code}`}>
                   <td>{line.name}</td>
-                  <td className={styles.num}>{money(line.amount)}</td>
+                  <td data-num>{money(line.amount)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           {report.sources.length === 0 && (
             <p className={styles.empty}>Nothing was raised in this period.</p>
           )}
@@ -47,16 +48,16 @@ export function FundsFlowView({ report, money }: FundsFlowViewProps) {
             Applications of funds
             <span className={styles.panelTotal}>{money(report.totals.applications)}</span>
           </h2>
-          <table className={styles.table} data-stack>
+          <Table surface="plain" stack>
             <tbody>
               {report.applications.map((line) => (
                 <tr key={`a-${line.code}`}>
                   <td>{line.name}</td>
-                  <td className={styles.num}>{money(line.amount)}</td>
+                  <td data-num>{money(line.amount)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           {report.applications.length === 0 && (
             <p className={styles.empty}>Nothing was applied in this period.</p>
           )}

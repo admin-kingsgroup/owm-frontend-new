@@ -1,0 +1,48 @@
+/*
+  The shape of what is coming, while it is coming.
+
+  This replaces "Reading the books…" and "Reading the register…" — sentences that read as a report
+  the first time and as a stuck screen the second, because a line of text gives no sign of whether
+  anything is still happening.
+*/
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.line {
+  height: 0.5625rem;
+  border-radius: var(--radius-full);
+  background-color: var(--paper-sunken);
+  /*
+    The sweep is drawn with a gradient on the same two surface tokens, so it follows the theme
+    rather than being a white shine that only makes sense on light paper.
+  */
+  background-image: linear-gradient(
+    90deg,
+    var(--paper-sunken) 0%,
+    var(--border) 50%,
+    var(--paper-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: sweep 1.6s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/*
+  Still, for anyone who has asked for less motion — the placeholder is doing its job by holding the
+  shape of the page, and the sweep is only saying that the wait is not over.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    animation: none;
+  }
+}

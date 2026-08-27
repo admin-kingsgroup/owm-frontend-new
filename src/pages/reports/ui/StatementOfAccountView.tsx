@@ -4,6 +4,7 @@ import { cn } from '@/shared/lib';
 import { LedgerStatement } from './LedgerStatement';
 import { Figure } from './Figure';
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface StatementOfAccountViewProps {
   report: StatementOfAccountReport;
@@ -98,37 +99,35 @@ export function StatementOfAccountView({ report, money, day }: StatementOfAccoun
       {report.openBills.length > 0 && (
         <section className={styles.panel}>
           <h2 className={styles.panelTitle}>Open invoices</h2>
-          <div className={styles.tableWrap}>
-            <table className={styles.table} data-stack>
-              <thead>
-                <tr>
-                  <th>Reference</th>
-                  <th>Dated</th>
-                  <th>Due</th>
-                  <th className={styles.num}>Invoiced</th>
-                  <th className={styles.num}>Paid</th>
-                  <th className={styles.num}>Outstanding</th>
-                  <th className={styles.num}>Overdue by</th>
+          <Table surface="plain" sticky className={styles.tableWrap} stack>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Dated</th>
+                <th>Due</th>
+                <th data-num>Invoiced</th>
+                <th data-num>Paid</th>
+                <th data-num>Outstanding</th>
+                <th data-num>Overdue by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.openBills.map((bill) => (
+                <tr key={bill.billId}>
+                  <td>{bill.reference}</td>
+                  <td>{day(bill.billDate)}</td>
+                  {/* An em dash, not a blank: an invoice with no due date is a fact. */}
+                  <td>{bill.dueDate ? day(bill.dueDate) : '—'}</td>
+                  <td data-num>{money(bill.amount)}</td>
+                  <td data-num>{money(bill.settled)}</td>
+                  <td data-num>{money(bill.outstanding)}</td>
+                  <td data-num className={cn(bill.overdueDays > 0 && styles.figureNegative)}>
+                    {bill.overdueDays > 0 ? `${bill.overdueDays} days` : 'Not due'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {report.openBills.map((bill) => (
-                  <tr key={bill.billId}>
-                    <td>{bill.reference}</td>
-                    <td>{day(bill.billDate)}</td>
-                    {/* An em dash, not a blank: an invoice with no due date is a fact. */}
-                    <td>{bill.dueDate ? day(bill.dueDate) : '—'}</td>
-                    <td className={styles.num}>{money(bill.amount)}</td>
-                    <td className={styles.num}>{money(bill.settled)}</td>
-                    <td className={styles.num}>{money(bill.outstanding)}</td>
-                    <td className={cn(styles.num, bill.overdueDays > 0 && styles.figureNegative)}>
-                      {bill.overdueDays > 0 ? `${bill.overdueDays} days` : 'Not due'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </Table>
         </section>
       )}
 

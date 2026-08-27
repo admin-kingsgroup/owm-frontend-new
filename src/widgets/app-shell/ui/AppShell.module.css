@@ -6,8 +6,16 @@
 .shell {
   display: flex;
   flex-direction: column;
-  /* Fixed rather than minimum: the frame stays put and only the content pane scrolls. */
-  height: 100vh;
+  /*
+    Fixed rather than minimum: the frame stays put and only the content pane scrolls.
+
+    `dvh`, not `vh`. On a phone or tablet browser `100vh` is the viewport with the address bar
+    *retracted*, so the frame is taller than what is on screen and the status strip — the last row
+    of it — sits below the fold until the bar happens to be scrolled away. The narrow breakpoint
+    below already used dvh; this is the same fix for every width above it, which is where a tablet
+    in a browser lands.
+  */
+  height: 100dvh;
   overflow: hidden;
   background-color: var(--paper);
 }

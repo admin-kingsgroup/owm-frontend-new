@@ -19,9 +19,9 @@ export function GroupSummaryView({
 }: GroupSummaryViewProps) {
   return (
     <section className={styles.panel}>
-      <div className={styles.panelHeader}>
-        <span className={styles.panelTitle}>Every group, with its closing position</span>
-      </div>
+      {/* .panelTitle lays itself out; the wrapper it used to sit in asked for a `.panelHeader`
+          that was never written, so it contributed nothing but a div. */}
+      <h2 className={styles.panelTitle}>Every group, with its closing position</h2>
       {groupSummary.length === 0 ? (
         <p className={styles.empty}>This company has no account groups yet.</p>
       ) : (

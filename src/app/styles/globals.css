@@ -83,14 +83,53 @@
     no reason they could name. These are the reports' values, which are the density the
     Tally-native direction is aimed at.
 
-    Every top-level grid reads these. There are seven: the reports, the vouchers list, the chart of
-    accounts, currencies, financial years, the portfolio and reported errors. The parties panel is
-    the one exception, and deliberately — its table is nested inside a party's card and is meant to
-    sit tighter than a grid standing on its own. A new grid writing its own padding will look like
-    a different product to anyone who moves between them, which is how the three above got there.
+    These are read by shared/ui/table, which is now the grid for all of them — the reports, the
+    vouchers list, the chart of accounts, currencies, financial years, the portfolio and reported
+    errors were seven separate copies of the same forty lines until it existed, which is how the
+    three row heights above got there in the first place.
+
+    A new grid should be that component rather than a new <table>. The densities below are for the
+    cases it genuinely cannot cover, and grid-density.node.test.ts fails any padding that is not
+    one of them.
   */
   --grid-head-padding: 0.375rem 0.625rem;
   --grid-cell-padding: 0.25rem 0.625rem;
+
+  /*
+    The nested density — a grid drawn inside another record's card rather than standing on its own.
+    The parties panel is the case: a party's ledgers are detail belonging to the card above them,
+    and they read as detail by sitting tighter.
+
+    Named here, beside the density they are an exception to, rather than written into the one
+    stylesheet that needs them. That was the arrangement before, and it meant the only way to find
+    out the product had two densities was to grep for the one that was not a token.
+  */
+  --grid-head-padding-tight: 0 0.25rem 0.25rem;
+  --grid-cell-padding-tight: 0.25rem;
+
+  /*
+    The card density — a summary extract drawn edge to edge inside a card, as on the company
+    dashboard and the portfolio.
+
+    Its horizontal padding is the card's own gutter rather than the grid gutter, because these rows
+    have to line up with the card's title above them; at the grid's 0.625rem they sit a step inside
+    it and the card stops reading as one column.
+
+    This was a third density nobody had noticed. It lived as `.figures td` in two page stylesheets,
+    and the guard in grid-density.test.ts only ever looked at selectors naming `.table`, so a grid
+    called something else was free to invent its own row height — which is precisely the drift that
+    file exists to catch. Named here, it is on the record with the other two and the test now sees it.
+  */
+  --grid-cell-padding-card: 0.3125rem 0.875rem;
+  --grid-head-padding-card: 0.375rem 0.875rem;
+  /* The totals line at the foot of a card — a step taller, the way a footing is. */
+  --grid-foot-padding-card: 0.4375rem 0.875rem;
+  /*
+    A heading *within* a card grid rather than above it — "Assets", "Liabilities" — which is a label
+    introducing the rows beneath it, not a column name. Asymmetric on purpose: it sits closer to the
+    rows it introduces than to the ones it follows.
+  */
+  --grid-section-padding-card: 0.5rem 0.875rem 0.1875rem;
 
   /* Reserved bands, so a new overlay never has to guess a number. */
   --z-dropdown: 100;
@@ -146,6 +185,15 @@
   --danger-fg: #b0281c;
   --danger-bd: #e5aba5;
   --danger-bg-soft: #fdedeb;
+  /*
+    A destructive control drawn as a fill, and the ink that goes on it.
+
+    Its own pair, for the same reason --accent carries --on-accent: --danger-fg is pitched as text
+    on paper, and in dark it is a *light* red — white on it measures 2.6:1. So the fill and its ink
+    are stated together and flip together. 6.7:1 in light, 6.1:1 in dark.
+  */
+  --danger-solid: #b0281c;
+  --on-danger: #ffffff;
   /* The "inactive/draft" status colour (Badge variant="neutral") — a neutral
      grey so it can never be mistaken for the amber accent. */
   --neutral-fg: #565a61;
@@ -225,6 +273,9 @@
   --dk-danger-fg: #ec7070;
   --dk-danger-bd: #653333;
   --dk-danger-bg-soft: #2a1616;
+  /* Light red fill, near-black ink — the same flip --accent makes in dark. */
+  --dk-danger-solid: #ec7070;
+  --dk-on-danger: #2a0f0d;
   --dk-neutral-fg: #9a9ea5;
   --dk-neutral-bd: #3b3e44;
 
@@ -287,6 +338,8 @@
     --danger-fg: var(--dk-danger-fg);
     --danger-bd: var(--dk-danger-bd);
     --danger-bg-soft: var(--dk-danger-bg-soft);
+    --danger-solid: var(--dk-danger-solid);
+    --on-danger: var(--dk-on-danger);
     --neutral-fg: var(--dk-neutral-fg);
     --neutral-bd: var(--dk-neutral-bd);
     --data-1: var(--dk-data-1);
@@ -330,6 +383,8 @@
   --danger-fg: var(--dk-danger-fg);
   --danger-bd: var(--dk-danger-bd);
   --danger-bg-soft: var(--dk-danger-bg-soft);
+  --danger-solid: var(--dk-danger-solid);
+  --on-danger: var(--dk-on-danger);
   --neutral-fg: var(--dk-neutral-fg);
   --neutral-bd: var(--dk-neutral-bd);
   --data-1: var(--dk-data-1);

@@ -9,7 +9,7 @@ import {
   type OpeningBill,
 } from '@/entities/ledger';
 import { listAccountGroups, partyGroupTest, type AccountGroup } from '@/entities/account-group';
-import { Button, Input, Loading } from '@/shared/ui';
+import { Button, Input, Loading, Table } from '@/shared/ui';
 import { cn, getErrorMessage } from '@/shared/lib';
 
 import styles from './PartiesPanel.module.css';
@@ -270,13 +270,18 @@ export function PartiesPanel({ companyId }: PartiesPanelProps) {
                 oldest of them is paid.
               </p>
 
-              <table className={styles.table}>
+              {/*
+                The one grid in the product with its own density — a party's bills are detail
+                belonging to the card around them, not a statement standing on its own. See
+                --grid-*-padding-tight in globals.css, where both densities are declared together.
+              */}
+              <Table surface="plain" density="tight" zebra={false}>
                 <thead>
                   <tr>
                     <th>Reference</th>
                     <th>Dated</th>
                     <th>Due</th>
-                    <th className={styles.num}>Amount</th>
+                    <th data-num>Amount</th>
                     <th />
                   </tr>
                 </thead>
@@ -350,7 +355,7 @@ export function PartiesPanel({ companyId }: PartiesPanelProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
 
               <div className={styles.billFooter}>
                 <Button

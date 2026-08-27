@@ -107,7 +107,7 @@
 }
 
 .figures td {
-  padding: 0.3125rem 0.875rem;
+  padding: var(--grid-cell-padding-card);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
 }
@@ -173,7 +173,7 @@
 
 /* Which half of the sheet the rows under it belong to. */
 .figuresHeading {
-  padding: 0.5rem 0.875rem 0.1875rem;
+  padding: var(--grid-section-padding-card);
   text-align: left;
   font-size: 0.625rem;
   font-weight: 600;
@@ -183,7 +183,7 @@
 }
 
 .figuresEmpty {
-  padding: 0.3125rem 0.875rem;
+  padding: var(--grid-cell-padding-card);
   color: var(--ink-faint);
 }
 
@@ -192,7 +192,7 @@
    card's edge while every figure above it was indented. */
 .total th,
 .total td {
-  padding: 0.4375rem 0.875rem;
+  padding: var(--grid-foot-padding-card);
   background-color: var(--paper-sunken);
   border-top: 1px solid var(--border);
   font-weight: 600;
@@ -256,7 +256,7 @@
 }
 
 .recent th {
-  padding: 0.375rem 0.875rem;
+  padding: var(--grid-head-padding-card);
   border-bottom: 1px solid var(--border);
   text-align: left;
   font-size: 0.625rem;
@@ -267,7 +267,7 @@
 }
 
 .recent td {
-  padding: 0.3125rem 0.875rem;
+  padding: var(--grid-cell-padding-card);
   border-bottom: 1px solid var(--border-soft);
   color: var(--ink);
 }
@@ -352,6 +352,104 @@
   The four figures across the top. auto-fit rather than four fixed columns, so they reflow to two
   and then to one instead of squeezing a currency figure until it wraps mid-number.
 */
+/*
+  What is outstanding, above everything it is outstanding about.
+
+  Drafts awaiting post, books that do not balance and entries needing correction before signing are
+  the reason anyone opens a company at all. They used to be the first card of the *second* column,
+  below four tiles and a balance-sheet extract — on a laptop, below the fold, so the one thing on
+  the screen that wanted doing was the one thing you had to scroll to find.
+
+  A band rather than a card: it spans the page because it is about the company, not about one
+  column of it, and it is absent entirely when there is nothing to report. A band that is sometimes
+  empty teaches people to stop looking at it.
+*/
+.attention {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--warning-bd);
+  /* The stripe carries the meaning where the fill is too quiet to, and survives a printed page. */
+  border-left: 3px solid var(--warning-fg);
+  border-radius: var(--radius-lg);
+  background-color: var(--warning-bg-soft);
+}
+
+/*
+  Anything actually wrong pitches the whole band to danger. A band that is amber while it holds a
+  trial balance that does not tie is understating it.
+*/
+.attentionBad {
+  border-color: var(--danger-bd);
+  border-left-color: var(--danger-fg);
+  background-color: var(--danger-bg-soft);
+}
+
+.attentionLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-right: var(--space-1);
+}
+
+/*
+  Each item is a chip that opens the screen that settles it. On --paper-card rather than the band's
+  own tint, so the chips read as things to press against a ground that is merely coloured.
+*/
+.attentionItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.1875rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background-color: var(--paper-card);
+  color: var(--ink);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+
+.attentionItem:hover {
+  border-color: var(--accent);
+}
+
+/* A dot as well as the word, so severity is not carried by colour alone. */
+.attentionDot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.attentionDotWarn {
+  background-color: var(--warning-fg);
+}
+
+.attentionDotBad {
+  background-color: var(--danger-fg);
+}
+
+/*
+  On a phone the chips become full-width rows.
+
+  Six chips wrapping over four lines is a paragraph of buttons, and none of them is a comfortable
+  target. One per line, each the width of the thumb's reach.
+*/
+@media (max-width: 40rem) {
+  .attention {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attentionItem {
+    border-radius: var(--radius-md);
+  }
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
@@ -405,6 +503,23 @@
   color: var(--ink-faint);
 }
 
+/*
+  The trend line at the foot of a tile.
+
+  Pushed to the bottom, so the four tiles' lines sit on one baseline whether or not each has a hint
+  above it — an uneven row of them reads as four unrelated charts rather than as one row of trends.
+  Only two of the four have a series at all, and the `margin-top: auto` is what keeps those two
+  level with each other rather than riding up to meet a shorter hint.
+
+  Left at its own 88×30 rather than stretched: the viewBox is fixed, so a width of 100% would
+  letterbox it inside the tile instead of filling it.
+*/
+.kpi svg {
+  display: block;
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
 /* Charts get room to breathe; the cards around them are flush to their own edges. */
 .chartBody {
   padding: var(--space-3) var(--space-4) var(--space-4);
@@ -435,7 +550,7 @@
 }
 
 .figures th {
-  padding: 0.3125rem 0.875rem;
+  padding: var(--grid-cell-padding-card);
 }
 
 /* A filed voucher: its number, then what it was for, on the line beneath. */

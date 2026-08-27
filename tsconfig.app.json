@@ -27,5 +27,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* Reads the filesystem, so it belongs to tsconfig.test-node.json — see the note there. */
+  "exclude": ["src/**/*.node.test.ts"]
 }

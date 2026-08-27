@@ -94,9 +94,23 @@
   cursor: pointer;
 }
 
-.rowSelected .item {
+/*
+  The selected group, and the selected "All groups".
+
+  Every group in the tree is an .item inside a .row, and the row carries the selection. "All
+  groups" sits above the tree with no row around it, so it asked for `.itemSelected` instead — a
+  class that had never been written. It resolved to `undefined`, and the entry that is selected by
+  default, on first opening the chart of accounts, was the one entry that never looked selected.
+*/
+.rowSelected .item,
+.itemSelected {
   color: var(--chip-fg);
   font-weight: 600;
+}
+
+/* The row supplies the fill for a group; standing on its own, this has to draw its own. */
+.itemSelected {
+  background-color: var(--chip-bg);
 }
 
 .chevron {

@@ -4,7 +4,17 @@ import { Trash2, Download, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { createBusiness, deleteBusiness, fetchTemplate, listBusinesses } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
-import { Button, Input, Select, Badge, EmptyState } from '@/shared/ui';
+import {
+  Button,
+  Input,
+  Select,
+  Badge,
+  EmptyState,
+  Table,
+  IconButton,
+  ConfirmDialog,
+  toast,
+} from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import { BusinessWorkspace } from './BusinessWorkspace';
@@ -43,6 +53,17 @@ export function BusinessesPanel({
   const [error, setError] = useState<string | null>(null);
   /** Which business's month-end workspace is open. One at a time — they are long. */
   const [openId, setOpenId] = useState<string | null>(null);
+  /**
+   * Removing a business, in up to two questions.
+   *
+   * `pendingDelete` is the ordinary ask. `pendingForce` is the second one, and only appears when
+   * the server has refused because the business has already reported figures — it is a different
+   * question with a much larger consequence, so it is asked separately rather than folded into the
+   * first as a paragraph of small print.
+   */
+  const [pendingDelete, setPendingDelete] = useState<Business | null>(null);
+  const [pendingForce, setPendingForce] = useState<Business | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const total = shares.reduce((sum, row) => sum + (Number(row.percent) || 0), 0);
   const sharesValid = shares.length === 0 || Math.abs(total - 100) < 0.005;
@@ -79,44 +100,53 @@ export function BusinessesPanel({
     }
   }
 
-  async function handleDelete(business: Business) {
-    if (!window.confirm(`Remove ${business.name}?`)) return;
+  /** The ordinary removal. A business that has reported is refused, and asks the second question. */
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    const business = pendingDelete;
+
     setError(null);
+    setRemoving(true);
     try {
       await deleteBusiness(companyId, business.id);
       onChanged(await listBusinesses(companyId));
-      return;
+      setPendingDelete(null);
+      toast.success(`${business.name} removed.`);
     } catch (err) {
       const message = getErrorMessage(err, 'Could not remove business');
 
-      /**
-       * The server refuses a business that has reported, and says so. For one created by mistake
-       * that refusal is a dead end, so the way out is offered here — but as a second, deliberate
-       * confirmation naming what is destroyed, never as a silent retry.
-       */
-      if (!message.includes('force=true')) {
+      /*
+        The server refuses a business that has reported, and says so. For one created by mistake
+        that refusal is a dead end, so the way out is offered — but as a second, deliberate
+        confirmation naming what is destroyed, never as a silent retry.
+      */
+      if (message.includes('force=true')) {
+        setPendingDelete(null);
+        setPendingForce(business);
+      } else {
         setError(message);
-        return;
       }
+    } finally {
+      setRemoving(false);
+    }
+  }
 
-      const forced = window.confirm(
-        `${business.name} has reported figures.\n\n` +
-          'Deactivating keeps them and stops it being chased for more — usually the right answer ' +
-          'for a business that has closed.\n\n' +
-          'Only if it was created by mistake: press OK to delete it together with every snapshot ' +
-          'and mapping it has. This cannot be undone.',
-      );
-      if (!forced) {
-        setError(message);
-        return;
-      }
+  /** The second question: delete the reported figures along with it. */
+  async function handleForceDelete() {
+    if (!pendingForce) return;
+    const business = pendingForce;
 
-      try {
-        await deleteBusiness(companyId, business.id, true);
-        onChanged(await listBusinesses(companyId));
-      } catch (forceErr) {
-        setError(getErrorMessage(forceErr, 'Could not remove business'));
-      }
+    setError(null);
+    setRemoving(true);
+    try {
+      await deleteBusiness(companyId, business.id, true);
+      onChanged(await listBusinesses(companyId));
+      setPendingForce(null);
+      toast.success(`${business.name} and its reported figures were deleted.`);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not remove business'));
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -209,14 +239,13 @@ export function BusinessesPanel({
                     )
                   }
                 />
-                <button
-                  type="button"
-                  className={styles.iconAction}
+                <IconButton
+                  label="Remove share"
+                  variant="danger"
                   onClick={() => setShares(shares.filter((_, i) => i !== index))}
-                  aria-label="Remove share"
                 >
                   <Trash2 size={14} />
-                </button>
+                </IconButton>
               </div>
             ))}
 
@@ -239,7 +268,7 @@ export function BusinessesPanel({
           description="Add the businesses whose figures you want compared. They are external — nothing is posted here, their statements are uploaded each month."
         />
       ) : (
-        <table className={styles.table}>
+        <Table surface="plain" stack>
           <thead>
             <tr>
               <th />
@@ -256,22 +285,20 @@ export function BusinessesPanel({
               <Fragment key={business.id}>
                 <tr>
                   <td>
-                    <button
-                      type="button"
-                      className={styles.iconAction}
-                      onClick={() => setOpenId(openId === business.id ? null : business.id)}
-                      aria-expanded={openId === business.id}
-                      aria-label={`Open ${business.name}`}
+                    <IconButton
+                      label={`Open ${business.name}`}
                       title="Import a month, place ledgers, lock"
+                      aria-expanded={openId === business.id}
+                      onClick={() => setOpenId(openId === business.id ? null : business.id)}
                     >
                       {openId === business.id ? (
                         <ChevronDown size={14} />
                       ) : (
                         <ChevronRight size={14} />
                       )}
-                    </button>
+                    </IconButton>
                   </td>
-                  <td className={styles.mono}>{business.code}</td>
+                  <td data-mono>{business.code}</td>
                   <td>{business.name}</td>
                   <td className={styles.mono}>{business.reportingCurrency}</td>
                   <td>
@@ -286,24 +313,20 @@ export function BusinessesPanel({
                   <td>{!business.isActive && <Badge variant="neutral">Inactive</Badge>}</td>
                   <td>
                     <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        className={styles.iconAction}
-                        onClick={() => handleTemplate(business)}
-                        aria-label={`Download statement template for ${business.name}`}
+                      <IconButton
+                        label={`Download statement template for ${business.name}`}
                         title="Download the statement template"
+                        onClick={() => handleTemplate(business)}
                       >
                         <Download size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconAction}
-                        onClick={() => handleDelete(business)}
-                        aria-label={`Remove ${business.name}`}
-                        title="Remove"
+                      </IconButton>
+                      <IconButton
+                        label={`Remove ${business.name}`}
+                        variant="danger"
+                        onClick={() => setPendingDelete(business)}
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </IconButton>
                     </div>
                   </td>
                 </tr>
@@ -321,7 +344,50 @@ export function BusinessesPanel({
               </Fragment>
             ))}
           </tbody>
-        </table>
+        </Table>
+      )}
+
+      {/* The ordinary ask. */}
+      {pendingDelete && (
+        <ConfirmDialog
+          open
+          destructive
+          busy={removing}
+          title={`Remove ${pendingDelete.name}?`}
+          confirmLabel="Remove business"
+          cancelLabel="Keep"
+          onConfirm={handleDelete}
+          onCancel={() => setPendingDelete(null)}
+        >
+          A business that has already reported figures cannot simply be removed — you will be asked
+          again if that is the case here.
+        </ConfirmDialog>
+      )}
+
+      {/*
+        The second ask, and the reason this dialog exists at all.
+
+        window.confirm() was being handed three paragraphs — what deactivating does, what deleting
+        does, and which one you probably want — inside a box that renders them as one run of text
+        and labels the destructive choice "OK". The recommended answer is now the quiet button and
+        the destructive one says exactly what it destroys.
+      */}
+      {pendingForce && (
+        <ConfirmDialog
+          open
+          destructive
+          busy={removing}
+          title={`${pendingForce.name} has reported figures`}
+          consequence="Deleting also destroys every snapshot and mapping it has. This cannot be undone."
+          confirmLabel="Delete it and its figures"
+          cancelLabel="Keep the figures"
+          onConfirm={handleForceDelete}
+          onCancel={() => setPendingForce(null)}
+        >
+          Deactivating keeps those figures and stops the business being chased for more, which is
+          usually the right answer for one that has closed. Delete it only if it was created by
+          mistake.
+        </ConfirmDialog>
       )}
     </div>
   );

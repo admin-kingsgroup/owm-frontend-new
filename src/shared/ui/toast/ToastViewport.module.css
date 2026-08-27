@@ -1,0 +1,122 @@
+/*
+  Where the product says what just happened.
+
+  Fixed, so a message never moves the page underneath it — the failure paragraph this replaces was
+  inserted into the flow, which shifted whatever the reader was looking at at the moment it
+  arrived, and shifted it back when it went.
+*/
+
+.viewport {
+  position: fixed;
+  /* Clear of the status strip, which is the shell's own last row. */
+  bottom: var(--space-6);
+  right: var(--space-4);
+  z-index: var(--z-toast);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(24rem, calc(100vw - 2 * var(--space-4)));
+
+  /* The strip is only ever as wide as its messages; the page beneath stays clickable. */
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  background-color: var(--paper-card);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  pointer-events: auto;
+  animation: rise 0.16s ease-out;
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.message {
+  min-width: 0;
+  /* A server's refusal can be a sentence; it wraps rather than being clipped. */
+  overflow-wrap: anywhere;
+}
+
+.dismiss {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background-color: var(--hover-tint);
+  color: var(--ink);
+}
+
+/* The three meanings. Each is a colour and an icon, never a colour alone. */
+.success {
+  border-left-color: var(--success-fg);
+}
+
+.success .icon {
+  color: var(--success-fg);
+}
+
+.error {
+  border-left-color: var(--danger-fg);
+}
+
+.error .icon {
+  color: var(--danger-fg);
+}
+
+.info {
+  border-left-color: var(--accent);
+}
+
+.info .icon {
+  color: var(--accent);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/*
+  On a phone the strip spans the screen and sits at the foot, above the status row. A 24rem box
+  pinned to the right of a 390px screen is the screen, minus a sliver — so it may as well be
+  square with both edges.
+*/
+@media (max-width: 40rem) {
+  .viewport {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-5);
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

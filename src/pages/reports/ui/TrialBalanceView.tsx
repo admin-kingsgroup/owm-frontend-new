@@ -1,6 +1,7 @@
 import type { ReportNode, TrialBalanceReport } from '@/entities/report';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface TrialBalanceViewProps {
   trialBalance: TrialBalanceReport;
@@ -32,11 +33,16 @@ export function TrialBalanceView({ trialBalance, money, openLedger }: TrialBalan
 
   const priorCell = (debit: string | undefined, credit: string | undefined) => {
     // Absent, rather than nil: the ledger did not exist last year.
-    if (debit === undefined && credit === undefined) return <td className={styles.numPrior}>—</td>;
+    if (debit === undefined && credit === undefined)
+      return (
+        <td className={styles.numPrior} data-num>
+          —
+        </td>
+      );
 
     const onCredit = Number(credit ?? 0) > 0;
     return (
-      <td className={styles.numPrior}>
+      <td className={styles.numPrior} data-num>
         {money(onCredit ? (credit ?? '0.00') : (debit ?? '0.00'))}
         <span className={styles.priorSide}>{onCredit ? 'Cr' : 'Dr'}</span>
       </td>
@@ -45,73 +51,75 @@ export function TrialBalanceView({ trialBalance, money, openLedger }: TrialBalan
 
   return (
     <section className={styles.panel}>
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Ledger</th>
-              <th className={styles.num}>Opening Dr</th>
-              <th className={styles.num}>Opening Cr</th>
-              <th className={styles.num}>Debit</th>
-              <th className={styles.num}>Credit</th>
-              <th className={styles.num}>Closing Dr</th>
-              <th className={styles.num}>Closing Cr</th>
-              {prior && <th className={styles.numPrior}>FY {prior.financialYearLabel}</th>}
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Ledger</th>
+            <th data-num>Opening Dr</th>
+            <th data-num>Opening Cr</th>
+            <th data-num>Debit</th>
+            <th data-num>Credit</th>
+            <th data-num>Closing Dr</th>
+            <th data-num>Closing Cr</th>
+            {prior && (
+              <th className={styles.numPrior} data-num>
+                FY {prior.financialYearLabel}
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {trialBalance.rows.map((row) => (
+            <tr key={row.ledgerId}>
+              <td>{row.code}</td>
+              <td>
+                <button
+                  type="button"
+                  className={styles.linkCell}
+                  onClick={() =>
+                    openLedger({
+                      kind: 'ledger',
+                      id: row.ledgerId,
+                      code: row.code,
+                      name: row.name,
+                      debit: row.debit,
+                      credit: row.credit,
+                      balance: row.closingDebit,
+                      balanceSide: 'DEBIT',
+                    })
+                  }
+                >
+                  {row.name}
+                </button>
+              </td>
+              <td data-num>{money(row.openingDebit)}</td>
+              <td data-num>{money(row.openingCredit)}</td>
+              <td data-num>{money(row.debit)}</td>
+              <td data-num>{money(row.credit)}</td>
+              <td data-num>{money(row.closingDebit)}</td>
+              <td data-num>{money(row.closingCredit)}</td>
+              {prior && priorCell(row.priorClosingDebit, row.priorClosingCredit)}
             </tr>
-          </thead>
-          <tbody>
-            {trialBalance.rows.map((row) => (
-              <tr key={row.ledgerId}>
-                <td>{row.code}</td>
-                <td>
-                  <button
-                    type="button"
-                    className={styles.linkCell}
-                    onClick={() =>
-                      openLedger({
-                        kind: 'ledger',
-                        id: row.ledgerId,
-                        code: row.code,
-                        name: row.name,
-                        debit: row.debit,
-                        credit: row.credit,
-                        balance: row.closingDebit,
-                        balanceSide: 'DEBIT',
-                      })
-                    }
-                  >
-                    {row.name}
-                  </button>
-                </td>
-                <td className={styles.num}>{money(row.openingDebit)}</td>
-                <td className={styles.num}>{money(row.openingCredit)}</td>
-                <td className={styles.num}>{money(row.debit)}</td>
-                <td className={styles.num}>{money(row.credit)}</td>
-                <td className={styles.num}>{money(row.closingDebit)}</td>
-                <td className={styles.num}>{money(row.closingCredit)}</td>
-                {prior && priorCell(row.priorClosingDebit, row.priorClosingCredit)}
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2}>Total</td>
-              <td className={styles.num}>{money(trialBalance.totals.openingDebit)}</td>
-              <td className={styles.num}>{money(trialBalance.totals.openingCredit)}</td>
-              <td className={styles.num}>{money(trialBalance.totals.debit)}</td>
-              <td className={styles.num}>{money(trialBalance.totals.credit)}</td>
-              <td className={styles.num}>{money(trialBalance.totals.closingDebit)}</td>
-              <td className={styles.num}>{money(trialBalance.totals.closingCredit)}</td>
-              {prior &&
-                priorCell(
-                  trialBalance.totals.priorClosingDebit,
-                  trialBalance.totals.priorClosingCredit,
-                )}
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={2}>Total</td>
+            <td data-num>{money(trialBalance.totals.openingDebit)}</td>
+            <td data-num>{money(trialBalance.totals.openingCredit)}</td>
+            <td data-num>{money(trialBalance.totals.debit)}</td>
+            <td data-num>{money(trialBalance.totals.credit)}</td>
+            <td data-num>{money(trialBalance.totals.closingDebit)}</td>
+            <td data-num>{money(trialBalance.totals.closingCredit)}</td>
+            {prior &&
+              priorCell(
+                trialBalance.totals.priorClosingDebit,
+                trialBalance.totals.priorClosingCredit,
+              )}
+          </tr>
+        </tfoot>
+      </Table>
       {trialBalance.totals.difference !== '0.00' && (
         <p className={styles.warning}>
           Trial balance does not tie: difference {money(trialBalance.totals.difference)}.

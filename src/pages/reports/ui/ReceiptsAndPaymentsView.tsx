@@ -2,6 +2,7 @@ import type { ReceiptsAndPaymentsReport } from '@/entities/report';
 import { cn } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface ReceiptsAndPaymentsViewProps {
   report: ReceiptsAndPaymentsReport;
@@ -31,8 +32,10 @@ export function ReceiptsAndPaymentsView({
       <thead>
         <tr>
           <th>{label}</th>
-          <th className={styles.num}>FY {receiptsPayments.period.financialYearLabel}</th>
-          <th className={styles.numPrior}>FY {prior.financialYearLabel}</th>
+          <th data-num>FY {receiptsPayments.period.financialYearLabel}</th>
+          <th className={styles.numPrior} data-num>
+            FY {prior.financialYearLabel}
+          </th>
         </tr>
       </thead>
     ) : null;
@@ -40,7 +43,9 @@ export function ReceiptsAndPaymentsView({
   /* An em dash, not a nil: the account moved nothing that year. */
   const priorCell = (amount: string | undefined) =>
     prior ? (
-      <td className={styles.numPrior}>{amount === undefined ? '—' : money(amount)}</td>
+      <td className={styles.numPrior} data-num>
+        {amount === undefined ? '—' : money(amount)}
+      </td>
     ) : null;
 
   return (
@@ -86,18 +91,18 @@ export function ReceiptsAndPaymentsView({
           <h2 className={styles.panelTitle}>
             Receipts <span className={styles.panelTotal}>{receiptsPayments.totals.receipts}</span>
           </h2>
-          <table className={styles.table} data-stack>
+          <Table surface="plain" stack>
             {head('Received from')}
             <tbody>
               {receiptsPayments.receipts.map((row) => (
                 <tr key={`r-${row.ledgerId}`}>
                   <td>{row.name}</td>
-                  <td className={styles.num}>{money(row.amount)}</td>
+                  <td data-num>{money(row.amount)}</td>
                   {priorCell(row.priorAmount)}
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           {receiptsPayments.receipts.length === 0 && (
             <p className={styles.empty}>Nothing received in this period.</p>
           )}
@@ -106,18 +111,18 @@ export function ReceiptsAndPaymentsView({
           <h2 className={styles.panelTitle}>
             Payments <span className={styles.panelTotal}>{receiptsPayments.totals.payments}</span>
           </h2>
-          <table className={styles.table} data-stack>
+          <Table surface="plain" stack>
             {head('Paid to')}
             <tbody>
               {receiptsPayments.payments.map((row) => (
                 <tr key={`p-${row.ledgerId}`}>
                   <td>{row.name}</td>
-                  <td className={styles.num}>{money(row.amount)}</td>
+                  <td data-num>{money(row.amount)}</td>
                   {priorCell(row.priorAmount)}
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           {receiptsPayments.payments.length === 0 && (
             <p className={styles.empty}>Nothing paid in this period.</p>
           )}

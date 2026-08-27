@@ -20,7 +20,7 @@ import type {
   Partner,
   Snapshot,
 } from '@/entities/kg';
-import { Button, Input, Select, Textarea, Badge, EmptyState, Loading } from '@/shared/ui';
+import { Button, Input, Select, Textarea, Badge, EmptyState, Loading, Table } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './KgPage.module.css';
@@ -355,7 +355,7 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
           the name, so only genuinely new accounts ever need a decision again.
         </p>
       ) : (
-        <table className={styles.table}>
+        <Table surface="plain" stack>
           <thead>
             <tr>
               <th>Ledger</th>
@@ -384,7 +384,7 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       )}
 
       <h3 className={styles.sectionTitle}>Months reported</h3>
@@ -394,7 +394,7 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
           description="Import a statement above. It arrives as a draft, and locking it is what makes its figures final."
         />
       ) : (
-        <table className={styles.table}>
+        <Table surface="plain" stack>
           <thead>
             <tr>
               <th>Period</th>
@@ -435,7 +435,7 @@ export function BusinessWorkspace({ companyId, business, partners }: BusinessWor
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       )}
 
       <h3 className={styles.sectionTitle}>Where it is heading</h3>

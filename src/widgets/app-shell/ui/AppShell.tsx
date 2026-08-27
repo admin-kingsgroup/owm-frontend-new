@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
-import { ErrorBoundary } from '@/shared/ui';
+import { ErrorBoundary, ToastViewport } from '@/shared/ui';
 
 import {
   ButtonBarContext,
@@ -448,6 +448,13 @@ export function AppShell() {
       </div>
 
       <ShortcutSheet open={helpOpen} onClose={closeHelp} actions={actions} menus={menus} />
+
+      {/*
+        Where the product says what just happened — mounted once, here, so anything under the shell
+        can post to it without a provider in scope. Fixed, so a message never moves the page it is
+        reporting on. Claims --z-toast, which the token file reserved and nothing had used.
+      */}
+      <ToastViewport />
 
       {/* Application chrome — see the print block in globals.css, which drops it from paper. */}
       {/*

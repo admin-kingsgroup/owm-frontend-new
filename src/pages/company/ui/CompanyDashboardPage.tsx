@@ -22,8 +22,21 @@ import type { NumberSeries } from '@/entities/number-series';
 import { CreateAccountGroupForm } from '@/features/account-group';
 import { CreateLedgerForm, EditLedgerForm } from '@/features/ledger';
 import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-type';
-import { Button, Modal, Loading, Badge, EmptyState } from '@/shared/ui';
-import { getErrorMessage, cn, formatRecordId, calendarYear, formatMoney } from '@/shared/lib';
+import {
+  Button,
+  Modal,
+  Loading,
+  Badge,
+  EmptyState,
+  Panel,
+  Table,
+  Tabs,
+  IconButton,
+  IconButtonGroup,
+  ConfirmDialog,
+  toast,
+} from '@/shared/ui';
+import { getErrorMessage, formatRecordId, calendarYear, formatMoney } from '@/shared/lib';
 
 import { AccountGroupTree } from './AccountGroupTree';
 import { FinancialYearsPanel } from './FinancialYearsPanel';
@@ -35,20 +48,64 @@ import { PortfolioDashboard } from './PortfolioDashboard';
 import { ImportExportPanel } from './ImportExportPanel';
 import styles from './CompanyDashboardPage.module.css';
 
-const TAB_IDS = [
-  'accounts',
-  'parties',
-  'voucher-types',
-  'financial-years',
-  'currencies',
-  'import-export',
-  'settings',
+/**
+ * The panels, in the order the strip draws them, with the words on the tabs.
+ *
+ * One list rather than two: the ids and the labels were separately maintained — the ids in an
+ * array up here and the labels written into seven hand-built buttons three hundred lines below —
+ * so adding a panel meant editing both and a renamed one could disagree with itself.
+ */
+const TABS = [
+  { id: 'accounts', label: 'Chart of accounts' },
+  { id: 'parties', label: 'Parties' },
+  { id: 'voucher-types', label: 'Voucher types' },
+  { id: 'financial-years', label: 'Financial years' },
+  { id: 'currencies', label: 'Currencies' },
+  { id: 'import-export', label: 'Import & export' },
+  { id: 'settings', label: 'Settings' },
 ] as const;
 
-type Tab = (typeof TAB_IDS)[number];
+const TAB_IDS = TABS.map((tab) => tab.id);
+
+type Tab = (typeof TABS)[number]['id'];
+
+/**
+ * What is waiting on a yes.
+ *
+ * One dialog for all three kinds rather than three, because only one can ever be open: the reader
+ * has pressed a delete icon on a row, and until they answer nothing else on the screen is reachable.
+ */
+type Pending =
+  | { kind: 'group'; group: AccountGroup }
+  | { kind: 'ledger'; ledger: Ledger }
+  | { kind: 'voucher-type'; voucherType: VoucherType };
 
 function isTab(value: string | null): value is Tab {
   return value !== null && (TAB_IDS as readonly string[]).includes(value);
+}
+
+/** What the confirming button says, and what it will cost — one sentence per kind. */
+function describe(pending: Pending): { title: string; consequence: string; confirmLabel: string } {
+  switch (pending.kind) {
+    case 'group':
+      return {
+        title: `Delete account group “${pending.group.name}”?`,
+        consequence: 'This cannot be undone.',
+        confirmLabel: 'Delete group',
+      };
+    case 'ledger':
+      return {
+        title: `Delete ledger “${pending.ledger.name}”?`,
+        consequence: 'This cannot be undone.',
+        confirmLabel: 'Delete ledger',
+      };
+    case 'voucher-type':
+      return {
+        title: `Delete voucher type “${pending.voucherType.name}”?`,
+        consequence: 'This cannot be undone.',
+        confirmLabel: 'Delete voucher type',
+      };
+  }
 }
 
 /**
@@ -99,10 +156,10 @@ export function CompanyDashboardPage() {
   const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
   const [voucherTypeModalOpen, setVoucherTypeModalOpen] = useState(false);
   const [editingVoucherType, setEditingVoucherType] = useState<VoucherType | null>(null);
-  const [deletingVoucherTypeId, setDeletingVoucherTypeId] = useState<string | null>(null);
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
-  const [deletingLedgerId, setDeletingLedgerId] = useState<string | null>(null);
-  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  /** The row waiting on a yes, and whether its deletion is in flight. */
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [openingBalance, setOpeningBalance] = useState<OpeningBalanceSummary | null>(null);
   const [numberSeries, setNumberSeries] = useState<NumberSeries[]>([]);
 
@@ -219,24 +276,6 @@ export function CompanyDashboardPage() {
     ? ledgers.filter((ledger) => ledger.accountGroupId === selectedGroupId)
     : ledgers;
 
-  async function handleDeleteVoucherType(voucherType: VoucherType) {
-    const confirmed = window.confirm(
-      `Delete voucher type "${voucherType.name}"? This can't be undone.`,
-    );
-    if (!confirmed) return;
-
-    setDeletingVoucherTypeId(voucherType.id);
-    setError(null);
-    try {
-      await deleteVoucherType(id, voucherType.id);
-      setVoucherTypes((current) => current.filter((vt) => vt.id !== voucherType.id));
-    } catch (err) {
-      setError(getErrorMessage(err, 'Could not delete voucher type'));
-    } finally {
-      setDeletingVoucherTypeId(null);
-    }
-  }
-
   async function refreshOpeningBalance() {
     try {
       setOpeningBalance(await getOpeningBalanceSummary(id));
@@ -246,37 +285,60 @@ export function CompanyDashboardPage() {
     }
   }
 
-  async function handleDeleteGroup(group: AccountGroup) {
-    const confirmed = window.confirm(`Delete account group "${group.name}"? This can't be undone.`);
-    if (!confirmed) return;
+  /**
+   * Carries out whatever the reader has just said yes to.
+   *
+   * One path for all three kinds. Each said the same four things in its own words before — set a
+   * deleting id, call the endpoint, filter the row out, catch into the page's error paragraph —
+   * and the only real difference between them is which endpoint and which list.
+   *
+   * The outcome is now reported either way. A delete that worked used to be indistinguishable from
+   * one that silently did nothing: the row left the table in both cases, because the table is this
+   * screen's own state.
+   */
+  async function handleConfirmDelete() {
+    if (!pending) return;
 
-    setDeletingGroupId(group.id);
+    setDeleting(true);
     setError(null);
-    try {
-      await deleteAccountGroup(id, group.id);
-      setGroups((current) => current.filter((g) => g.id !== group.id));
-      if (selectedGroupId === group.id) setSelectedGroupId(null);
-    } catch (err) {
-      setError(getErrorMessage(err, 'Could not delete account group'));
-    } finally {
-      setDeletingGroupId(null);
-    }
-  }
 
-  async function handleDeleteLedger(ledger: Ledger) {
-    const confirmed = window.confirm(`Delete ledger "${ledger.name}"? This can't be undone.`);
-    if (!confirmed) return;
-
-    setDeletingLedgerId(ledger.id);
-    setError(null);
     try {
-      await deleteLedger(id, ledger.id);
-      setLedgers((current) => current.filter((l) => l.id !== ledger.id));
-      void refreshOpeningBalance();
+      switch (pending.kind) {
+        case 'group': {
+          const { group } = pending;
+          await deleteAccountGroup(id, group.id);
+          setGroups((current) => current.filter((entry) => entry.id !== group.id));
+          if (selectedGroupId === group.id) setSelectedGroupId(null);
+          toast.success(`Account group “${group.name}” deleted.`);
+          break;
+        }
+        case 'ledger': {
+          const { ledger } = pending;
+          await deleteLedger(id, ledger.id);
+          setLedgers((current) => current.filter((entry) => entry.id !== ledger.id));
+          void refreshOpeningBalance();
+          toast.success(`Ledger “${ledger.name}” deleted.`);
+          break;
+        }
+        case 'voucher-type': {
+          const { voucherType } = pending;
+          await deleteVoucherType(id, voucherType.id);
+          setVoucherTypes((current) => current.filter((entry) => entry.id !== voucherType.id));
+          toast.success(`Voucher type “${voucherType.name}” deleted.`);
+          break;
+        }
+      }
+
+      setPending(null);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not delete ledger'));
+      /*
+        The dialog stays open on a failure, holding the row it names. Closing it would leave the
+        reader looking at a table with the row still in it and a message about why, which reads as
+        though the wrong thing was deleted.
+      */
+      toast.error(getErrorMessage(err, 'Could not delete'));
     } finally {
-      setDeletingLedgerId(null);
+      setDeleting(false);
     }
   }
 
@@ -328,59 +390,17 @@ export function CompanyDashboardPage() {
         </div>
       )}
 
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'accounts' && styles.tabActive)}
-          onClick={() => setTab('accounts')}
-        >
-          Chart of accounts
-        </button>
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'parties' && styles.tabActive)}
-          onClick={() => setTab('parties')}
-        >
-          Parties
-        </button>
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'voucher-types' && styles.tabActive)}
-          onClick={() => setTab('voucher-types')}
-        >
-          Voucher types
-        </button>
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'financial-years' && styles.tabActive)}
-          onClick={() => setTab('financial-years')}
-        >
-          Financial years
-        </button>
-        {company.features.multiCurrency && (
-          <button
-            type="button"
-            className={cn(styles.tab, tab === 'currencies' && styles.tabActive)}
-            onClick={() => setTab('currencies')}
-          >
-            Currencies
-          </button>
-        )}
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'import-export' && styles.tabActive)}
-          onClick={() => setTab('import-export')}
-        >
-          Import &amp; export
-        </button>
-        <button
-          type="button"
-          className={cn(styles.tab, tab === 'settings' && styles.tabActive)}
-          onClick={() => setTab('settings')}
-        >
-          Settings
-        </button>
-      </div>
+      {/*
+        Built from the one TABS list, filtered by what this company actually has — a company
+        without multi-currency has no currencies panel, and offering the tab would open an empty
+        one. Announced as a tablist, which seven plain buttons in a row were not.
+      */}
+      <Tabs
+        label="Company panels"
+        value={tab}
+        onChange={setTab}
+        items={TABS.filter((entry) => isAvailable(entry.id, company))}
+      />
 
       {/*
         Separate from the chart of accounts because it answers a different question: that screen is
@@ -418,41 +438,45 @@ export function CompanyDashboardPage() {
 
       {tab === 'accounts' && (
         <div className={styles.accountsLayout}>
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <span className={styles.panelTitle}>Account groups</span>
+          <Panel
+            title="Account groups"
+            actions={
               <Button type="button" variant="ghost" onClick={() => setGroupModalOpen(true)}>
                 <Plus size={14} /> New
               </Button>
-            </div>
+            }
+          >
             <AccountGroupTree
               groups={groups}
               selectedGroupId={selectedGroupId}
               onSelect={setSelectedGroupId}
-              onDelete={handleDeleteGroup}
-              deletingGroupId={deletingGroupId}
+              onDelete={(group) => setPending({ kind: 'group', group })}
+              deletingGroupId={pending?.kind === 'group' && deleting ? pending.group.id : null}
             />
-          </div>
+          </Panel>
 
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <span className={styles.panelTitle}>Ledgers</span>
+          <Panel
+            title="Ledgers"
+            flush={visibleLedgers.length > 0}
+            actions={
               <Button type="button" variant="ghost" onClick={() => setLedgerModalOpen(true)}>
                 <Plus size={14} /> New
               </Button>
-            </div>
-
+            }
+          >
             {visibleLedgers.length === 0 ? (
               <EmptyState title="No ledgers here" description="Create a ledger under this group." />
             ) : (
-              <table className={styles.table} data-stack>
+              /* A record list — one ledger per row with a handful of named fields — so it becomes
+                 a list of cards on a phone rather than a sideways scroll. */
+              <Table surface="plain" stack>
                 <thead>
                   <tr>
                     <th>ID</th>
                     <th>Code</th>
                     <th>Name</th>
                     <th>Type</th>
-                    <th className={styles.num}>Opening balance</th>
+                    <th data-num>Opening balance</th>
                     <th>Currency</th>
                     <th />
                     <th>Actions</th>
@@ -461,15 +485,13 @@ export function CompanyDashboardPage() {
                 <tbody>
                   {visibleLedgers.map((ledger) => (
                     <tr key={ledger.id}>
-                      <td className={styles.mono} data-label="ID" title={ledger.id}>
+                      <td data-mono title={ledger.id}>
                         {formatRecordId(company.code, 'LED', ledger.code)}
                       </td>
-                      <td className={styles.mono} data-label="Code">
-                        {ledger.code}
-                      </td>
-                      <td data-label="Name">{ledger.name}</td>
-                      <td data-label="Type">{ledger.ledgerType}</td>
-                      <td className={cn(styles.mono, styles.num)} data-label="Opening balance">
+                      <td data-mono>{ledger.code}</td>
+                      <td>{ledger.name}</td>
+                      <td>{ledger.ledgerType}</td>
+                      <td data-num>
                         {/*
                           A figure and the side it falls on, written as the rest of the product
                           writes them: no symbol (the strip below names the currency), Dr/Cr rather
@@ -498,7 +520,7 @@ export function CompanyDashboardPage() {
                         belongs in the list and not only inside the edit form. Base currency is shown
                         muted rather than left blank, so an empty cell never reads as missing data.
                       */}
-                      <td className={styles.mono} data-label="Currency">
+                      <td data-mono>
                         {ledger.currencyId ? (
                           <Badge variant="neutral">
                             {currencies.find((currency) => currency.id === ledger.currencyId)
@@ -515,46 +537,44 @@ export function CompanyDashboardPage() {
                         </div>
                       </td>
                       <td>
-                        <div className={styles.rowActions}>
-                          <button
-                            type="button"
-                            className={styles.iconButton}
-                            aria-label="Edit ledger"
+                        <IconButtonGroup>
+                          <IconButton
+                            label={`Edit ledger ${ledger.name}`}
                             onClick={() => setEditingLedger(ledger)}
                           >
                             <Pencil size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.iconButton}
-                            aria-label="Delete ledger"
-                            disabled={ledger.isSystem || deletingLedgerId === ledger.id}
+                          </IconButton>
+                          <IconButton
+                            label={`Delete ledger ${ledger.name}`}
+                            variant="danger"
+                            disabled={ledger.isSystem}
                             title={ledger.isSystem ? 'System ledgers cannot be deleted' : undefined}
-                            onClick={() => handleDeleteLedger(ledger)}
+                            onClick={() => setPending({ kind: 'ledger', ledger })}
                           >
                             <Trash2 size={14} />
-                          </button>
-                        </div>
+                          </IconButton>
+                        </IconButtonGroup>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             )}
-          </div>
+          </Panel>
         </div>
       )}
 
       {tab === 'voucher-types' && (
-        <div className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>Voucher types</span>
+        <Panel
+          title="Voucher types"
+          flush
+          actions={
             <Button type="button" variant="ghost" onClick={() => setVoucherTypeModalOpen(true)}>
               <Plus size={14} /> New
             </Button>
-          </div>
-
-          <table className={styles.table} data-stack>
+          }
+        >
+          <Table surface="plain" stack>
             <thead>
               <tr>
                 <th>ID</th>
@@ -569,15 +589,13 @@ export function CompanyDashboardPage() {
             <tbody>
               {voucherTypes.map((voucherType) => (
                 <tr key={voucherType.id}>
-                  <td className={styles.mono} data-label="ID" title={voucherType.id}>
+                  <td data-mono title={voucherType.id}>
                     {formatRecordId(company.code, 'VTY', voucherType.code)}
                   </td>
-                  <td className={styles.mono} data-label="Code">
-                    {voucherType.code}
-                  </td>
-                  <td data-label="Name">{voucherType.name}</td>
-                  <td data-label="Category">{voucherType.category.replace('_', ' ')}</td>
-                  <td data-label="Numbering">{voucherType.numberingMethod}</td>
+                  <td data-mono>{voucherType.code}</td>
+                  <td>{voucherType.name}</td>
+                  <td>{voucherType.category.replace('_', ' ')}</td>
+                  <td>{voucherType.numberingMethod}</td>
                   <td>
                     <div className={styles.rowFlags}>
                       {voucherType.isSystem && <Lock size={13} aria-label="System voucher type" />}
@@ -585,36 +603,33 @@ export function CompanyDashboardPage() {
                     </div>
                   </td>
                   <td>
-                    <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label="Edit voucher type"
+                    <IconButtonGroup>
+                      <IconButton
+                        label={`Edit voucher type ${voucherType.name}`}
                         onClick={() => setEditingVoucherType(voucherType)}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label="Delete voucher type"
-                        disabled={voucherType.isSystem || deletingVoucherTypeId === voucherType.id}
+                      </IconButton>
+                      <IconButton
+                        label={`Delete voucher type ${voucherType.name}`}
+                        variant="danger"
+                        disabled={voucherType.isSystem}
                         title={
                           voucherType.isSystem
                             ? 'System voucher types cannot be deleted'
                             : undefined
                         }
-                        onClick={() => handleDeleteVoucherType(voucherType)}
+                        onClick={() => setPending({ kind: 'voucher-type', voucherType })}
                       >
                         <Trash2 size={14} />
-                      </button>
-                    </div>
+                      </IconButton>
+                    </IconButtonGroup>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
+        </Panel>
       )}
 
       <Modal
@@ -682,6 +697,23 @@ export function CompanyDashboardPage() {
           onCancel={() => setVoucherTypeModalOpen(false)}
         />
       </Modal>
+
+      {/*
+        The one dialog behind all three delete icons. It replaces window.confirm(), which drew an
+        operating-system box that ignored the theme, could not say more than a line, and labelled
+        the destructive choice "OK".
+      */}
+      {pending && (
+        <ConfirmDialog
+          open
+          destructive
+          busy={deleting}
+          {...describe(pending)}
+          cancelLabel="Keep"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPending(null)}
+        />
+      )}
 
       <Modal
         open={editingVoucherType !== null}

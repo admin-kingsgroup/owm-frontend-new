@@ -1,0 +1,288 @@
+/*
+  One grid, for every grid in the product.
+
+  There were seven before this: the reports, the vouchers list, the chart of accounts, currencies,
+  financial years, the portfolio and reported errors, each with its own copy of the same forty
+  lines. The token file already records where that led — 29px, 37px and 49px row heights inside one
+  company — and answered it by publishing --grid-*-padding for every copy to remember. Tokens fix a
+  value; they cannot fix seven copies of a component, which is what this is for.
+
+  The reports' density is the one kept, because that is the density the Tally-native direction is
+  aimed at and the token comment names it as the reference.
+
+  Cells are marked with attributes rather than imported classes — `data-num`, `data-muted` — the
+  same idiom `data-stack` and `data-label` already use in globals.css. A page writes <td data-num>
+  and needs no class import for it.
+*/
+
+/*
+  Every grid scrolls inside its own box rather than widening the page.
+
+  This is the rule that keeps the shell usable on a phone: a balance sheet is genuinely wide and
+  stays a table, so it has to scroll somewhere, and the alternative is the whole application
+  sliding sideways underneath the chrome.
+*/
+.scroll {
+  overflow-x: auto;
+  /* Momentum scrolling on iOS, where the PWA is a standalone window with no browser chrome. */
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* The card surface, when the grid is standing on its own rather than inside a Panel. */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-card);
+  /* So the header's corners follow the box's. */
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  padding: var(--grid-head-padding);
+  text-align: left;
+  background-color: var(--paper-sunken);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--grid-cell-padding);
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---- Cell modifiers, by attribute -------------------------------------- */
+
+/*
+  A figure. Mono for the tabular numerals — decimal points line up down a column and a digit never
+  changes width as a value changes, which is the whole reason Plex is loaded.
+*/
+.table td[data-num],
+.table th[data-num] {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+  A figure of nil is shown as a dot, not as 0.00.
+
+  A trial balance of eight ledgers has five columns that are entirely zero, and printing forty
+  copies of "0.00" hides the four figures that are not. Tally suppresses them; the dot keeps the
+  cell visibly present, so a blank never reads as a column that failed to load.
+
+  The convention was already written down in three separate stylesheets — the reports, the chart of
+  accounts and the gateway each drew this dot their own way, two of them by hand in the markup.
+  Here it is the grid's own behaviour: a numeric cell given nothing to print says so.
+*/
+.table td[data-num]:empty::before {
+  content: '·';
+  color: var(--ink-faint);
+}
+
+/*
+  An id or a code: mono, but read left to right like the text it sits among.
+
+  A step quieter than the row it is in, which is the weight the chart of accounts already gave
+  them. An identifier is how you refer to a row afterwards, not what you came to the row to read —
+  and a column of record ids set in full --ink competes with the figures for the eye.
+*/
+.table td[data-mono] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.table td[data-muted] {
+  color: var(--ink-faint);
+}
+
+/* ---- Zebra ------------------------------------------------------------- */
+/*
+  On by default. A wide row of figures is read across, and the stripe is what stops the eye
+  dropping a line between the particulars and the amount three columns over. Short grids — a
+  five-row summary inside a card — turn it off, where it is noise rather than help.
+*/
+.zebra tbody tr:nth-child(even) td {
+  background-color: var(--paper);
+}
+
+/* Drawn after the stripe so a hovered even row still changes. */
+.table tbody tr:hover td {
+  background-color: var(--hover-tint);
+}
+
+/* ---- Sticky ------------------------------------------------------------ */
+/*
+  For statements long enough to scroll: the column headings and the totals both stay put, so a
+  figure two hundred rows down still has a name at the top and a total at the foot.
+
+  The rule under the header is an inset shadow rather than a border, because a border on a sticky
+  cell scrolls away with the collapsed grid it was drawn on.
+*/
+.sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.sticky tfoot td,
+.sticky tfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+/* ---- Footings ---------------------------------------------------------- */
+.table tfoot td,
+.table tfoot th {
+  padding: var(--grid-cell-padding);
+  background-color: var(--paper-sunken);
+  border-bottom: none;
+  color: var(--ink);
+  font-weight: 700;
+  /* A footing is a total, not a column name — it keeps sentence case and its own size. */
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+  /* On the cell rather than the collapsed grid, so it travels with the row it belongs to. */
+  box-shadow: inset 0 2px 0 var(--ink);
+}
+
+.table tfoot td[data-num],
+.table tfoot th[data-num] {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Density ----------------------------------------------------------- */
+/*
+  The one exception the token file names: a grid nested inside another card — the parties panel's
+  table sits within a party's own card — is meant to sit tighter than a grid standing on its own.
+
+  From tokens like the default density, so the product's two row heights are declared in the same
+  place and a third cannot appear without being written down beside them.
+*/
+.tight th {
+  padding: var(--grid-head-padding-tight);
+  background-color: transparent;
+  border-bottom: none;
+}
+
+.tight td {
+  padding: var(--grid-cell-padding-tight);
+  vertical-align: top;
+}
+
+.tight tbody tr:hover td {
+  background-color: transparent;
+}
+
+/* ---- Long text --------------------------------------------------------- */
+/*
+  The two ways a column of prose can behave, both opt-in. Everything else stays on one line so the
+  columns keep their shape.
+
+  `data-wrap` gives the text its full height — for a message that has to be read in full, like the
+  fault on a reported error, where truncating it hides the part that says what went wrong.
+*/
+.table td[data-wrap] {
+  white-space: normal;
+  min-width: 12rem;
+}
+
+/*
+  `data-clip` keeps it to one line and trails off — for a narration in a register, where hundreds
+  of rows are being scanned and a uniform row height is what makes them scannable. A row that grows
+  to three lines because someone wrote a paragraph breaks the rhythm of the whole column.
+*/
+.table td[data-clip] {
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+/* On a phone the row is a card, where there is no column rhythm to protect and the full text fits. */
+@media screen and (max-width: 48rem) {
+  .table[data-stack] td[data-clip] {
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+}
+
+/*
+  Nothing sticks to a sheet of paper.
+
+  A sticky heading printed as-is pins itself over the first rows of the statement and leaves the
+  rest of the pages headerless. Unstuck, the `thead { display: table-header-group }` rule in
+  globals.css takes over and repeats the headings at the top of every printed page, which is what
+  a filed statement needs.
+
+  The scroller has to release its height too, or the printout is the one screenful that happened
+  to be visible.
+*/
+@media print {
+  .scroll {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .sticky thead th,
+  .sticky tfoot td,
+  .sticky tfoot th {
+    position: static;
+  }
+
+  /* Sunken fills are dropped by the browser on paper; the rules have to carry the structure. */
+  .table th {
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/*
+  Rows that become cards on a phone — see the data-stack block in globals.css, which owns the
+  layout. This only undoes the parts of the grid that fight it: a card has no sideways scroll to
+  do, and the sticky header it would otherwise pin has been hidden.
+*/
+@media screen and (max-width: 48rem) {
+  .scroll:has(table[data-stack]) {
+    overflow-x: visible;
+  }
+
+  .card:has(table[data-stack]) {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .table[data-stack] tfoot td,
+  .table[data-stack] tfoot th {
+    box-shadow: none;
+    border-radius: var(--radius-md);
+    margin-top: 0.625rem;
+  }
+}

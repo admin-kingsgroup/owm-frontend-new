@@ -7,7 +7,7 @@ import type { Company } from '@/entities/company';
 import { getGroupOverview } from '@/entities/report';
 import type { CompanyOverview, GroupOverview } from '@/entities/report';
 import { CreateCompanyForm, EditCompanyForm } from '@/features/company';
-import { Button, Modal, Loading, EmptyState, Badge, Sparkline } from '@/shared/ui';
+import { Button, Modal, Loading, EmptyState, Badge, Sparkline, IconButton } from '@/shared/ui';
 import { cn, formatMoney, getErrorMessage } from '@/shared/lib';
 
 import styles from './CompaniesPage.module.css';
@@ -287,8 +287,7 @@ export function CompaniesPage() {
                     Three companies of two different kinds sit in this list. Without the type they
                     are told apart only by a code someone has to remember the meaning of.
                   */}
-                  {companyTypeLabel(company.type)} · {company.baseCurrency} ·{' '}
-                  {company.country}
+                  {companyTypeLabel(company.type)} · {company.baseCurrency} · {company.country}
                 </p>
 
                 {renderFigures(figuresById.get(company.id), company.id, company.country)}
@@ -307,15 +306,12 @@ export function CompaniesPage() {
                     Open <ArrowRight size={14} />
                   </Link>
                   <div className={styles.cardActions}>
-                    <button
-                      type="button"
-                      className={styles.iconButton}
-                      aria-label="Edit company"
-                      title="Edit company"
+                    <IconButton
+                      label={`Edit ${company.name}`}
                       onClick={() => setEditingCompany(company)}
                     >
                       <Pencil size={14} />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               </div>

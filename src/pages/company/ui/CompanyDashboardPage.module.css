@@ -1,3 +1,12 @@
+/*
+  What is left after the furniture moved out.
+
+  The tab strip, the panels, the grid, the row actions and the icon buttons this screen used to
+  draw are now shared/ui — see Table.module.css, which absorbed six other copies of the same
+  rules. What remains is this screen's own layout and the handful of marks that belong to a chart
+  of accounts specifically.
+*/
+
 .page {
   display: flex;
   flex-direction: column;
@@ -7,10 +16,10 @@
 
 .error {
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background-color: var(--danger-bg-soft);
   color: var(--danger-fg);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 .header {
@@ -30,7 +39,7 @@
 .title {
   font-family: var(--font-display);
   letter-spacing: var(--display-tracking);
-  font-size: 1.75rem;
+  font-size: var(--text-2xl);
   font-weight: 600;
   color: var(--ink);
   margin: 0;
@@ -38,7 +47,7 @@
 
 .subtitle {
   margin: 0.5rem 0 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--ink-soft);
 }
 
@@ -48,10 +57,10 @@
   gap: 0.5rem;
   height: 2.5rem;
   padding: 0 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background: var(--brand-gradient);
   color: var(--on-accent);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 600;
   text-decoration: none;
   box-shadow: var(--shadow-2);
@@ -61,38 +70,7 @@
   filter: brightness(0.94);
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.tab {
-  padding: 0.625rem 0.25rem;
-  margin-bottom: -1px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.tab + .tab {
-  margin-left: 1.25rem;
-}
-
-.tab:hover {
-  color: var(--ink);
-}
-
-.tabActive {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-}
-
+/* The groups rail beside the ledgers it filters. */
 .accountsLayout {
   display: grid;
   grid-template-columns: 17rem 1fr;
@@ -100,76 +78,7 @@
   align-items: start;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.125rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background-color: var(--paper-card);
-}
-
-.panelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.panelTitle {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.table th {
-  padding: var(--grid-head-padding);
-  text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.table td {
-  padding: var(--grid-cell-padding);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-  vertical-align: middle;
-}
-
-/* The longest list in the product, and the only grid that had no rail to follow a row along. */
-.table tbody tr:nth-child(even) td {
-  background-color: var(--paper);
-}
-
-.table tr:last-child td {
-  border-bottom: none;
-}
-
-.mono {
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
-}
-
-/* A figure column. Right-aligned on both the heading and the cells, so the decimal points line up
-   and the label sits over what it names — see the note beside `.table th.num` in the reports. */
-.num,
-.table th.num {
-  text-align: right;
-  font-family: var(--font-mono);
-}
-
+/* Dr or Cr, beside the figure it qualifies. */
 .side {
   color: var(--ink-faint);
   font-size: var(--text-xs);
@@ -188,35 +97,6 @@
   color: var(--ink-faint);
 }
 
-.rowActions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.iconButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--ink-faint);
-  cursor: pointer;
-}
-
-.iconButton:hover:not(:disabled) {
-  background-color: var(--hover-tint);
-  color: var(--ink);
-}
-
-.iconButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /*
  * Tally shows this figure and lets you carry on. Entering opening balances one ledger at a time
  * is unbalanced by definition for most of the session, so this informs rather than blocks — it
@@ -225,10 +105,10 @@
 .openingDiff {
   padding: 0.625rem 0.875rem;
   border: 1px solid var(--danger-fg);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   background-color: var(--danger-bg-soft);
   color: var(--danger-fg);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -243,33 +123,10 @@
   color: var(--ink-faint);
 }
 
-/*
-  A ledger row is wider than a phone. Scrolling the table inside its own panel keeps the columns
-  legible and stops the page itself from scrolling sideways.
-
-  `screen` only — a printed table must stay a table, with the header row globals.css restores for
-  print. A sideways scroll on paper is just columns cut off the edge of the page.
-*/
 @media screen and (max-width: 60rem) {
-  .table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
   /* A 17rem rail beside the ledgers leaves neither readable; one under the other reads fine. */
   .accountsLayout {
     grid-template-columns: 1fr;
-  }
-
-  /*
-    A grid item defaults to min-width: auto, so the ledgers panel was sized by its widest table row
-    and pushed its own header off the screen. Zero lets the panel take the column and the table
-    scroll inside it, which is what the rule above intends.
-  */
-  .panel {
-    min-width: 0;
   }
 
   /* The name and its badges share a row that a phone cannot fit; let them stack. */
@@ -277,18 +134,22 @@
     flex-wrap: wrap;
   }
 
-  /* Four tab labels do not fit across a phone, and wrapping them breaks the underline. */
-  .tabs {
-    overflow-x: auto;
-    scrollbar-width: thin;
-  }
-
-  .tab {
-    white-space: nowrap;
-    padding-inline: 0.5rem;
-  }
-
   .title {
-    font-size: 1.375rem;
+    font-size: var(--text-xl);
+  }
+}
+
+/*
+  The header's action is a full-width button on a phone rather than a chip floating beside a
+  wrapped title — it is the one thing on this screen anyone taps on the way past.
+*/
+@media screen and (max-width: 30rem) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vouchersLink {
+    justify-content: center;
   }
 }

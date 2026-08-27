@@ -9,7 +9,7 @@ import {
   setExchangeRate,
 } from '@/entities/currency';
 import type { Currency, ExchangeRate, RateType } from '@/entities/currency';
-import { Button, Input, Loading, Select } from '@/shared/ui';
+import { Button, Input, Loading, Select, Table } from '@/shared/ui';
 import { getErrorMessage, toCalendarDay } from '@/shared/lib';
 
 import styles from './CurrenciesPanel.module.css';
@@ -226,7 +226,7 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
           its own date.
         </p>
       ) : (
-        <table className={styles.table}>
+        <Table surface="plain" stack zebra={false}>
           <thead>
             <tr>
               <th>Code</th>
@@ -237,13 +237,13 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
           <tbody>
             {currencies.map((currency) => (
               <tr key={currency.id}>
-                <td>{currency.code}</td>
+                <td data-mono>{currency.code}</td>
                 <td>{currency.symbol}</td>
                 <td>{currency.name}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       )}
 
       {currencies.length > 0 && (
@@ -317,28 +317,26 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
           </form>
 
           {rates.length > 0 && (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Currency</th>
-                    <th>Type</th>
-                    <th>Effective from</th>
-                    <th className={styles.num}>Rate</th>
+            <Table surface="plain" stack sticky className={styles.ratesGrid}>
+              <thead>
+                <tr>
+                  <th>Currency</th>
+                  <th>Type</th>
+                  <th>Effective from</th>
+                  <th data-num>Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rates.map((entry) => (
+                  <tr key={entry.id}>
+                    <td data-mono>{entry.currencyCode}</td>
+                    <td>{entry.rateType}</td>
+                    <td>{toCalendarDay(entry.effectiveFrom)}</td>
+                    <td data-num>{entry.rate}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {rates.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{entry.currencyCode}</td>
-                      <td>{entry.rateType}</td>
-                      <td>{toCalendarDay(entry.effectiveFrom)}</td>
-                      <td className={styles.num}>{entry.rate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </Table>
           )}
         </>
       )}

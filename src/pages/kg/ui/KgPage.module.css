@@ -24,28 +24,6 @@
   color: var(--ink-faint);
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.tab {
-  padding: 0.5rem 0.875rem;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 550;
-  color: var(--ink-faint);
-  border-bottom: 2px solid transparent;
-}
-
-.tabActive {
-  color: var(--ink);
-  border-bottom-color: currentColor;
-}
-
 .panel {
   display: flex;
   flex-direction: column;
@@ -99,37 +77,7 @@
   text-decoration: underline;
 }
 
-/* Wide tables scroll inside themselves rather than pushing the page sideways. */
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-  display: block;
-  overflow-x: auto;
-}
-
-.table th {
-  padding: var(--grid-head-padding);
-}
-
-.table td {
-  padding: var(--grid-cell-padding);
-}
-
-.table th,
-.table td {
-  text-align: left;
-  border-bottom: 1px solid var(--border-soft);
-  white-space: nowrap;
-}
-
-.table th {
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--ink-faint);
-}
-
+/* Figures outside a grid — in a card's summary line, say. The grids get theirs from Table. */
 .mono {
   font-variant-numeric: tabular-nums;
 }
@@ -252,12 +200,4 @@
 
 /* Matches the shell's breakpoint: Portfolio, Businesses and Partners scroll rather than wrap. */
 @media (max-width: 60rem) {
-  .tabs {
-    overflow-x: auto;
-    scrollbar-width: thin;
-  }
-
-  .tab {
-    white-space: nowrap;
-  }
 }

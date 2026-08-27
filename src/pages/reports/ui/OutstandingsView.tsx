@@ -2,6 +2,7 @@ import type { OutstandingsReport } from '@/entities/outstanding';
 import { cn, formatMoney, toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 /** Ageing bands, written the way a person reads them rather than the way they are stored. */
 const BUCKET_LABELS: Record<string, string> = {
@@ -41,55 +42,53 @@ export function OutstandingsView({ outstandings, money }: OutstandingsViewProps)
         </div>
       </div>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Party</th>
-              <th>Reference</th>
-              <th>Due</th>
-              <th className={styles.num}>Amount</th>
-              <th className={styles.num}>Settled</th>
-              <th className={styles.num}>Outstanding</th>
-              <th className={styles.num}>Overdue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {outstandings.bills.map((bill) => (
-              <tr key={bill.billId}>
-                <td>{bill.ledgerName}</td>
-                <td>{bill.reference}</td>
-                <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : toCalendarDay(bill.billDate)}</td>
-                <td className={styles.num}>
-                  {money(bill.amount)}
-                  {/*
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Party</th>
+            <th>Reference</th>
+            <th>Due</th>
+            <th data-num>Amount</th>
+            <th data-num>Settled</th>
+            <th data-num>Outstanding</th>
+            <th data-num>Overdue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {outstandings.bills.map((bill) => (
+            <tr key={bill.billId}>
+              <td>{bill.ledgerName}</td>
+              <td>{bill.reference}</td>
+              <td>{bill.dueDate ? toCalendarDay(bill.dueDate) : toCalendarDay(bill.billDate)}</td>
+              <td data-num>
+                {money(bill.amount)}
+                {/*
                     A foreign bill is chased in the currency it was invoiced in. Showing only the
                     base figure left a New York client owing a rupee amount that appears nowhere on
                     the invoice, with nothing on the row to say it had been converted at all.
                   */}
-                  {bill.currencyCode && bill.fcAmount && (
-                    <span className={styles.foreign}>
-                      {bill.currencyCode} {formatMoney(bill.fcAmount)}
-                    </span>
-                  )}
-                </td>
-                <td className={styles.num}>{money(bill.settled)}</td>
-                <td className={styles.num}>
-                  {money(bill.outstanding)}
-                  {bill.currencyCode && bill.fcOutstanding && (
-                    <span className={styles.foreign}>
-                      {bill.currencyCode} {formatMoney(bill.fcOutstanding)}
-                    </span>
-                  )}
-                </td>
-                <td className={cn(styles.num, bill.overdueDays > 0 && styles.overdue)}>
-                  {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                {bill.currencyCode && bill.fcAmount && (
+                  <span className={styles.foreign}>
+                    {bill.currencyCode} {formatMoney(bill.fcAmount)}
+                  </span>
+                )}
+              </td>
+              <td data-num>{money(bill.settled)}</td>
+              <td data-num>
+                {money(bill.outstanding)}
+                {bill.currencyCode && bill.fcOutstanding && (
+                  <span className={styles.foreign}>
+                    {bill.currencyCode} {formatMoney(bill.fcOutstanding)}
+                  </span>
+                )}
+              </td>
+              <td data-num className={cn(bill.overdueDays > 0 && styles.figureNegative)}>
+                {bill.overdueDays > 0 ? `${bill.overdueDays}d` : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
       {outstandings.bills.length === 0 && (
         <p className={styles.empty}>
           Nothing outstanding as at {toCalendarDay(outstandings.asOf)}.

@@ -1,0 +1,68 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.message {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  /* A consequence is a sentence, not a column — it reads at a comfortable measure. */
+  max-width: 46ch;
+}
+
+/*
+  What cannot be undone, said plainly and last.
+
+  Its own line rather than a clause tacked onto the sentence above: the reader is one click from
+  doing it, and this is the part that decides whether they should.
+*/
+.consequence {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-bd);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  background-color: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/*
+  The destructive variant of Button, which the shared kit did not have until now.
+
+  --danger-solid and --on-danger rather than --danger-fg and white: --danger-fg is pitched as text
+  on paper and is a *light* red in the dark theme, where white on it measures 2.6:1. The pair flips
+  together per theme, the way --accent and --on-accent do.
+*/
+.danger {
+  background: var(--danger-solid);
+  color: var(--on-danger);
+  box-shadow: var(--shadow-1);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/*
+  Full width and stacked on a phone, with the confirming button underneath.
+  Two buttons huddled at the right edge of a sheet is the hardest pair on the screen to hit apart.
+*/
+@media (max-width: 30rem) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+}

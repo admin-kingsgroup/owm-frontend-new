@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { getPartnerStatement, getRanking } from '@/entities/kg';
 import type { Partner, PartnerStatement, PortfolioView } from '@/entities/kg';
-import { Button, Input, Select, Badge, EmptyState, Loading } from '@/shared/ui';
+import { Button, Input, Select, Badge, EmptyState, Loading, Table } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import styles from './KgPage.module.css';
@@ -121,7 +121,7 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
                 {view.portfolioCurrency}.
               </p>
 
-              <table className={styles.table}>
+              <Table surface="plain" stack>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -180,7 +180,7 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
                     <td colSpan={3} />
                   </tr>
                 </tfoot>
-              </table>
+              </Table>
             </>
           )}
 
@@ -221,7 +221,7 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
                 {String(statement.periodMonth).padStart(2, '0')} · {statement.currency}. This is
                 what gets sent, so it shows their figures only.
               </p>
-              <table className={styles.table}>
+              <Table surface="plain" stack>
                 <thead>
                   <tr>
                     <th>Business</th>
@@ -265,7 +265,7 @@ export function PortfolioPanel({ companyId, partners, businessCount }: Portfolio
                     </td>
                   </tr>
                 </tfoot>
-              </table>
+              </Table>
             </>
           )}
         </div>

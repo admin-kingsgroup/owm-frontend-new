@@ -2,6 +2,7 @@ import type { ForexGainLossReport } from '@/entities/currency';
 import { cn, formatMoney } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
+import { Table } from '@/shared/ui';
 
 interface ForexViewProps {
   forex: ForexGainLossReport;
@@ -48,39 +49,37 @@ export function ForexView({ forex, money, day }: ForexViewProps) {
         </p>
       )}
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table} data-stack>
-          <thead>
-            <tr>
-              <th>Party</th>
-              <th>Reference</th>
-              <th>Currency</th>
-              {/* In the party's own currency — the column beside it names which. */}
-              <th className={styles.num}>FC open</th>
-              <th className={styles.num}>Booked</th>
-              <th className={styles.num}>Revalued</th>
-              <th className={styles.num}>Gain / loss</th>
-              <th>Kind</th>
+      <Table surface="plain" sticky className={styles.tableWrap} stack>
+        <thead>
+          <tr>
+            <th>Party</th>
+            <th>Reference</th>
+            <th>Currency</th>
+            {/* In the party's own currency — the column beside it names which. */}
+            <th data-num>FC open</th>
+            <th data-num>Booked</th>
+            <th data-num>Revalued</th>
+            <th data-num>Gain / loss</th>
+            <th>Kind</th>
+          </tr>
+        </thead>
+        <tbody>
+          {forex.lines.map((line) => (
+            <tr key={line.billId}>
+              <td>{line.ledgerName}</td>
+              <td>{line.reference}</td>
+              <td>{line.currencyCode}</td>
+              <td data-num>{formatMoney(line.fcOutstanding)}</td>
+              <td data-num>{money(line.bookedBase)}</td>
+              <td data-num>{line.revaluedBase ? money(line.revaluedBase) : '—'}</td>
+              <td data-num className={cn(Number(line.gainLoss) < 0 && styles.figureNegative)}>
+                {money(line.gainLoss)}
+              </td>
+              <td>{line.kind === 'REALISED' ? 'Realised' : 'Unrealised'}</td>
             </tr>
-          </thead>
-          <tbody>
-            {forex.lines.map((line) => (
-              <tr key={line.billId}>
-                <td>{line.ledgerName}</td>
-                <td>{line.reference}</td>
-                <td>{line.currencyCode}</td>
-                <td className={styles.num}>{formatMoney(line.fcOutstanding)}</td>
-                <td className={styles.num}>{money(line.bookedBase)}</td>
-                <td className={styles.num}>{line.revaluedBase ? money(line.revaluedBase) : '—'}</td>
-                <td className={cn(styles.num, Number(line.gainLoss) < 0 && styles.overdue)}>
-                  {money(line.gainLoss)}
-                </td>
-                <td>{line.kind === 'REALISED' ? 'Realised' : 'Unrealised'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
       {forex.lines.length === 0 && (
         <p className={styles.empty}>No exchange differences as at {day(forex.asOf)}.</p>
       )}
