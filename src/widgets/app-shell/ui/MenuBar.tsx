@@ -6,44 +6,9 @@ import { cn } from '@/shared/lib';
 import { useMenuKeys } from '@/shared/hooks';
 
 import { hasOpenDialog } from '../model/button-bar';
-import type { Menu, MenuItem } from '../model/menus';
+import type { Menu } from '../model/menus';
+import { columnsFor, distribute, groupItems } from '../model/menu-layout';
 import styles from './MenuBar.module.css';
-
-/**
- * The items of a menu, gathered under the headings that introduce them.
- *
- * `section` marks where a group *starts* — it sits on the first item of the run, and everything
- * after it belongs to that heading until the next one. The menu used to render that flat, printing
- * the heading inline and letting the items fall where they may, which is why a menu of twenty was
- * one column seven hundred pixels tall.
- *
- * A menu almost always opens with items carrying no section at all — Portfolio and Vouchers, ahead
- * of Create — so the first group is usually unnamed. That one is drawn without a card: a box with
- * an empty heading is worse than no box.
- */
-function groupItems(items: MenuItem[]): Array<{ name: string | null; items: MenuItem[] }> {
-  const groups: Array<{ name: string | null; items: MenuItem[] }> = [];
-
-  for (const item of items) {
-    if (item.section || groups.length === 0) {
-      groups.push({ name: item.section ?? null, items: [item] });
-    } else {
-      groups[groups.length - 1].items.push(item);
-    }
-  }
-
-  return groups;
-}
-
-/**
- * How many columns the panel runs to.
- *
- * From the number of groups rather than a fixed width, so a menu is the size of what is in it:
- * Help holds two links and stays the size of two links, while Reports holds twenty in six groups
- * and stops being a list that runs off the bottom of the screen. Three is the ceiling — past that
- * the panel is wider than the window it hangs in.
- */
-const columnsFor = (groups: number): 1 | 2 | 3 => (groups <= 1 ? 1 : groups === 2 ? 2 : 3);
 
 interface MenuBarProps {
   menus: Menu[];
@@ -55,13 +20,13 @@ interface MenuBarProps {
 }
 
 /**
- * The classic menu bar: every destination in the product behind six words, each opened by its
- * underlined letter.
+ * The classic menu bar: every destination in the product behind seven words.
  *
- * Alt + the mnemonic opens a menu from anywhere, Left and Right walk between them once one is open,
- * Up and Down walk the items (shared with the user menu — see useMenuKeys), and Escape closes.
- * Moving the pointer across the bar with a menu open switches menus without a second click, which
- * is what makes a menu bar quicker to read than a set of separate dropdowns.
+ * A menu opens when it is clicked, and at no other time by pointer — see the note on the trigger.
+ *
+ * The keyboard keeps every shortcut it had: Alt + the menu's first letter opens it from anywhere,
+ * Left and Right walk between them once one is open, Up and Down walk the items (shared with the
+ * user menu — see useMenuKeys), and Escape closes and hands focus back to the trigger.
  */
 export function MenuBar({ menus, onNavigate }: MenuBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
@@ -224,9 +189,22 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
               aria-haspopup="menu"
               aria-expanded={open}
               aria-controls={open ? menuId : undefined}
+              /*
+                Click, and only click.
+
+                The bar used to track the pointer once a menu was open — move across it and the
+                menu under the cursor took over, which is what a desktop menu bar has always done.
+                It reads well when you meant it and badly when you did not: with a menu open, any
+                journey across the bar to reach the company switcher or the account opens and
+                discards every menu on the way. Nothing is destructive, but the panel flapping
+                through six states as the pointer passes is noise, and it is noise at exactly the
+                moment the reader has stopped looking at the bar.
+
+                Alt+letter still switches between them without a click, and Left and Right still
+                walk the bar once one is open — the keyboard keeps the fast path, which is where it
+                was actually being used.
+              */
               onClick={() => setOpenId(open ? null : menu.id)}
-              // Classic menu-bar behaviour: once one is open the bar tracks the pointer.
-              onMouseEnter={() => setOpenId((current) => (current === null ? null : menu.id))}
             >
               {/*
                 Wrapped, and positioned, so it paints above the fill the trigger draws behind it —
@@ -246,69 +224,75 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
             {open &&
               (() => {
                 const groups = groupItems(menu.items);
+                const columns = distribute(groups, columnsFor(groups));
 
                 return (
                   <div
                     className={styles.menu}
-                    /* Read by the stylesheet, which flows the groups into that many columns. */
-                    data-cols={columnsFor(groups.length)}
+                    /* The stylesheet draws this many; nothing is left to it to decide. */
+                    data-cols={columns.length}
                     role="menu"
                     id={menuId}
                     ref={menuRef}
                   >
-                    {groups.map((group, at) => {
-                      const headingId = `${menuId}-g${at}`;
+                    {columns.map((column, columnAt) => (
+                      /* role="none" so the columns are a layout device and not something a screen
+                         reader has to walk through on the way to the items. */
+                      <div className={styles.column} role="none" key={columnAt}>
+                        {column.map((group, groupAt) => {
+                          const headingId = `${menuId}-c${columnAt}g${groupAt}`;
 
-                      return (
-                        /*
-                          A labelled group where there is a heading, so the block is announced as
-                          "Registers, ten items" rather than as ten more entries in a list of
-                          twenty. `role="none"` where there is not: a bare div inside role="menu"
-                          leaves a screen reader announcing a menu whose items it cannot count.
-                        */
-                        <div
-                          key={group.name ?? `bare-${at}`}
-                          className={cn(styles.group, group.name === null && styles.groupBare)}
-                          {...(group.name === null
-                            ? { role: 'none' as const }
-                            : { role: 'group' as const, 'aria-labelledby': headingId })}
-                        >
-                          {group.name !== null && (
-                            <span className={styles.section} id={headingId}>
-                              {group.name}
-                            </span>
-                          )}
-
-                          {group.items.map((item) => {
+                          return (
                             /*
-                              Matched on the whole location, query included. NavLink's own
-                              `isActive` reads the path alone, which would light up all nine
-                              reports at once — they differ only by ?report=. Exact means one item
-                              can be current, never two.
+                              A labelled group where there is a heading, so the block is announced
+                              as "Registers, ten items" rather than as ten more entries in a list
+                              of twenty. role="none" where there is not.
                             */
-                            const itemCurrent =
-                              `${location.pathname}${location.search}` === item.to;
+                            <div
+                              key={group.name ?? `bare-${groupAt}`}
+                              className={cn(styles.group, group.name === null && styles.groupBare)}
+                              {...(group.name === null
+                                ? { role: 'none' as const }
+                                : { role: 'group' as const, 'aria-labelledby': headingId })}
+                            >
+                              {group.name !== null && (
+                                <span className={styles.section} id={headingId}>
+                                  {group.name}
+                                </span>
+                              )}
 
-                            return (
-                              <Link
-                                key={item.to + item.label}
-                                to={item.to}
-                                role="menuitem"
-                                className={cn(styles.item, itemCurrent && styles.itemActive)}
-                                aria-current={itemCurrent ? 'true' : undefined}
-                                onClick={() => {
-                                  setOpenId(null);
-                                  onNavigate?.();
-                                }}
-                              >
-                                <span className={styles.itemLabel}>{item.label}</span>
-                                {item.hint && <span className={styles.hint}>{item.hint}</span>}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
+                              {group.items.map((item) => {
+                                /*
+                                  Matched on the whole location, query included. NavLink's own
+                                  `isActive` reads the path alone, which would light up all nine
+                                  reports at once — they differ only by ?report=. Exact means one
+                                  item can be current, never two.
+                                */
+                                const itemCurrent =
+                                  `${location.pathname}${location.search}` === item.to;
+
+                                return (
+                                  <Link
+                                    key={item.to + item.label}
+                                    to={item.to}
+                                    role="menuitem"
+                                    className={cn(styles.item, itemCurrent && styles.itemActive)}
+                                    aria-current={itemCurrent ? 'true' : undefined}
+                                    onClick={() => {
+                                      setOpenId(null);
+                                      onNavigate?.();
+                                    }}
+                                  >
+                                    <span className={styles.itemLabel}>{item.label}</span>
+                                    {item.hint && <span className={styles.hint}>{item.hint}</span>}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 );
               })()}

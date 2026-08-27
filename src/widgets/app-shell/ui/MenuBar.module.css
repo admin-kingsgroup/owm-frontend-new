@@ -153,54 +153,58 @@
   last of them was reached by scrolling a dropdown, which is the point at which a menu has stopped
   being a menu.
 
-  Multi-column rather than a grid: the groups are wildly uneven — one holds ten items and three
-  hold one each — and `column-count` balances them by height, where a grid would leave a row as
-  tall as its tallest cell and a column of air beside the short ones.
+  A grid of columns the component fills itself, rather than CSS multi-column.
+
+  `column-count` balances by height and cannot break a card, which it handles badly: Transactions
+  has a one-line group and a six-line one, and the browser put both in the first column and left
+  the second standing empty inside a panel sized for two. What goes where is decided in
+  MenuBar.tsx now — see distribute — and these tracks only draw it.
 */
 .menu {
   position: absolute;
   top: 100%;
   left: 0;
   z-index: var(--z-dropdown);
-  /* Short at the foot: every group carries a bottom margin, which makes up the difference. */
-  padding: var(--space-3) var(--space-3) var(--space-1);
+  padding: var(--space-3);
   background-color: var(--paper-card);
   border: 1px solid var(--border);
   border-top: none;
   /* Square where it meets its trigger, rounded everywhere else. */
   border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
   box-shadow: var(--shadow-3);
-  column-gap: var(--space-2);
+  display: grid;
+  gap: var(--space-2);
+  /* Each column is as tall as its own contents, not as tall as the tallest beside it. */
+  align-items: start;
   /* Never wider than the window it hangs in, whatever the column count works out to. */
   max-width: calc(100vw - var(--space-4));
 }
 
+/*
+  The panel is exactly as wide as the columns it actually has — no width of its own to be left
+  half empty when the content turns out shorter than the box.
+*/
 .menu[data-cols='1'] {
-  width: 17rem;
-  column-count: 1;
+  grid-template-columns: 17rem;
 }
 
 .menu[data-cols='2'] {
-  width: 32rem;
-  column-count: 2;
+  grid-template-columns: repeat(2, 15rem);
 }
 
 .menu[data-cols='3'] {
-  width: 46rem;
-  column-count: 3;
+  grid-template-columns: repeat(3, 14.5rem);
 }
 
-/*
-  A group is one card and is never split down the middle of itself — the whole reason it is a card
-  is that its heading and its items are one thing.
-*/
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* A card: its heading and its items are one thing, and they stay together. */
 .group {
-  break-inside: avoid;
-  /* Multi-column needs a block box to keep whole; a bare div would still be breakable. */
-  display: inline-block;
-  width: 100%;
-  /* The gap between groups down a column — the panel's short bottom padding accounts for the last. */
-  margin-bottom: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -230,9 +234,14 @@
   display: inline-block;
   margin: 0 var(--space-1) var(--space-1);
   padding-bottom: 0.1875rem;
-  font-size: 0.625rem;
+  /*
+    A token rather than the 0.625rem it was. At that size, uppercased and tracked out, the heading
+    was smaller than the shortcut hints beside the items it introduces — the quietest thing in the
+    panel was the one part carrying its structure.
+  */
+  font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--accent);
   border-bottom: 2px solid var(--accent);
@@ -300,9 +309,9 @@
   much window left.
 */
 @media (max-width: 72rem) {
+  /* The third column wraps under the first two rather than the panel running off the screen. */
   .menu[data-cols='3'] {
-    width: 32rem;
-    column-count: 2;
+    grid-template-columns: repeat(2, 15rem);
   }
 }
 
@@ -387,7 +396,7 @@
     width: auto;
     min-width: 0;
     max-width: none;
-    column-count: 1;
+    grid-template-columns: minmax(0, 1fr);
     padding: var(--space-2);
     border: none;
     border-bottom: 1px solid var(--border-soft);
