@@ -1,10 +1,16 @@
 /*
-  The menu bar. A recessed strip so it reads as chrome rather than as content, with hairline
-  dividers between the menus the way a desktop menu bar has always drawn them.
+  The menu bar.
+
+  The hairline dividers between menus are gone. They were there because a desktop menu bar has
+  always drawn them, but they only ever separated words that were already separated by space — and
+  once the menu you are in wears a panel of its own, a row of vertical rules cuts straight through
+  it. The panel does the work the dividers were doing, and does it for the one menu that matters.
 */
 .bar {
   display: flex;
   align-items: stretch;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
   min-width: 0;
 }
 
@@ -13,12 +19,23 @@
   display: flex;
 }
 
+/*
+  The trigger fills the bar's height, and the fill it wears does not.
+
+  Those are two different jobs. The button wants the whole height — it is the thing being pointed
+  at, and an open menu has to hang off the bar's bottom edge with nothing showing between them. The
+  *mark* wants to be a panel sitting within the bar, which is what a tab looks like; taken to the
+  full height it stops reading as a mark on the bar and becomes a block cut out of it.
+
+  So the button stays full height and transparent, and the fill is drawn inset by `.trigger::before`.
+*/
 .trigger {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 0.875rem;
+  gap: 0.3125rem;
+  padding: 0.375rem 0.75rem;
   border: none;
-  border-right: 1px solid var(--sidebar-border);
   background: transparent;
   color: var(--sidebar-text);
   font-family: inherit;
@@ -26,29 +43,107 @@
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.trigger::before {
+  content: '';
+  position: absolute;
+  /* Inset top and bottom, flush left and right — the gap between menus does the horizontal work. */
+  inset: 0.25rem 0;
+  border-radius: var(--radius-md);
+  background-color: transparent;
   transition: background-color 0.12s ease;
 }
 
-.trigger:hover {
+.trigger:hover::before {
   background-color: var(--sidebar-hover);
+}
+
+/*
+  Both sit above the fill.
+
+  Positioned, with no z-index: a positioned descendant paints after its parent's absolutely
+  positioned pseudo-element of the same level, and tree order settles the rest. Left static they
+  would be inline content, which paints *below* it — the fill would cover the word.
+*/
+.label,
+.chevron {
+  position: relative;
+}
+
+/* Quieter than the word, and it turns over when the menu it belongs to is open. */
+.chevron {
+  flex-shrink: 0;
+  color: var(--sidebar-dim);
+  transition: transform 0.12s ease;
+}
+
+.triggerOpen .chevron {
+  transform: rotate(180deg);
+  color: var(--ink-faint);
+}
+
+/*
+  Where you are.
+
+  A lifted panel and a rule sitting inside its foot. The rule is drawn as a pseudo-element rather
+  than a border so it can be inset from the panel's sides — run to the full width it would meet the
+  rounded corners and read as an underscore beneath the word instead of a mark belonging to the
+  panel.
+
+  --chrome-accent, not --accent: the bar is near-black in both themes and the accent is pitched for
+  paper. See the note beside it in globals.css.
+*/
+.triggerCurrent {
+  font-weight: 600;
+}
+
+.triggerCurrent::before,
+.triggerCurrent:hover::before {
+  background-color: var(--chrome-chip-bg);
+}
+
+/* Inside the fill's foot, not the button's — hence the inset added to its own offset. */
+.triggerCurrent::after {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(0.25rem + 0.25rem);
+  height: 2px;
+  border-radius: var(--radius-full);
+  background-color: var(--chrome-accent);
 }
 
 /*
   The open menu is attached to its trigger, so the trigger takes the menu's surface and the border
   between them is painted over. Without that they read as two separate objects that happen to touch.
+
+  This is the one state whose fill *does* run the full height: it has to reach the bar's bottom
+  edge, or a band of chrome shows between the trigger and the menu hanging off it.
 */
-.triggerOpen,
-.triggerOpen:hover {
-  background-color: var(--paper-card);
-  box-shadow: inset 0 -1px 0 var(--paper-card);
+.triggerOpen {
+  color: var(--ink);
 }
 
-.mnemonic {
-  /* Against dark chrome, not paper. The accent is too dark here to be seen as a rule. */
-  text-decoration-color: var(--sidebar-dim);
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 0.15em;
+.triggerOpen::before,
+.triggerOpen:hover::before {
+  inset: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background-color: var(--paper-card);
+  /* Paints over the menu's top border so the two read as one object. */
+  box-shadow: 0 1px 0 var(--paper-card);
 }
+
+/*
+  No mnemonic underline.
+
+  The first letter used to be wrapped in `<u>` to advertise Alt+D. Two problems and one decision:
+  the element boundary made the word announce as "D ashboards" to a screen reader, and once the
+  triggers gained a gap for the chevron the same split appeared on screen. Alt+D still works and
+  the shortcut sheet lists every menu's key, so the mark was the only thing lost.
+*/
 
 .menu {
   position: absolute;
@@ -118,20 +213,61 @@
   .bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0;
+    padding: 0;
   }
 
   .trigger {
     justify-content: flex-start;
     min-height: 2.75rem;
-    border-right: none;
     border-bottom: 1px solid var(--sidebar-border);
     font-size: var(--text-md);
   }
 
-  .triggerOpen,
-  .triggerOpen:hover {
+  /*
+    A full-width row, not a tab. Inset from the edges it would read as a card floating in a list,
+    and the rows above and below would appear to be indented differently from it.
+  */
+  .trigger::before {
+    inset: 0;
+    border-radius: 0;
+  }
+
+  /* The chevron goes to the end of the row, where a disclosure sits in a list. */
+  .chevron {
+    margin-left: auto;
+  }
+
+  /*
+    A rule across the foot of a full-width row is a divider, not a mark — and this row already has
+    one. Down the leading edge instead, which is where a list says "this one", and is what the open
+    menu's own current item already does.
+  */
+  .triggerCurrent::after {
+    left: 0;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    height: auto;
+    border-radius: 0;
+  }
+
+  .triggerOpen {
+    color: var(--sidebar-text);
+  }
+
+  /* The menu expands in place here rather than hanging off a bar, so there is nothing to attach to. */
+  .triggerOpen::before,
+  .triggerOpen:hover::before {
+    inset: 0;
+    border-radius: 0;
     background-color: var(--sidebar-hover);
     box-shadow: none;
+  }
+
+  .triggerOpen .chevron {
+    color: var(--sidebar-dim);
   }
 
   .slot {

@@ -212,6 +212,18 @@
   --chrome-danger: #f0837a;
 
   /*
+    Selection, as it reads on the chrome.
+
+    --accent is pitched as a dark blue against paper; on a near-black bar it is barely a shade
+    different from the bar itself, which is the same reason the mnemonic underline takes
+    --sidebar-dim rather than the accent. This is the dark theme's accent value, which exists
+    precisely because it is a blue that works on a dark ground — 7.6:1 on --sidebar.
+
+    It does not vary by theme, because the chrome does not either.
+  */
+  --chrome-accent: #7ea9f0;
+
+  /*
     A chip on the chrome — the company code beside the switcher.
 
     Its own colour, not --sidebar-dim, which is pitched against the bar itself: over a chip that

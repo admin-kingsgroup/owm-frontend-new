@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 
 import { cn } from '@/shared/lib';
 import { useMenuKeys } from '@/shared/hooks';
@@ -55,6 +56,38 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
   );
 
   useMenuKeys(openId !== null, menuRef);
+
+  /**
+   * Which menu the screen you are looking at belongs to.
+   *
+   * The bar said nothing about where you were — every menu looked alike whether you were on the
+   * dashboard or three reports deep, so the one piece of navigation on screen at all times was
+   * also the one that never told you your position.
+   *
+   * Two passes, because neither rule works alone. An exact match settles it where the menu names
+   * the precise destination, query and all; failing that, the pathname alone catches a screen
+   * reached with different parameters than the menu happens to link — a report opened for another
+   * period is still the Reports section.
+   *
+   * The Help menu is left out of the second pass deliberately. Its one item is the current screen
+   * plus `?help=shortcuts`, so its *pathname* matches wherever you happen to be standing, and it
+   * would otherwise claim to be the current section on every screen in the product. Its exact
+   * match still counts, which is right: the shortcut sheet is genuinely open then.
+   *
+   * At most one menu is marked. Two lighting up at once would say less than none.
+   */
+  const currentMenuId = useMemo(() => {
+    const here = `${location.pathname}${location.search}`;
+    const exact = menus.find((menu) => menu.items.some((item) => item.to === here));
+    if (exact) return exact.id;
+
+    const byPath = menus.find(
+      (menu) =>
+        menu.id !== 'help' &&
+        menu.items.some((item) => item.to.split('?')[0] === location.pathname),
+    );
+    return byPath?.id ?? null;
+  }, [menus, location.pathname, location.search]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -121,18 +154,35 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
     <div className={styles.bar} ref={barRef}>
       {menus.map((menu) => {
         const open = openId === menu.id;
+        const current = currentMenuId === menu.id;
         const menuId = `${idPrefix}-${menu.id}`;
 
         return (
           <div className={styles.slot} key={menu.id}>
             <button
               type="button"
-              className={cn(styles.trigger, open && styles.triggerOpen)}
+              className={cn(
+                styles.trigger,
+                /* Where you are. Given up while this menu's own dropdown is open, which draws its
+                   own attached surface and would otherwise be wearing two marks at once. */
+                current && !open && styles.triggerCurrent,
+                open && styles.triggerOpen,
+              )}
               /*
-                Named explicitly, because the mnemonic underline splits the word. `<u>R</u>eports`
-                computes an accessible name of "R eports" — the element boundary is a word boundary
-                to an accessibility tree — so every menu was announced with its first letter read
-                out separately. The label is the word; the underline stays a visual cue.
+                The label is one text node now, so this would compute correctly from the content
+                on its own — it is kept explicit so that anything added to the trigger later cannot
+                change what the control is called.
+
+                It used to be load-bearing. The first letter was wrapped in `<u>` to mark the
+                mnemonic, and `<u>R</u>eports` computes an accessible name of "R eports": an
+                element boundary is a word boundary to an accessibility tree, so every menu was
+                announced with its first letter read out separately. The same split later showed up
+                on screen as "D ashboards" once the triggers became flex containers with a gap —
+                the `<u>` and the rest of the word were two flex items, and the gap went between
+                them. The underline is gone and the word is whole in both trees.
+
+                Alt+D still opens this menu; the shortcut sheet lists every one of them — see
+                ShortcutSheet, which builds its rows from `menu.mnemonic`.
               */
               aria-label={menu.label}
               aria-haspopup="menu"
@@ -142,8 +192,19 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
               // Classic menu-bar behaviour: once one is open the bar tracks the pointer.
               onMouseEnter={() => setOpenId((current) => (current === null ? null : menu.id))}
             >
-              <u className={styles.mnemonic}>{menu.label.charAt(0)}</u>
-              {menu.label.slice(1)}
+              {/*
+                Wrapped, and positioned, so it paints above the fill the trigger draws behind it —
+                see .fill in the stylesheet, which is an absolutely positioned pseudo-element and
+                would otherwise cover the word.
+              */}
+              <span className={styles.label}>{menu.label}</span>
+              {/*
+                Says the word opens something. Nothing on the bar did — a menu bar is only obvious
+                to someone who already knows it is one, and on a touchscreen there is no hover to
+                discover it with. Hidden from the accessibility tree: `aria-haspopup` on the button
+                already says this, and said twice it is read out twice.
+              */}
+              <ChevronDown className={styles.chevron} size={13} aria-hidden="true" />
             </button>
 
             {open && (
