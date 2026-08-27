@@ -271,13 +271,19 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
     moment one of them was read at a different time.
   */
   const drafts = context?.draftVouchers ?? null;
+  /*
+    Each item carries how bad it is as a word rather than as the class it will be drawn in. The
+    band reads the severities to decide whether it is amber or red, and a decision made by
+    comparing CSS-module class names is one that quietly changes meaning the moment two of them
+    resolve alike.
+  */
   const attention = [
     drafts && drafts > 0
       ? {
           key: 'drafts',
           label: `${drafts} draft ${drafts === 1 ? 'voucher' : 'vouchers'} awaiting post`,
           to: `${base}/vouchers?status=DRAFT`,
-          tone: styles.warn,
+          severity: 'warn' as const,
         }
       : null,
     context && Number(context.difference) !== 0
@@ -285,7 +291,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           key: 'difference',
           label: `Books out by ${money(context.difference)} — debits do not equal credits`,
           to: `${base}/reports?report=trial-balance`,
-          tone: styles.bad,
+          severity: 'bad' as const,
         }
       : null,
     context?.period.financialYearStatus === 'CLOSED'
@@ -293,7 +299,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           key: 'closed',
           label: `Financial year ${context.period.financialYearLabel} is closed to new vouchers`,
           to: `${base}?tab=financial-years`,
-          tone: styles.warn,
+          severity: 'warn' as const,
         }
       : null,
     /*
@@ -308,7 +314,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
             exceptions.totals.errors === 1 ? 'entry needs' : 'entries need'
           } correcting before signing`,
           to: `${base}/reports?report=exceptions`,
-          tone: styles.bad,
+          severity: 'bad' as const,
         }
       : null,
     exceptions && exceptions.totals.warnings > 0
@@ -318,7 +324,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
             exceptions.totals.warnings === 1 ? 'entry is' : 'entries are'
           } worth a second look`,
           to: `${base}/reports?report=exceptions`,
-          tone: styles.warn,
+          severity: 'warn' as const,
         }
       : null,
     /*
@@ -332,7 +338,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
             forex.skippedForMissingRate.length === 1 ? '' : 's'
           } left out of the gain and loss — no closing rate entered`,
           to: `${base}?tab=currencies`,
-          tone: styles.warn,
+          severity: 'warn' as const,
         }
       : null,
   ].filter((item) => item !== null);
@@ -376,7 +382,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           className={cn(
             styles.attention,
             /* Anything actually wrong pitches the band from amber to red — see .attentionBad. */
-            attention.some((item) => item.tone === styles.bad) && styles.attentionBad,
+            attention.some((item) => item.severity === 'bad') && styles.attentionBad,
           )}
         >
           <span className={styles.attentionLabel}>Needs attention</span>
@@ -385,7 +391,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
               <span
                 className={cn(
                   styles.attentionDot,
-                  item.tone === styles.bad ? styles.attentionDotBad : styles.attentionDotWarn,
+                  item.severity === 'bad' ? styles.attentionDotBad : styles.attentionDotWarn,
                 )}
                 aria-hidden="true"
               />
