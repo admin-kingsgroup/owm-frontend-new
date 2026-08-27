@@ -97,10 +97,14 @@
   print. A sideways scroll on paper is just columns cut off the edge of the page.
 */
 @media screen and (max-width: 60rem) {
-  .table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
+  /*
+    The grid moved to shared/ui/table and scrolls within itself — the rule that used to live here
+    styled a class this panel no longer renders.
+
+    What is left is the panel's own heading: its title and the New button share a row that a phone
+    cannot fit, so the button drops beneath the words rather than squeezing them into a column.
+  */
+  .head {
+    flex-wrap: wrap;
   }
 }

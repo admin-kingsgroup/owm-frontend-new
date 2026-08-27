@@ -111,6 +111,15 @@
   white-space: nowrap;
 }
 
+/*
+  The divider separates one fact from the next, so the last one has nothing to separate. Drawn
+  anyway it is a rule hanging off the end of the strip — most visible on a phone, where the items
+  wrap and the one ending each line trailed a divider into empty space.
+*/
+.contextItem:last-child {
+  border-right: none;
+}
+
 .contextItem b {
   font-weight: 600;
   color: var(--sidebar-text);
@@ -273,6 +282,7 @@
     padding: 0.25rem 0.625rem;
   }
 
+
   .body {
     flex-direction: column;
   }
@@ -280,6 +290,31 @@
   .content {
     padding: var(--space-4) 0.875rem;
     overflow-y: visible;
+  }
+}
+
+/*
+  The year's span goes on a phone, and the strip fits on one line again.
+
+  Three facts and a date range do not fit across 390px, so the strip wrapped — and what landed on
+  the second row was "Books balanced", which is the one of the three actually worth glancing at. A
+  whole row of chrome to carry it, above a screen that has already spent one row on the menu and
+  another on the function keys.
+
+  The range is the longest of them and the least urgent: which year is being posted into is what
+  changes how every figure below is read, and the label says that on its own. Every report prints
+  the period it was actually run for beneath its own title, so this is not the only place it is
+  written. The "· closed" mark is a sibling of the range, not part of it, and stays — a year that
+  refuses new vouchers has to say so at every width.
+
+  `screen`, and in a block of its own. The rules above share a plain `@media (max-width: 60rem)`,
+  and a printed page is about 50rem wide — so they apply on paper too. Hiding the span there would
+  take the year's dates off a filed statement, and the print block in globals.css keeps this strip
+  precisely because it is the only thing naming the company and the year once the chrome is gone.
+*/
+@media screen and (max-width: 60rem) {
+  .contextRange {
+    display: none;
   }
 }
 

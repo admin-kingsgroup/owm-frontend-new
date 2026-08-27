@@ -72,11 +72,22 @@
   max-height: none;
 }
 
+/*
+  The report's name, and the controls that decide what it covers.
+
+  Wrapping, because the two do not always fit on one line and the alternative is not a narrower
+  line — it is the controls being crushed. The fields inside carry `min-width: 0` so that a long
+  ledger name cannot widen the page, and with nothing else to stop them they shrink towards nothing
+  instead of moving down: the subject picker collapsed to a bare chevron and its heading, wider
+  than the box left holding it, printed straight over the heading beside it. "Ledger or group"
+  across "From" reads as LEDGERROM OR GROUP, which is what it looked like on a phone.
+*/
 .header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .title {
@@ -784,5 +795,44 @@
     max-height: none;
     overflow: visible;
     overflow-x: auto;
+  }
+
+  /*
+    On a phone the name of the report and the controls that shape it are two things, one under the
+    other, each with the whole width. Side by side there is not enough room for either.
+  */
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /*
+    A grid rather than a wrapping row, so a field is never narrower than it can be read at: a
+    column that cannot reach 9.5rem is dropped and its fields move down, which is what a flex row
+    would not do — it kept every field on the line and squeezed them all instead.
+  */
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    align-items: end;
+  }
+
+  /* Apply takes the full width, at the foot of the controls it applies — where the thumb is. */
+  .toolbar > button {
+    grid-column: 1 / -1;
+  }
+
+  /* The picker sizes to its column now, not to the 16rem it wants on a desktop. */
+  .select {
+    width: 100%;
+  }
+
+  /*
+    A heading that still outgrows its column breaks inside the word rather than over its neighbour.
+    The layout above should mean this never fires; it is here so that the failure, if it comes
+    back, is an ugly line rather than two labels on top of each other.
+  */
+  .periodLabel {
+    overflow-wrap: anywhere;
   }
 }

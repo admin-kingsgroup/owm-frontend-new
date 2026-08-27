@@ -8,11 +8,13 @@
   background-color: var(--paper-card);
 }
 
+/* The button drops beneath the title rather than squeezing it once the row will not fit. */
 .head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .title {

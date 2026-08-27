@@ -92,8 +92,14 @@
   The convention was already written down in three separate stylesheets — the reports, the chart of
   accounts and the gateway each drew this dot their own way, two of them by hand in the markup.
   Here it is the grid's own behaviour: a numeric cell given nothing to print says so.
+
+  `::after`, not `::before`. Below 48rem a stacked row prints each cell's field name from
+  `td::before` — see the data-stack block in globals.css — and this rule is the more specific of
+  the two, so written there it overwrote the label: every empty figure on a phone lost its name and
+  showed a lone dot with nothing to say which column it belonged to. On the other side the cell has
+  its label and its dot both.
 */
-.table td[data-num]:empty::before {
+.table td[data-num]:empty::after {
   content: '·';
   color: var(--ink-faint);
 }
