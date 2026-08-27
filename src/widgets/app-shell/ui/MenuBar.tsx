@@ -6,8 +6,44 @@ import { cn } from '@/shared/lib';
 import { useMenuKeys } from '@/shared/hooks';
 
 import { hasOpenDialog } from '../model/button-bar';
-import type { Menu } from '../model/menus';
+import type { Menu, MenuItem } from '../model/menus';
 import styles from './MenuBar.module.css';
+
+/**
+ * The items of a menu, gathered under the headings that introduce them.
+ *
+ * `section` marks where a group *starts* — it sits on the first item of the run, and everything
+ * after it belongs to that heading until the next one. The menu used to render that flat, printing
+ * the heading inline and letting the items fall where they may, which is why a menu of twenty was
+ * one column seven hundred pixels tall.
+ *
+ * A menu almost always opens with items carrying no section at all — Portfolio and Vouchers, ahead
+ * of Create — so the first group is usually unnamed. That one is drawn without a card: a box with
+ * an empty heading is worse than no box.
+ */
+function groupItems(items: MenuItem[]): Array<{ name: string | null; items: MenuItem[] }> {
+  const groups: Array<{ name: string | null; items: MenuItem[] }> = [];
+
+  for (const item of items) {
+    if (item.section || groups.length === 0) {
+      groups.push({ name: item.section ?? null, items: [item] });
+    } else {
+      groups[groups.length - 1].items.push(item);
+    }
+  }
+
+  return groups;
+}
+
+/**
+ * How many columns the panel runs to.
+ *
+ * From the number of groups rather than a fixed width, so a menu is the size of what is in it:
+ * Help holds two links and stays the size of two links, while Reports holds twenty in six groups
+ * and stops being a list that runs off the bottom of the screen. Three is the ceiling — past that
+ * the panel is wider than the window it hangs in.
+ */
+const columnsFor = (groups: number): 1 | 2 | 3 => (groups <= 1 ? 1 : groups === 2 ? 2 : 3);
 
 interface MenuBarProps {
   menus: Menu[];
@@ -207,42 +243,75 @@ export function MenuBar({ menus, onNavigate }: MenuBarProps) {
               <ChevronDown className={styles.chevron} size={13} aria-hidden="true" />
             </button>
 
-            {open && (
-              <div className={styles.menu} role="menu" id={menuId} ref={menuRef}>
-                {menu.items.map((item) => {
-                  /*
-                    Matched on the whole location, query included. NavLink's own `isActive` reads
-                    the path alone, which would light up all nine reports at once — they differ
-                    only by ?report=. Exact means one item can be current, never two.
-                  */
-                  const current = `${location.pathname}${location.search}` === item.to;
+            {open &&
+              (() => {
+                const groups = groupItems(menu.items);
 
-                  return (
-                    /*
-                      role="none" because a menu may only contain menu items: a bare wrapper div
-                      inside role="menu" leaves a screen reader announcing a menu whose items it
-                      cannot count. The heading below is exposed as the item's own text instead.
-                    */
-                    <div role="none" key={item.to + item.label}>
-                      {item.section && <span className={styles.section}>{item.section}</span>}
-                      <Link
-                        to={item.to}
-                        role="menuitem"
-                        className={cn(styles.item, current && styles.itemActive)}
-                        aria-current={current ? 'true' : undefined}
-                        onClick={() => {
-                          setOpenId(null);
-                          onNavigate?.();
-                        }}
-                      >
-                        <span className={styles.itemLabel}>{item.label}</span>
-                        {item.hint && <span className={styles.hint}>{item.hint}</span>}
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                return (
+                  <div
+                    className={styles.menu}
+                    /* Read by the stylesheet, which flows the groups into that many columns. */
+                    data-cols={columnsFor(groups.length)}
+                    role="menu"
+                    id={menuId}
+                    ref={menuRef}
+                  >
+                    {groups.map((group, at) => {
+                      const headingId = `${menuId}-g${at}`;
+
+                      return (
+                        /*
+                          A labelled group where there is a heading, so the block is announced as
+                          "Registers, ten items" rather than as ten more entries in a list of
+                          twenty. `role="none"` where there is not: a bare div inside role="menu"
+                          leaves a screen reader announcing a menu whose items it cannot count.
+                        */
+                        <div
+                          key={group.name ?? `bare-${at}`}
+                          className={cn(styles.group, group.name === null && styles.groupBare)}
+                          {...(group.name === null
+                            ? { role: 'none' as const }
+                            : { role: 'group' as const, 'aria-labelledby': headingId })}
+                        >
+                          {group.name !== null && (
+                            <span className={styles.section} id={headingId}>
+                              {group.name}
+                            </span>
+                          )}
+
+                          {group.items.map((item) => {
+                            /*
+                              Matched on the whole location, query included. NavLink's own
+                              `isActive` reads the path alone, which would light up all nine
+                              reports at once — they differ only by ?report=. Exact means one item
+                              can be current, never two.
+                            */
+                            const itemCurrent =
+                              `${location.pathname}${location.search}` === item.to;
+
+                            return (
+                              <Link
+                                key={item.to + item.label}
+                                to={item.to}
+                                role="menuitem"
+                                className={cn(styles.item, itemCurrent && styles.itemActive)}
+                                aria-current={itemCurrent ? 'true' : undefined}
+                                onClick={() => {
+                                  setOpenId(null);
+                                  onNavigate?.();
+                                }}
+                              >
+                                <span className={styles.itemLabel}>{item.label}</span>
+                                {item.hint && <span className={styles.hint}>{item.hint}</span>}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
           </div>
         );
       })}
