@@ -319,8 +319,18 @@ test.describe('the data entry strip in a portfolio workspace', () => {
       .getByRole('button', { name: 'Adjustment' })
       .waitFor();
 
-    await page.keyboard.press('F5');
-    await expect(page).toHaveURL(/vouchers\?new=PAYMENT/);
+    /*
+      Retried rather than asserted once. The strip being drawn does not prove the shell has bound
+      its keys yet, and a key pressed a moment early is simply swallowed — which is a lost press,
+      not a slow one, so no amount of waiting on the first URL would recover it. This failed exactly
+      once, on the cold run that first compiled the service worker and took three times as long as
+      the rest. Pressing again is what makes the check about whether F5 raises a Payment rather than
+      about how busy the machine was.
+    */
+    await expect(async () => {
+      await page.keyboard.press('F5');
+      await expect(page).toHaveURL(/vouchers\?new=PAYMENT/, { timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
 
     const type = page.getByLabel('Voucher type');
     await type.waitFor({ timeout: 20_000 });
