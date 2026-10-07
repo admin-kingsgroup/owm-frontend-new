@@ -1,0 +1,155 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.titleArea {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: var(--display-tracking);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  border-radius: var(--radius-full);
+}
+
+.subtitle {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.cardsAndChartGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.tableCard {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.table th {
+  padding: var(--grid-head-padding-card);
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--grid-cell-padding-card);
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.table tr:hover td {
+  background: var(--hover-tint);
+}
+
+.table tr {
+  cursor: pointer;
+}
+
+.branchName {
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusDotGreen {
+  background-color: var(--success-fg);
+}
+
+.statusDotRed {
+  background-color: var(--danger-fg);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.monoBold {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.profitPositive {
+  color: var(--success-fg);
+}
+
+.profitNegative {
+  color: var(--danger-fg);
+}
+
+.drillDownBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunken);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+}
+
+.drillDownBtn:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.chartCard {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.125rem;
+  box-shadow: var(--shadow-1);
+}

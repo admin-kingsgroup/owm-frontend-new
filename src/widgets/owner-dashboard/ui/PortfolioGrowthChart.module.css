@@ -1,0 +1,147 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.subtitle {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.badgeAndLegend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.growthBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--success-bg-soft);
+  border: 1px solid var(--success-bd);
+  color: var(--success-fg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.chartCard {
+  width: 100%;
+  height: 200px;
+  position: relative;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+.gridLine {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+}
+
+.axisLabel {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  fill: var(--ink-faint);
+  text-anchor: end;
+}
+
+.xLabel {
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  fill: var(--ink-soft);
+  text-anchor: middle;
+}
+
+.valueArea {
+  fill: rgba(26, 82, 196, 0.12);
+}
+
+.valueLine {
+  fill: none;
+  stroke: #1a52c4;
+  stroke-width: 2.5;
+}
+
+.investLine {
+  fill: none;
+  stroke: #656a72;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+.point {
+  fill: #ffffff;
+  stroke-width: 2.5;
+  cursor: pointer;
+  transition: r 0.15s ease;
+}
+
+.point:hover {
+  r: 6;
+}
+
+.pointValue {
+  stroke: #1a52c4;
+}
+
+.pointInvest {
+  stroke: #656a72;
+}
+
+.valueTag {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-anchor: middle;
+}

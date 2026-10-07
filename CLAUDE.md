@@ -13,3 +13,4 @@ Every new page, feature, or entity follows that structure and layer placement â€
 add a new top-level folder, don't import upward, don't reach past a slice's `index.ts`.
 
 See `DEPLOY.md` for the EC2/GitHub Actions deployment setup.
+        

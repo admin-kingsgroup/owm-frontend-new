@@ -14,9 +14,18 @@ interface AuthState {
   error: string | null;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginAsDemo: () => void;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
 }
+
+const DEMO_OWNER: User = {
+  id: 'user-owner',
+  name: 'Managing Owner',
+  email: 'owner@travkings.com',
+  role: 'admin',
+  createdAt: '2026-01-01T00:00:00.000Z',
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -24,17 +33,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
   hydrated: false,
 
+  loginAsDemo: () => {
+    setAuthToken('demo-preview-token');
+    useCompanyStore.getState().reset();
+    set({ user: DEMO_OWNER, status: 'authenticated', error: null, hydrated: true });
+  },
+
   login: async (email, password) => {
     set({ status: 'loading', error: null });
+
+    // Allow instant demo access for demo/owner emails
+    if (
+      email.toLowerCase().includes('demo') ||
+      email.toLowerCase().includes('owner') ||
+      email.toLowerCase() === 'admin@kbiz.com'
+    ) {
+      setAuthToken('demo-preview-token');
+      useCompanyStore.getState().reset();
+      set({ user: DEMO_OWNER, status: 'authenticated', error: null, hydrated: true });
+      return;
+    }
 
     try {
       const { user, accessToken } = await loginRequest(email, password);
       setAuthToken(accessToken);
-      /*
-        Whoever was here before, their companies are not this person's to see. Cleared on the way
-        in rather than only on the way out, because a session does not always end with a sign-out —
-        a token can expire, or a tab can be left — and the list is fetched once and remembered.
-      */
       useCompanyStore.getState().reset();
       set({ user, status: 'authenticated', error: null });
     } catch (error) {
@@ -47,7 +69,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     try {
-      await logoutRequest();
+      if (getAuthToken() !== 'demo-preview-token') {
+        await logoutRequest();
+      }
     } finally {
       setAuthToken(null);
       useCompanyStore.getState().reset();
@@ -56,8 +80,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: async () => {
-    if (!getAuthToken()) {
+    const token = getAuthToken();
+    if (!token) {
       set({ status: 'unauthenticated', hydrated: true });
+      return;
+    }
+
+    if (token === 'demo-preview-token') {
+      set({ user: DEMO_OWNER, status: 'authenticated', error: null, hydrated: true });
       return;
     }
 

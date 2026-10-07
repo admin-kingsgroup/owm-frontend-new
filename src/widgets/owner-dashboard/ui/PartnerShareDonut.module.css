@@ -1,0 +1,166 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.topControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.businessSelector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.selectLabel {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.selectInput {
+  font-size: var(--text-xs);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--paper-card);
+  color: var(--ink);
+  font-weight: 500;
+  outline: none;
+}
+
+.selectInput:focus {
+  border-color: var(--accent);
+}
+
+.summaryTotal {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.totalLabel {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.totalValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.profitPositive {
+  color: var(--success-fg);
+}
+
+.lossNegative {
+  color: var(--danger-fg);
+}
+
+.chartAndTable {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+@media (max-width: 600px) {
+  .chartAndTable {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+.donutContainer {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.centerText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.centerPercent {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.centerSub {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--grid-head-padding-tight);
+  color: var(--ink-faint);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td {
+  padding: var(--grid-cell-padding);
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+}
+
+.partnerNameCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+
+.partnerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.monoCol {
+  font-family: var(--font-mono);
+}
+
+.lossBadge {
+  display: inline-flex;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+}

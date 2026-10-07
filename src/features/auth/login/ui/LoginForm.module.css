@@ -11,3 +11,46 @@
   color: #f87171;
   text-align: center;
 }
+
+.demoDivider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.25rem 0;
+  color: #656a72;
+  font-size: 0.75rem;
+}
+
+.demoDivider::before,
+.demoDivider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e0e1e4;
+}
+
+.demoDivider span {
+  padding: 0 0.5rem;
+}
+
+.demoButton {
+  width: 100%;
+  font-size: 0.8125rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e1e4;
+  color: #121316;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.demoButton:hover {
+  background-color: #f6f6f7;
+  border-color: #1a52c4;
+  color: #1a52c4;
+}

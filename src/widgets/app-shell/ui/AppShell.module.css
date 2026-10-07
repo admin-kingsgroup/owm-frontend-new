@@ -164,6 +164,11 @@
   overflow-y: auto;
 }
 
+.contentFull {
+  padding: 0;
+  overflow: hidden;
+}
+
 .status {
   display: flex;
   align-items: center;

@@ -1,0 +1,129 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.chartTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.chartSubtitle {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.metricTabs {
+  display: inline-flex;
+  background: var(--paper-sunken);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  gap: 2px;
+}
+
+.metricBtn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.metricBtn:hover {
+  color: var(--ink);
+}
+
+.metricBtnActive {
+  background: var(--paper-card);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+}
+
+.chartCard {
+  width: 100%;
+  height: 200px;
+  position: relative;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+}
+
+.zeroLine {
+  stroke: var(--border);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 2;
+}
+
+.bar {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.bar:hover {
+  opacity: 0.85;
+}
+
+.barPositive {
+  fill: #15803d;
+}
+
+.barNegative {
+  fill: #b91c1c;
+}
+
+.barNeutral {
+  fill: #1a52c4;
+}
+
+.label {
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  fill: var(--ink-soft);
+  text-anchor: middle;
+  cursor: pointer;
+}
+
+.label:hover {
+  fill: var(--accent);
+}
+
+.valueLabel {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}

@@ -1,0 +1,127 @@
+.wrapper {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--paper);
+}
+
+.mainCanvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem 2rem 3rem;
+  background-color: var(--paper);
+}
+
+@media (max-width: 768px) {
+  .mainCanvas {
+    padding: 1rem 1rem 2rem;
+  }
+}
+
+.dashboardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Two-column layout rows on overview */
+.twoColRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .twoColRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cardBox {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: var(--display-tracking);
+}
+
+.viewAllLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.viewAllLink:hover {
+  text-decoration: underline;
+}
+
+/* Quick summary strip on overview */
+.compactBranchStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.branchChip {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunken);
+  border: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.branchChip:hover {
+  border-color: var(--accent);
+  background: var(--paper-card);
+}
+
+.chipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chipProfit {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}

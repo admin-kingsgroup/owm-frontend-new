@@ -8,6 +8,7 @@ import styles from './LoginForm.module.css';
 
 export function LoginForm() {
   const login = useAuthStore((state) => state.login);
+  const loginAsDemo = useAuthStore((state) => state.loginAsDemo);
   const status = useAuthStore((state) => state.status);
   const error = useAuthStore((state) => state.error);
 
@@ -23,13 +24,6 @@ export function LoginForm() {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      {/*
-        Named as well as placeheld. A placeholder is not an accessible name — a screen reader
-        announces these as an unnamed edit box, and the placeholder disappears the moment anyone
-        starts typing, so it is not much of a visual label either. aria-label rather than a visible
-        <label> keeps the design exactly as it is; this is the way into the application, so it is
-        the last screen that should be unreadable.
-      */}
       <Input
         type="email"
         placeholder="Email"
@@ -52,6 +46,20 @@ export function LoginForm() {
       <Button type="submit" variant="primary" disabled={status === 'loading'}>
         {status === 'loading' ? 'Signing in…' : 'Sign in'}
       </Button>
+
+      <div className={styles.demoDivider}>
+        <span>or client review</span>
+      </div>
+
+      <button
+        type="button"
+        className={styles.demoButton}
+        onClick={() => loginAsDemo()}
+        title="Direct access to Owner Wealth Management Dashboard"
+      >
+        <span>💼</span>
+        <span>Preview as Managing Owner</span>
+      </button>
     </form>
   );
 }

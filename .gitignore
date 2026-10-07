@@ -40,3 +40,4 @@ e2e/screens.spec.ts-snapshots/*-darwin.png
 e2e/screenshots/
 test-results/
 playwright-report/
+.vercel
