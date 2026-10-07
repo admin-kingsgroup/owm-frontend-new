@@ -49,6 +49,12 @@
   color: var(--sidebar-text);
   overflow: hidden;
   min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
 }
 
 .brandIconWrapper {

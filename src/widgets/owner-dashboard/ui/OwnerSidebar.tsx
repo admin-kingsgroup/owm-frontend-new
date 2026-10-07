@@ -111,7 +111,18 @@ export function OwnerSidebar({
       >
         {/* Brand Header */}
         <div className={styles.brandArea}>
-          <div className={styles.brandLink}>
+          <button
+            type="button"
+            className={styles.brandLink}
+            onClick={() => {
+              onSelectTab('overview');
+              onSelectBusiness('all');
+              onSelectBranch('all');
+              if (mobileOpen) onCloseMobile();
+            }}
+            title="Go to Home Screen (Overview)"
+            aria-label="KBiz360 OWM Home"
+          >
             <div className={styles.brandIconWrapper}>
               <div className={styles.brandIcon}>
                 <Sparkles size={15} className={styles.sparkleIcon} />
@@ -126,7 +137,7 @@ export function OwnerSidebar({
                 <span className={styles.brandTagline}>Owner Wealth Management</span>
               </div>
             )}
-          </div>
+          </button>
 
           {/* Dedicated mobile close button */}
           <button

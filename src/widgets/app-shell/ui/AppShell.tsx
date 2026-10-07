@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
@@ -350,10 +350,23 @@ export function AppShell() {
           <Menu size={20} />
         </button>
 
-        <div className={styles.brand}>
+        <Link
+          to="/companies"
+          className={styles.brand}
+          onClick={() => {
+            const store = usePortfolioStore.getState();
+            store.setActiveTab('overview');
+            store.setSelectedBusinessId('all');
+            store.setSelectedBranchId('all');
+            store.resetDrillDown();
+            setMenuOpen(false);
+          }}
+          title="Go to Home Screen (Overview)"
+          aria-label="KBiz360 OWM Home"
+        >
           <span className={styles.brandMark}>K</span>
           <span className={styles.brandName}>KBiz360 OWM</span>
-        </div>
+        </Link>
 
         <nav
           id="app-navigation"
