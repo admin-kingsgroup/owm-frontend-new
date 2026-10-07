@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Building2,
@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
+  X,
 } from 'lucide-react';
 import type {
   Business,
@@ -62,6 +63,34 @@ export function OwnerSidebar({
   const [businessesExpanded, setBusinessesExpanded] = useState(true);
   const [branchesExpanded, setBranchesExpanded] = useState(true);
 
+  // On mobile (when drawer is open), always treat as fully expanded so all labels, counts, and items are readable
+  const isEffectivelyCollapsed = collapsed && !mobileOpen;
+
+  // Close drawer when Escape key is pressed
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseMobile();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
+
+  const handleTabClick = (tab: OwnerDashboardTab) => {
+    onSelectTab(tab);
+    if (mobileOpen) onCloseMobile();
+  };
+
+  const handleBusinessClick = (bizId: string) => {
+    onSelectBusiness(bizId);
+    if (mobileOpen) onCloseMobile();
+  };
+
+  const handleBranchClick = (branchId: string) => {
+    onSelectBranch(branchId);
+    if (mobileOpen) onCloseMobile();
+  };
+
   return (
     <>
       {mobileOpen && (
@@ -73,9 +102,10 @@ export function OwnerSidebar({
       )}
 
       <aside
-        className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''} ${
+        className={`${styles.sidebar} ${isEffectivelyCollapsed ? styles.sidebarCollapsed : ''} ${
           mobileOpen ? styles.sidebarMobileOpen : ''
         }`}
+        aria-label="Owner Portfolio Navigation"
       >
         {/* Brand Header */}
         <div className={styles.brandArea}>
@@ -85,7 +115,7 @@ export function OwnerSidebar({
                 <Sparkles size={15} className={styles.sparkleIcon} />
               </div>
             </div>
-            {!collapsed && (
+            {!isEffectivelyCollapsed && (
               <div className={styles.brandText}>
                 <div className={styles.brandTitleRow}>
                   <span className={styles.brandName}>KBiz360</span>
@@ -96,6 +126,18 @@ export function OwnerSidebar({
             )}
           </div>
 
+          {/* Dedicated mobile close button */}
+          <button
+            type="button"
+            className={styles.mobileCloseBtn}
+            onClick={onCloseMobile}
+            aria-label="Close navigation sidebar"
+            title="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+
+          {/* Desktop collapse toggle */}
           <button
             type="button"
             className={styles.collapseToggle}
@@ -110,20 +152,20 @@ export function OwnerSidebar({
         {/* Navigation Sections */}
         <nav className={styles.navSection}>
           {/* Section: Overview */}
-          {!collapsed && <div className={styles.sectionHeader}>Portfolio Overview</div>}
+          {!isEffectivelyCollapsed && <div className={styles.sectionHeader}>Portfolio Overview</div>}
 
           {/* 1. Overview */}
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'overview' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('overview')}
+            onClick={() => handleTabClick('overview')}
             title="Executive Overview Dashboard"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <LayoutDashboard size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Overview</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Overview</span>}
             </div>
           </button>
 
@@ -133,11 +175,11 @@ export function OwnerSidebar({
               type="button"
               className={`${styles.navItem} ${activeTab === 'businesses' && selectedBusinessId === 'all' ? styles.navItemActive : ''}`}
               onClick={() => {
-                if (collapsed) {
-                  onSelectTab('businesses');
+                if (isEffectivelyCollapsed) {
+                  handleTabClick('businesses');
                 } else {
                   setBusinessesExpanded(!businessesExpanded);
-                  onSelectTab('businesses');
+                  handleTabClick('businesses');
                 }
               }}
               title="Business Portfolio"
@@ -146,9 +188,9 @@ export function OwnerSidebar({
                 <div className={styles.iconBox}>
                   <Building2 size={17} className={styles.navIcon} />
                 </div>
-                {!collapsed && <span className={styles.navLabel}>Businesses</span>}
+                {!isEffectivelyCollapsed && <span className={styles.navLabel}>Businesses</span>}
               </div>
-              {!collapsed && (
+              {!isEffectivelyCollapsed && (
                 <div className={styles.navItemRight}>
                   <span className={styles.countBadge}>{businesses.length}</span>
                   {businessesExpanded ? (
@@ -160,14 +202,12 @@ export function OwnerSidebar({
               )}
             </button>
 
-            {!collapsed && businessesExpanded && (
+            {!isEffectivelyCollapsed && businessesExpanded && (
               <div className={styles.subNav}>
                 <button
                   type="button"
                   className={`${styles.subNavItem} ${activeTab === 'businesses' && selectedBusinessId === 'all' ? styles.subNavItemActive : ''}`}
-                  onClick={() => {
-                    onSelectTab('businesses');
-                  }}
+                  onClick={() => handleTabClick('businesses')}
                 >
                   <span className={styles.subDot} style={{ backgroundColor: 'var(--accent)' }} />
                   <span>All Businesses ({businesses.length})</span>
@@ -184,7 +224,7 @@ export function OwnerSidebar({
                       key={biz.id}
                       type="button"
                       className={`${styles.subNavItem} ${isActive ? styles.subNavItemActive : ''}`}
-                      onClick={() => onSelectBusiness(biz.id)}
+                      onClick={() => handleBusinessClick(biz.id)}
                     >
                       <span className={styles.subDot} style={{ backgroundColor: dotColor }} />
                       <span className={styles.subLabel}>
@@ -203,11 +243,11 @@ export function OwnerSidebar({
               type="button"
               className={`${styles.navItem} ${activeTab === 'travkings' && selectedBranchId === 'all' ? styles.navItemActive : ''}`}
               onClick={() => {
-                if (collapsed) {
-                  onSelectTab('travkings');
+                if (isEffectivelyCollapsed) {
+                  handleTabClick('travkings');
                 } else {
                   setBranchesExpanded(!branchesExpanded);
-                  onSelectTab('travkings');
+                  handleTabClick('travkings');
                 }
               }}
               title="Travkings Regional Branches"
@@ -216,9 +256,9 @@ export function OwnerSidebar({
                 <div className={styles.iconBox}>
                   <MapPin size={17} className={styles.navIcon} />
                 </div>
-                {!collapsed && <span className={styles.navLabel}>Travkings Hubs</span>}
+                {!isEffectivelyCollapsed && <span className={styles.navLabel}>Travkings Hubs</span>}
               </div>
-              {!collapsed && (
+              {!isEffectivelyCollapsed && (
                 <div className={styles.navItemRight}>
                   <span className={styles.countBadge}>{travkingsBranches.length}</span>
                   {branchesExpanded ? (
@@ -230,12 +270,12 @@ export function OwnerSidebar({
               )}
             </button>
 
-            {!collapsed && branchesExpanded && (
+            {!isEffectivelyCollapsed && branchesExpanded && (
               <div className={styles.subNav}>
                 <button
                   type="button"
                   className={`${styles.subNavItem} ${activeTab === 'travkings' && selectedBranchId === 'all' ? styles.subNavItemActive : ''}`}
-                  onClick={() => onSelectTab('travkings')}
+                  onClick={() => handleTabClick('travkings')}
                 >
                   <span className={styles.subDot} style={{ backgroundColor: '#1a52c4' }} />
                   <span>All Hubs ({travkingsBranches.length})</span>
@@ -248,7 +288,7 @@ export function OwnerSidebar({
                       key={br.id}
                       type="button"
                       className={`${styles.subNavItem} ${isActive ? styles.subNavItemActive : ''}`}
-                      onClick={() => onSelectBranch(br.id)}
+                      onClick={() => handleBranchClick(br.id)}
                     >
                       <span className={styles.subDot} style={{ backgroundColor: '#38bdf8' }} />
                       <span className={styles.subLabel}>{br.name} Hub</span>
@@ -260,20 +300,20 @@ export function OwnerSidebar({
           </div>
 
           {/* Section: Analytics & Growth */}
-          {!collapsed && <div className={styles.sectionHeader}>Analytics &amp; Growth</div>}
+          {!isEffectivelyCollapsed && <div className={styles.sectionHeader}>Analytics &amp; Growth</div>}
 
           {/* 4. Investments */}
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'investments' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('investments')}
+            onClick={() => handleTabClick('investments')}
             title="Total Investment Analytics"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <PieChart size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Investments</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Investments</span>}
             </div>
           </button>
 
@@ -281,14 +321,14 @@ export function OwnerSidebar({
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'performance' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('performance')}
+            onClick={() => handleTabClick('performance')}
             title="Performance Comparison & Heatmap"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <BarChart3 size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Performance</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Performance</span>}
             </div>
           </button>
 
@@ -296,33 +336,33 @@ export function OwnerSidebar({
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'partners' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('partners')}
+            onClick={() => handleTabClick('partners')}
             title="Partner Profit Distribution (25% Split)"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <Users size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Partner Shares</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Partner Shares</span>}
             </div>
-            {!collapsed && <span className={styles.pillTag}>25%</span>}
+            {!isEffectivelyCollapsed && <span className={styles.pillTag}>25%</span>}
           </button>
 
           {/* Section: Books & Accounting */}
-          {!collapsed && <div className={styles.sectionHeader}>Records &amp; Audit</div>}
+          {!isEffectivelyCollapsed && <div className={styles.sectionHeader}>Records &amp; Audit</div>}
 
           {/* 7. Transactions */}
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'transactions' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('transactions')}
+            onClick={() => handleTabClick('transactions')}
             title="Recent Financial Activity"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <Receipt size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Transactions</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Transactions</span>}
             </div>
           </button>
 
@@ -330,30 +370,30 @@ export function OwnerSidebar({
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'reports' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('reports')}
+            onClick={() => handleTabClick('reports')}
             title="Financial Reports & Exports"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <FileSpreadsheet size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Reports &amp; PDF</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Reports &amp; PDF</span>}
             </div>
-            {!collapsed && <span className={styles.pillTag}>PDF</span>}
+            {!isEffectivelyCollapsed && <span className={styles.pillTag}>PDF</span>}
           </button>
 
           {/* 9. Accounting Books / Masters Gateway */}
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'accounting-books' ? styles.navItemActive : ''}`}
-            onClick={() => onSelectTab('accounting-books')}
+            onClick={() => handleTabClick('accounting-books')}
             title="Access Entity Books & System Masters"
           >
             <div className={styles.navItemLeft}>
               <div className={styles.iconBox}>
                 <BookOpen size={17} className={styles.navIcon} />
               </div>
-              {!collapsed && <span className={styles.navLabel}>Accounting Books</span>}
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Accounting Books</span>}
             </div>
           </button>
         </nav>
@@ -365,7 +405,7 @@ export function OwnerSidebar({
               <div className={styles.avatar}>OW</div>
               <span className={styles.statusDot} title="Online / Active" />
             </div>
-            {!collapsed && (
+            {!isEffectivelyCollapsed && (
               <div className={styles.profileInfo}>
                 <span className={styles.profileName}>Managing Owner</span>
                 <span className={styles.profileRole}>Primary Stakeholder</span>

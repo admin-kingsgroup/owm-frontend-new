@@ -176,11 +176,30 @@
 
 .mobileMenuBtn {
   display: none;
-  background: transparent;
-  border: none;
+  align-items: center;
+  gap: 6px;
+  background: var(--paper-card);
+  border: 1px solid var(--border);
   color: var(--ink);
   cursor: pointer;
-  padding: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mobileMenuBtn:hover {
+  background: var(--paper-sunken);
+  border-color: var(--accent);
+}
+
+.mobileMenuText {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 900px) {

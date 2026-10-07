@@ -12,6 +12,7 @@ import { useAuthStore } from '@/features/auth';
 import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary, ToastViewport } from '@/shared/ui';
+import { usePortfolioStore } from '@/entities/owner-portfolio';
 
 import {
   ButtonBarContext,
@@ -42,6 +43,8 @@ export function AppShell() {
    * Above it the bar is always there and this is inert.
    */
   const [menuOpen, setMenuOpen] = useState(false);
+  const isOwnerDashboard = location.pathname === '/companies';
+  const openPortfolioMobileMenu = usePortfolioStore((s) => s.setMobileMenuOpen);
 
   // Focus stays in the drawer while it is open, page scroll is locked behind it, and focus returns
   // to the button that opened it. Shared with the modal — see useFocusTrap.
@@ -334,10 +337,16 @@ export function AppShell() {
         <button
           type="button"
           className={styles.menuButton}
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation"
-          aria-expanded={menuOpen}
-          aria-controls="app-navigation"
+          onClick={() => {
+            if (isOwnerDashboard) {
+              openPortfolioMobileMenu(true);
+            } else {
+              setMenuOpen(true);
+            }
+          }}
+          aria-label={isOwnerDashboard ? 'Open owner portfolio menu' : 'Open navigation'}
+          aria-expanded={isOwnerDashboard ? undefined : menuOpen}
+          aria-controls={isOwnerDashboard ? undefined : 'app-navigation'}
         >
           <Menu size={20} />
         </button>

@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { ArrowRight } from 'lucide-react';
+import {
+  ArrowRight,
+  LayoutDashboard,
+  Building2,
+  MapPin,
+  Users,
+  Menu,
+} from 'lucide-react';
 import {
   usePortfolioStore,
   calculatePortfolioTotals,
@@ -410,6 +417,58 @@ export function OwnerDashboard({
           )}
         </div>
       </main>
+
+      {/* 3. Executive Mobile Floating Navigation Bar */}
+      <nav className={styles.mobileBottomBar} aria-label="Quick mobile navigation">
+        <button
+          type="button"
+          className={`${styles.mobileBottomItem} ${activeTab === 'overview' ? styles.mobileBottomItemActive : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          <LayoutDashboard size={18} />
+          <span>Overview</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.mobileBottomItem} ${activeTab === 'businesses' ? styles.mobileBottomItemActive : ''}`}
+          onClick={() => {
+            setSelectedBusinessId('all');
+            setActiveTab('businesses');
+          }}
+        >
+          <Building2 size={18} />
+          <span>Businesses</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.mobileBottomItem} ${activeTab === 'travkings' || activeTab === 'branch-detail' ? styles.mobileBottomItemActive : ''}`}
+          onClick={() => setActiveTab('travkings')}
+        >
+          <MapPin size={18} />
+          <span>Hubs</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.mobileBottomItem} ${activeTab === 'partners' ? styles.mobileBottomItemActive : ''}`}
+          onClick={() => setActiveTab('partners')}
+        >
+          <Users size={18} />
+          <span>Partners</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.mobileBottomItem} ${styles.mobileBottomMenuBtn}`}
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Open full sidebar navigation drawer"
+        >
+          <Menu size={18} />
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   );
 }
