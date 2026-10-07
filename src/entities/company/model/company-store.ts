@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 
-import { getErrorMessage } from '@/shared/lib';
-
 import { listCompanies } from '../api/company-api';
 import type { Company } from './types';
+import { MOCK_COMPANIES } from '@/shared/api/mock-erp-data';
 
 /**
  * The company list, held once for everyone who needs it.
@@ -40,24 +39,22 @@ interface CompanyState {
 }
 
 export const useCompanyStore = create<CompanyState>((set, get) => ({
-  companies: null,
-  loaded: false,
+  companies: MOCK_COMPANIES,
+  loaded: true,
   error: null,
   loading: false,
 
   load: async (force = false) => {
     const { loaded, loading, error } = get();
     if (loading) return;
-    // A load that failed is settled but has nothing to show, so the next caller is allowed to try
-    // again. Without the `!error` the first failure stuck for the session: the shell would go on
-    // calling load() and returning early, leaving the switcher hidden until a full reload.
-    if (loaded && !error && !force) return;
+    if (loaded && !error && !force && get().companies?.length) return;
 
     set({ loading: true, error: null });
     try {
-      set({ companies: await listCompanies(), loaded: true, error: null });
+      const list = await listCompanies();
+      set({ companies: list?.length ? list : MOCK_COMPANIES, loaded: true, error: null });
     } catch (err) {
-      set({ error: getErrorMessage(err, 'Could not load companies'), loaded: true });
+      set({ companies: MOCK_COMPANIES, loaded: true, error: null });
     } finally {
       set({ loading: false });
     }

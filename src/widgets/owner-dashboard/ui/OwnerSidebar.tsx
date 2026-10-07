@@ -15,6 +15,8 @@ import {
   PanelLeftOpen,
   Sparkles,
   X,
+  Sliders,
+  Layers,
 } from 'lucide-react';
 import type {
   Business,
@@ -382,7 +384,37 @@ export function OwnerSidebar({
             {!isEffectivelyCollapsed && <span className={styles.pillTag}>PDF</span>}
           </button>
 
-          {/* 9. Accounting Books / Masters Gateway */}
+          {/* 9. Company & Legal Entities */}
+          <button
+            type="button"
+            className={`${styles.navItem} ${activeTab === 'company' ? styles.navItemActive : ''}`}
+            onClick={() => handleTabClick('company')}
+            title="Legal Entity & Financial Years"
+          >
+            <div className={styles.navItemLeft}>
+              <div className={styles.iconBox}>
+                <Sliders size={17} className={styles.navIcon} />
+              </div>
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Company Setup</span>}
+            </div>
+          </button>
+
+          {/* 10. Masters & Ledgers */}
+          <button
+            type="button"
+            className={`${styles.navItem} ${activeTab === 'masters' ? styles.navItemActive : ''}`}
+            onClick={() => handleTabClick('masters')}
+            title="Chart of Accounts, Counter-Parties & Vouchers"
+          >
+            <div className={styles.navItemLeft}>
+              <div className={styles.iconBox}>
+                <Layers size={17} className={styles.navIcon} />
+              </div>
+              {!isEffectivelyCollapsed && <span className={styles.navLabel}>Masters &amp; Accounts</span>}
+            </div>
+          </button>
+
+          {/* 11. Accounting Books / Masters Gateway */}
           <button
             type="button"
             className={`${styles.navItem} ${activeTab === 'accounting-books' ? styles.navItemActive : ''}`}

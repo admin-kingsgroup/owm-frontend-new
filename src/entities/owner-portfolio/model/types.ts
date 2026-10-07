@@ -138,4 +138,6 @@ export type OwnerDashboardTab =
   | 'partners'
   | 'transactions'
   | 'reports'
-  | 'accounting-books';
+  | 'accounting-books'
+  | 'company'
+  | 'masters';

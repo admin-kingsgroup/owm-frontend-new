@@ -67,6 +67,10 @@ export function OwnerBreadcrumbs({
     items.push({ label: 'Transactions', active: true });
   } else if (activeTab === 'reports') {
     items.push({ label: 'Reports', active: true });
+  } else if (activeTab === 'company') {
+    items.push({ label: 'Company & Financial Settings', active: true });
+  } else if (activeTab === 'masters') {
+    items.push({ label: 'Masters & Chart of Accounts', active: true });
   } else if (activeTab === 'accounting-books') {
     items.push({ label: 'System Masters & Accounting Books', active: true });
   }

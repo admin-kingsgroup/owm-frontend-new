@@ -161,3 +161,211 @@
   font-family: var(--font-mono);
   font-weight: 700;
 }
+
+.quickBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--paper-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.quickBarLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+
+.quickBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  background: var(--paper-card);
+}
+
+.quickBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-1);
+}
+
+.btnPayment {
+  color: #dc2626;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+.btnPayment:hover {
+  background: #fee2e2;
+}
+
+.btnReceipt {
+  color: #16a34a;
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.btnReceipt:hover {
+  background: #dcfce7;
+}
+
+.btnSales {
+  color: #2563eb;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+.btnSales:hover {
+  background: #dbeafe;
+}
+
+.btnPurchase {
+  color: #ea580c;
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+.btnPurchase:hover {
+  background: #ffedd5;
+}
+
+.btnJournal {
+  color: #7c3aed;
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+}
+.btnJournal:hover {
+  background: #ede9fe;
+}
+
+.btnContra {
+  color: #0891b2;
+  border-color: #a5f3fc;
+  background: #ecfeff;
+}
+.btnContra:hover {
+  background: #cffafe;
+}
+
+.shortcutTag {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.subTabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
+}
+
+.subTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.subTabBtn:hover {
+  color: var(--ink);
+  background: var(--paper-sunken);
+}
+
+.subTabActive {
+  background: var(--paper-card);
+  color: var(--accent);
+  border-color: var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.modalCard {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-3);
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--paper-sunken);
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.modalCloseBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+
+.modalBody {
+  padding: var(--space-4);
+}
+
