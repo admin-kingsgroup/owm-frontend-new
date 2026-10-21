@@ -428,8 +428,9 @@ export function AppShell() {
           )}
         </div>
       )}
+
       <div className={styles.body}>
-        <main className={cn(styles.content, !companyId && styles.contentFull)}>
+        <main className={styles.content}>
           {/*
             Keyed on the path so navigating away clears a caught error. React boundaries do not
             reset themselves, and without the key one broken screen would follow you around the app.
