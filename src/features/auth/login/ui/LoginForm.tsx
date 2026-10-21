@@ -24,33 +24,44 @@ export function LoginForm() {
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       {/*
-        Named as well as placeheld. A placeholder is not an accessible name — a screen reader
-        announces these as an unnamed edit box, and the placeholder disappears the moment anyone
-        starts typing, so it is not much of a visual label either. aria-label rather than a visible
-        <label> keeps the design exactly as it is; this is the way into the application, so it is
-        the last screen that should be unreadable.
+        A visible label around each field, so the whole row is the hit target and the name stays
+        on screen once someone starts typing — which a placeholder alone does not do.
       */}
-      <Input
-        type="email"
-        placeholder="Email"
-        aria-label="Email"
-        autoComplete="email"
-        value={email}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
-        required
-      />
-      <Input
-        type="password"
-        placeholder="Password"
-        aria-label="Password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
-        required
-      />
-      {error && <p className={styles.error}>{error}</p>}
-      <Button type="submit" variant="primary" disabled={status === 'loading'}>
-        {status === 'loading' ? 'Signing in…' : 'Sign in'}
+      <label className={styles.field}>
+        Email
+        <Input
+          className={styles.input}
+          type="email"
+          placeholder="you@company.com"
+          autoComplete="email"
+          value={email}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
+          required
+        />
+      </label>
+      <label className={styles.field}>
+        Password
+        <Input
+          className={styles.input}
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
+          required
+        />
+      </label>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+      <Button
+        type="submit"
+        variant="primary"
+        className={styles.submit}
+        disabled={status === 'loading'}
+      >
+        {status === 'loading' ? 'Signing in…' : 'Enter OWM'}
       </Button>
     </form>
   );

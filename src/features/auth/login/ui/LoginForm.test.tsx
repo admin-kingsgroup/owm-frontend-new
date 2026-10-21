@@ -40,6 +40,8 @@ describe('the sign-in form', () => {
   });
 
   it('names the submit action', () => {
-    expect(render(<LoginForm />) && screen.getByRole('button', { name: /sign in/i })).toBeTruthy();
+    expect(
+      render(<LoginForm />) && screen.getByRole('button', { name: /enter owm/i }),
+    ).toBeTruthy();
   });
 });
