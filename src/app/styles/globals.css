@@ -140,23 +140,25 @@
   /* ---- 2. Palette: light -------------------------------------------- */
   color-scheme: light;
 
-  --paper: #f8fafc;
+  --paper: #f6f6f7;
   --paper-card: #ffffff;
   /* Recessed surfaces — table headers, wells, inset panels. */
-  --paper-sunken: #f1f5f9;
-  --ink: #0f172a;
-  --ink-soft: #334155;
-  --ink-faint: #64748b;
-  --border: #e2e8f0;
+  --paper-sunken: #eeeef0;
+  --ink: #121316;
+  --ink-soft: #4f535a;
+  --ink-faint: #656a72;
+  --border: #e0e1e4;
   /* 1px dividers only. Too light to read as a hover fill — use --hover-tint. */
-  --border-soft: #f1f5f9;
+  --border-soft: #f0f0f2;
 
-  /* Modern light chrome */
-  --sidebar: #ffffff;
-  --sidebar-text: #0f172a;
-  --sidebar-dim: #64748b;
-  --sidebar-border: #e2e8f0;
-  --sidebar-hover: rgba(0, 0, 0, 0.04);
+  /* The chrome. Dark in this direction, so its dim text and border are measured
+     against a near-black ground rather than a white one — --sidebar-dim is
+     6.3:1 on --sidebar, which is what lets the inactive menu items sit quiet
+     without dropping out of AA. */
+  --sidebar: #17191c;
+  --sidebar-text: #eaebed;
+  --sidebar-dim: #989ca2;
+  --sidebar-border: #2b2e33;
 
   /* One blue, for actions and selection, and nothing else wears it. 5.9:1 as
      text on --paper-sunken, the darkest light surface, and 6.8:1 carrying
@@ -205,14 +207,32 @@
     are the same three meanings pitched for that ground: 8.1:1, 9.1:1 and 6.9:1.
     They do not vary by theme, because the chrome does not either.
   */
-  --chrome-ok: #16a34a;
-  --chrome-warn: #d97706;
-  --chrome-danger: #dc2626;
+  --chrome-ok: #5cc48d;
+  --chrome-warn: #e0b45c;
+  --chrome-danger: #f0837a;
 
-  --chrome-accent: #1a52c4;
+  /*
+    Selection, as it reads on the chrome.
 
-  --chrome-chip-bg: rgba(0, 0, 0, 0.05);
-  --chrome-chip-fg: #334155;
+    --accent is pitched as a dark blue against paper; on a near-black bar it is barely a shade
+    different from the bar itself, which is the same reason the mnemonic underline takes
+    --sidebar-dim rather than the accent. This is the dark theme's accent value, which exists
+    precisely because it is a blue that works on a dark ground — 7.6:1 on --sidebar.
+
+    It does not vary by theme, because the chrome does not either.
+  */
+  --chrome-accent: #7ea9f0;
+
+  /*
+    A chip on the chrome — the company code beside the switcher.
+
+    Its own colour, not --sidebar-dim, which is pitched against the bar itself: over a chip that
+    has already lifted the ground by 11% it measured 3.53:1, below AA on every screen in the
+    product. This is 7.4:1 on the chip in dark and 6.7:1 in light, and still quieter than the
+    company name it sits beside.
+  */
+  --chrome-chip-bg: rgba(255, 255, 255, 0.11);
+  --chrome-chip-fg: #b9bdc3;
 
   /* Charts only. Kept away from the accent hue so a series colour is never
      read as an action. */
@@ -221,32 +241,57 @@
   --data-3: #6b4f9e;
   --data-4: #9a7b28;
 
+  /*
+    The chart series of the new interface, in a fixed order that is never cycled: blue, orange,
+    aqua, violet. Validated as a set for colour-blind separation on these surfaces (adjacent pairs
+    clear ΔE 8 in both themes), which is why a fifth series folds into "Other" rather than getting a
+    generated hue. Text never wears these — labels and values stay in --ink, the mark beside them
+    carries the identity.
+  */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #4a3aa7;
+  /* A movement that takes money away, in a chart that also shows one adding it (a waterfall). */
+  --series-negative: #e34948;
+
+  /*
+    One blue, light to dark, for ordered magnitude — ageing buckets, where older is darker. Its
+    lightest step still clears 2:1 against a card, so "not due" never disappears into the surface.
+  */
+  --seq-1: #86b6ef;
+  --seq-2: #5598e7;
+  --seq-3: #2a78d6;
+  --seq-4: #1c5cab;
+  --seq-5: #0d366b;
+
+  /* The faint grid behind a chart. */
+  --chart-grid: #e7e8eb;
+
+  /* Motion. One curve for things arriving, so every screen settles the same way. */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.1);
+
   /* ---- Dark palette values ------------------------------------------
      Defined once, here, and applied by the two selectors further down.
      Plain CSS cannot share a declaration block between a media query and
      an attribute selector, so the *aliasing* is unavoidably written
      twice — but a colour is only ever edited in this one place. */
-  --dk-paper: #0b0f17;
-  --dk-paper-card: #131926;
-  --dk-paper-sunken: #0e1420;
-  --dk-ink: #f8fafc;
-  --dk-ink-soft: #cbd5e1;
-  --dk-ink-faint: #94a3b8;
-  --dk-border: #1f293d;
-  --dk-border-soft: #182234;
+  --dk-paper: #121315;
+  --dk-paper-card: #191a1d;
+  --dk-paper-sunken: #151619;
+  --dk-ink: #e8e9eb;
+  --dk-ink-soft: #a3a6ac;
+  --dk-ink-faint: #868a91;
+  --dk-border: #282a2f;
+  --dk-border-soft: #1e2023;
 
-  /* Sleek dark chrome */
-  --dk-sidebar: #0f131d;
-  --dk-sidebar-text: #f1f5f9;
-  --dk-sidebar-dim: #94a3b8;
-  --dk-sidebar-border: #1e2638;
-  --dk-sidebar-hover: rgba(255, 255, 255, 0.08);
-  --dk-chrome-chip-bg: rgba(255, 255, 255, 0.12);
-  --dk-chrome-chip-fg: #cbd5e1;
-  --dk-chrome-accent: #7ea9f0;
-  --dk-chrome-ok: #5cc48d;
-  --dk-chrome-warn: #e0b45c;
-  --dk-chrome-danger: #f0837a;
+  /* The chrome goes darker than the workspace here, not lighter: on a dark
+     theme the bar reads as the frame only if it recedes behind the page. */
+  --dk-sidebar: #0f1113;
+  --dk-sidebar-text: #e8e9eb;
+  --dk-sidebar-dim: #8e9298;
+  --dk-sidebar-border: #212327;
 
   --dk-accent-rgb: 126, 169, 240;
   --dk-accent: #7ea9f0;
@@ -281,6 +326,20 @@
   --dk-data-2: #d98f5d;
   --dk-data-3: #a68ad8;
   --dk-data-4: #cfa94c;
+
+  /* The same four hues, stepped for the dark surface rather than flipped. */
+  --dk-series-1: #3987e5;
+  --dk-series-2: #d95926;
+  --dk-series-3: #199e70;
+  --dk-series-4: #9085e9;
+  --dk-series-negative: #e66767;
+  /* Reversed: on a dark card the faint end is the dark one. */
+  --dk-seq-1: #184f95;
+  --dk-seq-2: #1c5cab;
+  --dk-seq-3: #2a78d6;
+  --dk-seq-4: #5598e7;
+  --dk-seq-5: #9ec5f4;
+  --dk-chart-grid: #24262b;
 
   /* ---- 3. Derived ---------------------------------------------------- */
   /* These reference the raw tokens above, so each one resolves against
@@ -317,13 +376,6 @@
     --sidebar-text: var(--dk-sidebar-text);
     --sidebar-dim: var(--dk-sidebar-dim);
     --sidebar-border: var(--dk-sidebar-border);
-    --sidebar-hover: var(--dk-sidebar-hover);
-    --chrome-chip-bg: var(--dk-chrome-chip-bg);
-    --chrome-chip-fg: var(--dk-chrome-chip-fg);
-    --chrome-accent: var(--dk-chrome-accent);
-    --chrome-ok: var(--dk-chrome-ok);
-    --chrome-warn: var(--dk-chrome-warn);
-    --chrome-danger: var(--dk-chrome-danger);
     --accent-rgb: var(--dk-accent-rgb);
     --accent: var(--dk-accent);
     --accent-2: var(--dk-accent-2);
@@ -351,6 +403,17 @@
     --data-2: var(--dk-data-2);
     --data-3: var(--dk-data-3);
     --data-4: var(--dk-data-4);
+    --series-1: var(--dk-series-1);
+    --series-2: var(--dk-series-2);
+    --series-3: var(--dk-series-3);
+    --series-4: var(--dk-series-4);
+    --series-negative: var(--dk-series-negative);
+    --seq-1: var(--dk-seq-1);
+    --seq-2: var(--dk-seq-2);
+    --seq-3: var(--dk-seq-3);
+    --seq-4: var(--dk-seq-4);
+    --seq-5: var(--dk-seq-5);
+    --chart-grid: var(--dk-chart-grid);
   }
 }
 
@@ -369,13 +432,6 @@
   --sidebar-text: var(--dk-sidebar-text);
   --sidebar-dim: var(--dk-sidebar-dim);
   --sidebar-border: var(--dk-sidebar-border);
-  --sidebar-hover: var(--dk-sidebar-hover);
-  --chrome-chip-bg: var(--dk-chrome-chip-bg);
-  --chrome-chip-fg: var(--dk-chrome-chip-fg);
-  --chrome-accent: var(--dk-chrome-accent);
-  --chrome-ok: var(--dk-chrome-ok);
-  --chrome-warn: var(--dk-chrome-warn);
-  --chrome-danger: var(--dk-chrome-danger);
   --accent-rgb: var(--dk-accent-rgb);
   --accent: var(--dk-accent);
   --accent-2: var(--dk-accent-2);
@@ -403,65 +459,17 @@
   --data-2: var(--dk-data-2);
   --data-3: var(--dk-data-3);
   --data-4: var(--dk-data-4);
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  --paper: #f8fafc;
-  --paper-card: #ffffff;
-  --paper-sunken: #f1f5f9;
-  --ink: #0f172a;
-  --ink-soft: #334155;
-  --ink-faint: #64748b;
-  --border: #e2e8f0;
-  --border-soft: #f1f5f9;
-
-  --sidebar: #ffffff;
-  --sidebar-text: #0f172a;
-  --sidebar-dim: #64748b;
-  --sidebar-border: #e2e8f0;
-  --sidebar-hover: rgba(0, 0, 0, 0.04);
-
-  --accent-rgb: 26, 82, 196;
-  --accent: #1a52c4;
-  --accent-2: #2a63d6;
-  --on-accent: #ffffff;
-
-  --overlay: rgba(15, 23, 42, 0.45);
-  --shadow-1: 0 1px 2px rgba(16, 18, 22, 0.06);
-  --shadow-2: 0 4px 12px rgba(16, 18, 22, 0.1);
-  --shadow-3: 0 20px 44px rgba(16, 18, 22, 0.18);
-
-  --chip-bg: #f1f5f9;
-  --chip-fg: #334155;
-
-  --success-fg: #15803d;
-  --success-bd: #bbf7d0;
-  --success-bg-soft: #f0fdf4;
-  --warning-fg: #b45309;
-  --warning-bd: #fde68a;
-  --warning-bg-soft: #fffbeb;
-  --danger-fg: #b91c1c;
-  --danger-bd: #fecaca;
-  --danger-bg-soft: #fef2f2;
-  --danger-solid: #b91c1c;
-  --on-danger: #ffffff;
-  --neutral-fg: #565a61;
-  --neutral-bd: #c5c7cc;
-
-  --chrome-ok: #16a34a;
-  --chrome-warn: #d97706;
-  --chrome-danger: #dc2626;
-
-  --chrome-accent: #1a52c4;
-  --chrome-chip-bg: rgba(0, 0, 0, 0.05);
-  --chrome-chip-fg: #334155;
-
-  --data-1: #2f7a72;
-  --data-2: #b0663a;
-  --data-3: #6b4f9e;
-  --data-4: #9a7b28;
+  --series-1: var(--dk-series-1);
+  --series-2: var(--dk-series-2);
+  --series-3: var(--dk-series-3);
+  --series-4: var(--dk-series-4);
+  --series-negative: var(--dk-series-negative);
+  --seq-1: var(--dk-seq-1);
+  --seq-2: var(--dk-seq-2);
+  --seq-3: var(--dk-seq-3);
+  --seq-4: var(--dk-seq-4);
+  --seq-5: var(--dk-seq-5);
+  --chart-grid: var(--dk-chart-grid);
 }
 
 /* ============================================================================
@@ -518,8 +526,67 @@ textarea:focus-visible {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* A staggered entrance would otherwise sit invisible for its delay before "arriving". */
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Motion
+
+   Keyframes are global by nature, so the shared ones live here and every module refers to them by
+   name. Each starts from a state that is still legible if it never runs: nothing is left at
+   opacity 0 waiting for a script, and the reduced-motion block above collapses all of them.
+   ============================================================================ */
+
+/* A card or row arriving. Pair with `animation-delay: calc(var(--i) * 50ms)` to stagger a list. */
+@keyframes owm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes owm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A line drawing itself. The path sets --len to its own length. */
+@keyframes owm-draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+}
+
+/* A column growing from its baseline, and a bar growing from its start. */
+@keyframes owm-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes owm-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* A dialog or palette opening, and a sheet sliding up from the bottom of a phone. */
+@keyframes owm-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes owm-sheet-up {
+  from {
+    opacity: 0.4;
+    transform: translateY(40px);
   }
 }
 
@@ -591,6 +658,17 @@ textarea:focus-visible {
     --data-2: #b0663a;
     --data-3: #6b4f9e;
     --data-4: #9a7b28;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #4a3aa7;
+    --series-negative: #e34948;
+    --seq-1: #86b6ef;
+    --seq-2: #5598e7;
+    --seq-3: #2a78d6;
+    --seq-4: #1c5cab;
+    --seq-5: #0d366b;
+    --chart-grid: #d0d0d0;
   }
 
   body {
@@ -734,6 +812,15 @@ textarea:focus-visible {
 
   table[data-stack] td:not([data-label])::before {
     content: none;
+  }
+
+  /*
+    A totals row has gaps where a column has no total — a rank, a share. Across a table those gaps
+    hold the figures under their headings; stacked, each would be a labelled line with nothing on
+    it, so they go.
+  */
+  table[data-stack] tfoot td:empty {
+    display: none;
   }
 }
 

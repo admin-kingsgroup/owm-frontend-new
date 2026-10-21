@@ -1,564 +1,391 @@
+/*
+  The company dashboard: what needs doing, four headline figures, then two columns of cards — the
+  charts and the register on the left, where the money sits and who owes what on the right.
+
+  Cards arrive one after another (owm-rise, staggered by --i), from a state that is already legible
+  if the animation never runs.
+*/
+
 .gateway {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  width: 100%;
-  /*
-    A menu and a summary, not a statement — neither has any use for a 1700px line. Left to fill the
-    pane on a wide monitor, a group name sat at one edge of the card and its balance at the other
-    with a foot of nothing between them, which is the hardest possible way to read a figure against
-    its name. Capped here rather than on the shell's content pane, because the reports underneath
-    it are columns of figures and do want every pixel.
-  */
-  max-width: 80rem;
-  /* Centred in the pane. Left against the edge, the cap simply moved the empty space to the right
-     of the screen rather than removing it. */
-  margin-inline: auto;
+  gap: 1rem;
+  max-width: 90rem;
+  margin: 0 auto;
 }
 
-.error {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
+.notice {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--warning-bd);
   border-radius: var(--radius-md);
-  background-color: var(--danger-bg-soft);
-  color: var(--danger-fg);
-  font-size: var(--text-base);
+  background: var(--warning-bg-soft);
+  color: var(--warning-fg);
+  font-size: var(--text-sm);
 }
 
-/*
-  The menu on the left, the position on the right — the two questions the first screen of the day
-  answers. One column below 60rem, where they simply stack.
-*/
+/* A read that failed outright — the portfolio dashboard's ranking, say. */
+.error {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--danger-bd, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: var(--text-sm);
+}
+
+/* ---- Header actions --------------------------------------------------- */
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.5rem 0.8125rem;
+  border: 1px solid var(--neutral-bd);
+  border-radius: var(--radius-md);
+  background: var(--paper-card);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    box-shadow 0.2s,
+    transform 0.12s;
+}
+
+.action:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.action:active {
+  transform: translateY(1px);
+}
+
+.actionPrimary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.kbd {
+  padding: 0 0.3125rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 0.3125rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--ink-soft);
+}
+
+.actionPrimary .kbd {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: inherit;
+}
+
+/* ---- Needs attention -------------------------------------------------- */
+
+.attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  animation: owm-rise 0.45s var(--ease-out) both;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.75rem 0.4375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--paper-card);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+
+a.chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--neutral-bd);
+}
+
+.chip svg {
+  flex: none;
+}
+
+/* The severity is in the icon's colour and in its shape — an octagon for wrong, a triangle for a look. */
+.chipBad svg {
+  color: var(--danger-fg);
+}
+
+.chipBad {
+  border-color: var(--danger-bd);
+  color: var(--ink);
+}
+
+.chipWarn svg {
+  color: var(--warning-fg);
+}
+
+.chipGood svg {
+  color: var(--success-fg);
+}
+
+.chipInfo svg {
+  color: var(--accent);
+}
+
+/* ---- Headline figures ------------------------------------------------- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+/* ---- Columns and cards ------------------------------------------------ */
+
 .columns {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
 }
 
 .column {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 1rem;
   min-width: 0;
 }
 
 .card {
-  background-color: var(--paper-card);
+  min-width: 0;
+  padding: 1rem 1.125rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+  margin-bottom: 0.75rem;
 }
 
 .cardTitle {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0.5625rem 0.875rem;
-  background-color: var(--paper-sunken);
-  border-bottom: 1px solid var(--border);
-  font-size: 0.625rem;
+  font-family: var(--font-display);
+  font-size: 0.90625rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: var(--display-tracking);
+}
+
+.cardSub {
+  font-size: var(--text-sm);
   color: var(--ink-faint);
 }
 
-.asOn {
-  letter-spacing: 0.04em;
-  text-transform: none;
-  font-weight: 500;
+.cardRight {
+  margin-left: auto;
 }
 
-/* A whole row is the target, the way a menu line is in Tally — not just the words in it. */
-.item {
-  display: flex;
+.more {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: 0.4375rem 0.875rem;
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-  font-size: var(--text-base);
+  gap: 0.25rem;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--accent);
   text-decoration: none;
 }
 
-.item:last-child {
-  border-bottom: none;
-}
-
-.item:hover {
-  background-color: var(--hover-tint);
-}
-
-.count,
-.code {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-faint);
-}
-
-.figures {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
-}
-
-.figures td {
-  padding: var(--grid-cell-padding-card);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-}
-
-.figures tr:last-child td {
-  border-bottom: none;
-}
-
-/*
- * A balance that opens the working behind it.
- *
- * The link takes the row's own colour rather than a link colour: a column of group names all in
- * blue would read as a list of links rather than as a statement, which is the wrong emphasis for
- * the one panel meant to be scanned for figures. The row lighting up on hover is what says it can
- * be opened, and the focus ring is what says so to a keyboard.
- */
-.figureRow:hover {
-  background-color: var(--hover-tint);
-}
-
-.figureLink {
-  color: inherit;
-  /* Fills the cell, so the pointer finds it anywhere along the name rather than only on the word. */
-  display: block;
-  /*
-   * Dotted, in the faintest ink, so the name carries a cue at rest without becoming a link colour.
-   * Hover alone was the affordance, and a touch screen has no hover — on a phone these names looked
-   * exactly like the text beside them and there was nothing to suggest tapping one did anything.
-   */
-  text-decoration: underline dotted;
-  text-decoration-color: var(--ink-faint);
-  text-underline-offset: 3px;
-}
-
-.figureLink:hover {
-  text-decoration: underline solid;
-  text-decoration-color: currentColor;
-}
-
-.figureLink:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-.amount {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
-}
-
-/* Dr or Cr beside the figure, quieter than it — the amount is what is being read. */
-.side {
-  color: var(--ink-faint);
-  font-size: var(--text-xs);
-}
-
-/* A nil balance. The same dot the reports draw, for the same reason. */
-.nil {
-  color: var(--ink-faint);
-}
-
-/* Which half of the sheet the rows under it belong to. */
-.figuresHeading {
-  padding: var(--grid-section-padding-card);
-  text-align: left;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.figuresEmpty {
-  padding: var(--grid-cell-padding-card);
-  color: var(--ink-faint);
-}
-
-/* The row heading is a th now, so both cells need the footing treatment — the padding included.
-   Without it the th was the one cell in the table with none, and "Net worth" sat hard against the
-   card's edge while every figure above it was indented. */
-.total th,
-.total td {
-  padding: var(--grid-foot-padding-card);
-  background-color: var(--paper-sunken);
-  border-top: 1px solid var(--border);
-  font-weight: 600;
-  text-align: left;
-}
-
-.total .amount {
-  text-align: right;
+.more:hover {
+  text-decoration: underline;
 }
 
 .pending,
 .clear {
-  margin: 0;
-  padding: 0.625rem 0.875rem;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   color: var(--ink-faint);
 }
 
-.warn {
-  color: var(--warning-fg);
-  font-weight: 500;
+/* ---- Where the money is ---------------------------------------------- */
+
+.moneySection + .moneySection {
+  margin-top: 0.75rem;
 }
 
-.bad {
-  color: var(--danger-fg);
-  font-weight: 500;
+.moneyHeading {
+  margin-bottom: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
-@media (max-width: 60rem) {
-  .columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* A row is a tap target on a phone, not a line of text. */
-  .item {
-    min-height: 2.75rem;
-  }
+.moneyRow {
+  padding: 0.3125rem 0;
 }
 
-/* A way out of the card, in its own heading — quieter than the rows it sits over. */
-.cardLink {
-  letter-spacing: 0.04em;
-  text-transform: none;
-  font-weight: 500;
-  color: var(--accent);
+.moneyLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.3125rem;
+}
+
+.moneyName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--ink);
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.cardLink:hover {
+.moneyName:hover {
+  color: var(--accent);
   text-decoration: underline;
 }
 
-/*
-  The register under the two columns. Dense and monospaced where it has to line up — dates, numbers
-  and amounts — and proportional where it is read, which is the narration.
-*/
-.recent {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
-}
-
-.recent th {
-  padding: var(--grid-head-padding-card);
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.recent td {
-  padding: var(--grid-cell-padding-card);
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--ink);
-}
-
-.recent tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.recent tbody tr:hover {
-  background-color: var(--hover-tint);
-}
-
-/* Fixed-width so the eight rows read as a column of dates rather than eight ragged ones. */
-.day,
-.number {
+.moneyAmount {
   font-family: var(--font-mono);
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.number {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/*
-  The one column that can be any length, so it is the one that gives way. Without this the amount
-  column was pushed off the right of a narrow pane by a long narration.
-*/
-.narration {
-  width: 100%;
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-soft);
-}
-
-/* One document this company can raise, in the dashboard header. */
-.action {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.3125rem 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background-color: var(--paper-card);
-  color: var(--ink);
-  font-size: var(--text-sm);
-  text-decoration: none;
-}
-
-.action:hover {
-  border-color: var(--accent);
-  background-color: var(--hover-tint);
-}
-
-/* The key that raises it, quieter than the name but in the accent, because it is the fast path. */
-.actionKey {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--accent);
-}
-
-/*
-  A report that could not be read. A notice, not an error banner: the rest of the page is current
-  and usable, and painting the whole dashboard red over one missing card would say otherwise.
-*/
-.notice {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--warning-bd);
-  border-radius: var(--radius-md);
-  background-color: var(--warning-bg-soft);
-  color: var(--warning-fg);
-  font-size: var(--text-sm);
-}
-
-/*
-  The four figures across the top. auto-fit rather than four fixed columns, so they reflow to two
-  and then to one instead of squeezing a currency figure until it wraps mid-number.
-*/
-/*
-  What is outstanding, above everything it is outstanding about.
-
-  Drafts awaiting post, books that do not balance and entries needing correction before signing are
-  the reason anyone opens a company at all. They used to be the first card of the *second* column,
-  below four tiles and a balance-sheet extract — on a laptop, below the fold, so the one thing on
-  the screen that wanted doing was the one thing you had to scroll to find.
-
-  A band rather than a card: it spans the page because it is about the company, not about one
-  column of it, and it is absent entirely when there is nothing to report. A band that is sometimes
-  empty teaches people to stop looking at it.
-*/
-.attention {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--warning-bd);
-  /* The stripe carries the meaning where the fill is too quiet to, and survives a printed page. */
-  border-left: 3px solid var(--warning-fg);
-  border-radius: var(--radius-lg);
-  background-color: var(--warning-bg-soft);
-}
-
-/*
-  Anything actually wrong pitches the whole band to danger. A band that is amber while it holds a
-  trial balance that does not tie is understating it.
-*/
-.attentionBad {
-  border-color: var(--danger-bd);
-  border-left-color: var(--danger-fg);
-  background-color: var(--danger-bg-soft);
-}
-
-.attentionLabel {
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  padding-right: var(--space-1);
-}
-
-/*
-  Each item is a chip that opens the screen that settles it. On --paper-card rather than the band's
-  own tint, so the chips read as things to press against a ground that is merely coloured.
-*/
-.attentionItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4375rem;
-  padding: 0.1875rem 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  background-color: var(--paper-card);
-  color: var(--ink);
-  font-size: var(--text-base);
-  text-decoration: none;
-}
-
-.attentionItem:hover {
-  border-color: var(--accent);
-}
-
-/* A dot as well as the word, so severity is not carried by colour alone. */
-.attentionDot {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.attentionDotWarn {
-  background-color: var(--warning-fg);
-}
-
-.attentionDotBad {
-  background-color: var(--danger-fg);
-}
-
-/*
-  On a phone the chips become full-width rows.
-
-  Six chips wrapping over four lines is a paragraph of buttons, and none of them is a comfortable
-  target. One per line, each the width of the thumb's reach.
-*/
-@media (max-width: 40rem) {
-  .attention {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .attentionItem {
-    border-radius: var(--radius-md);
-  }
-}
-
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: var(--space-3);
-}
-
-.kpi {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--paper-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: inherit;
-  text-decoration: none;
-}
-
-.kpi:hover {
-  border-color: var(--accent);
-}
-
-.kpi:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.kpiLabel {
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.side {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
   color: var(--ink-faint);
 }
 
-.kpiValue {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--ink);
-}
-
-/* A loss. Never the only signal — the figure is already in accounting brackets. */
-.kpiNegative {
-  color: var(--danger-fg);
-}
-
-.kpiHint {
-  font-size: var(--text-xs);
+.nil {
   color: var(--ink-faint);
-}
-
-/*
-  The trend line at the foot of a tile.
-
-  Pushed to the bottom, so the four tiles' lines sit on one baseline whether or not each has a hint
-  above it — an uneven row of them reads as four unrelated charts rather than as one row of trends.
-  Only two of the four have a series at all, and the `margin-top: auto` is what keeps those two
-  level with each other rather than riding up to meet a shorter hint.
-
-  Left at its own 88×30 rather than stretched: the viewBox is fixed, so a width of 100% would
-  letterbox it inside the tile instead of filling it.
-*/
-.kpi svg {
-  display: block;
-  margin-top: auto;
-  padding-top: var(--space-2);
-}
-
-/* Charts get room to breathe; the cards around them are flush to their own edges. */
-.chartBody {
-  padding: var(--space-3) var(--space-4) var(--space-4);
-}
-
-/*
-  A group's share of its own side of the sheet. Fixed width so the bars share one scale and can be
-  compared down the column, which is the only thing they are for.
-*/
-.shareCell {
-  width: 4.5rem;
-  padding-right: 0.875rem;
 }
 
 .shareTrack {
   display: block;
-  height: 0.375rem;
-  border-radius: var(--radius-full);
-  background-color: var(--paper-sunken);
+  height: 6px;
   overflow: hidden;
+  border-radius: 6px;
+  background: var(--paper-sunken);
 }
 
 .shareFill {
   display: block;
   height: 100%;
-  border-radius: var(--radius-full);
-  background-color: var(--data-1);
+  border-radius: 6px;
+  background: var(--series-1);
+  transform-origin: left;
+  animation: owm-grow-x 0.9s var(--ease-out) both;
+  animation-delay: calc(0.2s + var(--i, 0) * 80ms);
+}
+
+/* ---- Outstanding and forex totals ------------------------------------ */
+
+.outstanding {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.875rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.outstanding div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: var(--text-sm);
+}
+
+.outstanding dt {
+  color: var(--ink-soft);
+}
+
+.outstanding dd {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.outstandingTotal {
+  margin-top: 0.25rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* ---- Recently filed --------------------------------------------------- */
+
+.figures {
+  width: calc(100% + 2.25rem);
+  margin: 0 -1.125rem -0.25rem;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
 }
 
 .figures th {
-  padding: var(--grid-cell-padding-card);
+  padding: var(--grid-head-padding-card);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
 }
 
-/* A filed voucher: its number, then what it was for, on the line beneath. */
+.figures td {
+  padding: var(--grid-cell-padding-card);
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.figures tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.figureRow {
+  transition: background-color 0.15s;
+  animation: owm-fade 0.4s both;
+  animation-delay: calc(0.3s + var(--i, 0) * 40ms);
+}
+
+.figureRow:hover {
+  background: var(--hover-tint);
+}
+
+.figures .amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recentDate {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
 .recentNumber {
   display: block;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
 .recentNarration {
@@ -571,63 +398,115 @@
   white-space: nowrap;
 }
 
-/*
-  Only ever drawn for a voucher that is not posted, so it needs no colour coding to say which state
-  it is — its presence is the statement.
-*/
-.recentStatus {
-  display: inline-block;
-  padding: 0.0625rem 0.375rem;
-  border: 1px solid var(--warning-bd);
-  border-radius: var(--radius-sm);
-  color: var(--warning-fg);
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
+/* ---- Masters ---------------------------------------------------------- */
+
+.masters {
+  display: grid;
+  gap: 0.375rem;
 }
 
-/* A target that was met. Its opposite is .warn, which the attention list already defines. */
-.met {
-  color: var(--success-fg);
-  font-weight: 500;
+.master {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
-/*
-  A tile reporting something incomplete rather than something wrong — businesses yet to report is a
-  gap in the evidence, not a loss. Distinct from .kpiNegative, which is a figure below zero.
-*/
-.kpiWarn {
-  color: var(--warning-fg);
+.master:hover {
+  border-color: var(--neutral-bd);
+  background: var(--hover-tint);
 }
 
-/* Present for a screen reader, absent for everyone else. */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+.master svg {
+  flex: none;
+  color: var(--ink-faint);
+}
+
+.count {
+  margin-left: auto;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-full);
+  background: var(--chip-bg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--chip-fg);
+}
+
+/* ---- Portfolio: a business yet to report ------------------------------ */
+
+.pendingRow {
+  position: relative;
   overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  padding-left: 1rem;
 }
 
-/*
-  Statements scroll sideways rather than stacking, which is the same trade the masters tables make.
+.pendingBar {
+  position: absolute;
+  inset: 0.5rem auto 0.5rem 0.375rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--warning-fg);
+}
 
-  A balance summary and an ageing band are genuinely columns of figures read against each other;
-  turned into cards they stop being comparable, which is the whole reason to look at them. The
-  record lists on these screens opt out through `data-stack`, and the attribute selector outranks
-  this rule below 48rem — so the two do not fight, they hand over.
+.pendingText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
 
-  `screen` only: a printed table must stay a table, and a sideways scroll on paper is just columns
-  cut off the edge of the page.
-*/
-@media screen and (max-width: 60rem) {
+.pendingText b {
+  font-weight: 600;
+}
+
+.pendingText span {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* ---- Narrower screens ------------------------------------------------- */
+
+@media (max-width: 75rem) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 48rem) {
   .figures {
-    display: block;
     width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
+    margin: 0;
+  }
+}
+
+@media (max-width: 34rem) {
+  .kpis {
+    gap: 0.625rem;
+  }
+}
+
+@media print {
+  .attention,
+  .action {
+    display: none;
+  }
+
+  .card,
+  .figureRow,
+  .shareFill {
+    animation: none;
   }
 }

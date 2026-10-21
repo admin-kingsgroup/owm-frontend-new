@@ -13,3 +13,4 @@ export * from './api/company-api';
 export { useCompanyStore } from './model/company-store';
 export * from './lib/status';
 export * from './lib/type-label';
+export * from './lib/accent';

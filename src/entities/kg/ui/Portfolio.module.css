@@ -1,0 +1,170 @@
+/* The portfolio's own pieces: the ranking and the target chart, shared by the dashboard and the
+   portfolio screen so the two cannot drift into two looks for the same figures. */
+
+.ranking {
+  margin: 0 -0.25rem;
+}
+
+.rankRow {
+  animation: owm-rise 0.45s var(--ease-out) both;
+  animation-delay: calc(0.1s + var(--i, 0) * 60ms);
+}
+
+.rank {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* The leader, in the accent — the one figure a ranking exists to show. */
+.rankFirst {
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
+}
+
+.name {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.name:hover {
+  color: var(--accent);
+}
+
+.from {
+  display: block;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.negative {
+  color: var(--danger-fg);
+}
+
+.nil {
+  color: var(--ink-faint);
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.met {
+  background: var(--success-bg-soft, rgba(22, 163, 74, 0.1));
+  color: var(--success-fg);
+}
+
+.missed {
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 7rem;
+}
+
+.scoreTrack {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--paper-sunken);
+}
+
+.scoreFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--series-1), var(--seq-4));
+  transform-origin: left;
+  animation: owm-grow-x 0.9s var(--ease-out) both;
+  animation-delay: 0.25s;
+}
+
+.scoreValue {
+  min-width: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.quiet {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1rem;
+  margin-top: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.keyDot,
+.keyRing {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+}
+
+.keyDot {
+  background: var(--series-1);
+}
+
+.keyRing {
+  border: 2px solid var(--series-1);
+}
+
+.keyLine {
+  width: 1rem;
+  border-top: 1px dashed var(--accent);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media print {
+  .rankRow,
+  .scoreFill {
+    animation: none;
+  }
+}

@@ -335,3 +335,221 @@
     padding: 0.3125rem 0.375rem;
   }
 }
+
+/* ---- The new interface ------------------------------------------------ */
+
+/* Voucher types as tabs, each with the key that raises it. Scrolls sideways on a phone. */
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5625rem;
+  background: var(--paper-card);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.type:hover {
+  border-color: var(--neutral-bd);
+  color: var(--ink);
+}
+
+.typeChosen,
+.typeChosen:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.typeKey {
+  font-family: var(--font-mono);
+  font-size: 0.65625rem;
+  opacity: 0.75;
+}
+
+.narration textarea {
+  min-height: 2.5rem;
+}
+
+.entriesFrame {
+  box-shadow: var(--shadow-1);
+}
+
+.entriesRow {
+  transition: background-color 0.15s;
+  animation: owm-rise 0.3s var(--ease-out) both;
+}
+
+.entriesRow:hover {
+  background-color: var(--hover-tint);
+}
+
+/* Can it go into the books — in words and colour, beside the buttons that would put it there. */
+.state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+}
+
+.state svg {
+  flex: none;
+}
+
+.state span {
+  display: flex;
+  flex-direction: column;
+}
+
+.state b {
+  font-size: var(--text-base);
+}
+
+.state small {
+  font-size: var(--text-xs);
+  opacity: 0.85;
+}
+
+.stateOk {
+  background: var(--success-bg-soft);
+  color: var(--success-fg);
+}
+
+.stateOff {
+  background: var(--warning-bg-soft);
+  color: var(--warning-fg);
+}
+
+.stateIdle {
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+}
+
+.draftButton {
+  border: 1px solid var(--border);
+}
+
+.actions :global(svg) {
+  vertical-align: -2px;
+}
+
+/*
+  On a phone each line is a card: the account across the top, its debit and credit side by side
+  beneath it, and the balance it stands at as a caption. The table stays a table for anything that
+  reads it as one; only its drawing changes.
+*/
+@media (max-width: 40rem) {
+  .types {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .type {
+    flex: none;
+  }
+
+  .entriesFrame {
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .entriesTable,
+  .entriesTable tbody,
+  .entriesTable tfoot {
+    display: block;
+  }
+
+  .entriesTable thead {
+    display: none;
+  }
+
+  .entriesRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.375rem;
+    padding: 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--paper-sunken);
+  }
+
+  .entriesRow + .entriesRow,
+  .extrasRowHolder + .entriesRow {
+    margin-top: 0.5rem;
+  }
+
+  .entriesRow td:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .entriesRow td:nth-child(2) {
+    grid-column: 1 / -1;
+    order: 1;
+    text-align: left;
+  }
+
+  .extrasRowHolder {
+    display: block;
+    margin-top: 0.375rem;
+  }
+
+  .extrasRowHolder td {
+    display: block;
+    border: 0;
+  }
+
+  .balanceBar tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .balanceBar th,
+  .balanceBar td {
+    border-top: 0;
+  }
+
+  .balanceBar td:empty {
+    display: none;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    background: var(--paper-card);
+  }
+
+  .acceptHint {
+    display: none;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
+}

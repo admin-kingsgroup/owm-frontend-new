@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Plus, Receipt, ArrowRight, Lock, Pencil, Trash2, BarChart3 } from 'lucide-react';
+import {
+  ArrowRight,
+  BarChart3,
+  Library,
+  Lock,
+  Pencil,
+  Plus,
+  Receipt,
+  TriangleAlert,
+  Trash2,
+} from 'lucide-react';
 
 import {
   getCompany,
@@ -13,7 +23,12 @@ import { listAccountGroups, deleteAccountGroup } from '@/entities/account-group'
 import type { AccountGroup } from '@/entities/account-group';
 import { listLedgers, deleteLedger, getOpeningBalanceSummary } from '@/entities/ledger';
 import type { Ledger, OpeningBalanceSummary } from '@/entities/ledger';
-import { listVoucherTypes, deleteVoucherType } from '@/entities/voucher-type';
+import {
+  deleteVoucherType,
+  functionKeyFor,
+  inFunctionKeyOrder,
+  listVoucherTypes,
+} from '@/entities/voucher-type';
 import { listNumberSeries } from '@/entities/number-series';
 import { listCurrencies } from '@/entities/currency';
 import type { Currency } from '@/entities/currency';
@@ -345,9 +360,18 @@ export function CompanyDashboardPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div>
+        <div className={styles.titles}>
+          <span className={styles.eyebrow}>
+            <Library size={13} aria-hidden="true" />
+            Masters
+          </span>
+          {/*
+            The heading names the screen; the line under it names whose books these are. The top
+            bar's breadcrumb says the company as well, but this is the line that gets printed.
+          */}
+          <h1 className={styles.title}>Masters</h1>
           <div className={styles.headerTop}>
-            <h1 className={styles.title}>{company.name}</h1>
+            <span className={styles.companyName}>{company.name}</span>
             <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
             {/*
               The type decides the whole chart of accounts and cannot be changed afterwards, so it
@@ -377,7 +401,8 @@ export function CompanyDashboardPage() {
       </div>
 
       {openingBalance && openingBalance.difference !== '0.00' && (
-        <div className={styles.openingDiff}>
+        <div className={styles.openingDiff} role="status">
+          <TriangleAlert size={18} className={styles.openingIcon} aria-hidden="true" />
           {/* Bare, like the ledger table below it. These three sat on the same tab as figures
               written without a symbol, so one screen stated the same currency two ways. */}
           <strong>Difference in opening balances:</strong>{' '}
@@ -490,7 +515,15 @@ export function CompanyDashboardPage() {
                       </td>
                       <td data-mono>{ledger.code}</td>
                       <td>{ledger.name}</td>
-                      <td>{ledger.ledgerType}</td>
+                      <td>
+                        <Badge variant={ledger.ledgerType === 'GENERAL' ? 'neutral' : 'info'}>
+                          {ledger.ledgerType === 'CASH'
+                            ? 'Cash'
+                            : ledger.ledgerType === 'BANK'
+                              ? 'Bank'
+                              : 'General'}
+                        </Badge>
+                      </td>
                       <td data-num>
                         {/*
                           A figure and the side it falls on, written as the rest of the product
@@ -577,18 +610,32 @@ export function CompanyDashboardPage() {
           <Table surface="plain" stack>
             <thead>
               <tr>
+                <th>Key</th>
                 <th>ID</th>
                 <th>Code</th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>Numbering</th>
+                <th data-num>Issued</th>
                 <th />
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {voucherTypes.map((voucherType) => (
+              {/*
+                In the order the keys run, F4 first, so the list reads the way the hand moves. Issued
+                is the server's own counter summed over this type's series — what has actually been
+                numbered, rather than a next number guessed here without the reset period.
+              */}
+              {inFunctionKeyOrder(voucherTypes).map((voucherType) => (
                 <tr key={voucherType.id}>
+                  <td>
+                    {functionKeyFor(voucherType.code) ? (
+                      <kbd className={styles.key}>{functionKeyFor(voucherType.code)}</kbd>
+                    ) : (
+                      <span className={styles.nil}>·</span>
+                    )}
+                  </td>
                   <td data-mono title={voucherType.id}>
                     {formatRecordId(company.code, 'VTY', voucherType.code)}
                   </td>
@@ -596,6 +643,11 @@ export function CompanyDashboardPage() {
                   <td>{voucherType.name}</td>
                   <td>{voucherType.category.replace('_', ' ')}</td>
                   <td>{voucherType.numberingMethod}</td>
+                  <td data-num>
+                    {numberSeries
+                      .filter((series) => series.voucherTypeId === voucherType.id)
+                      .reduce((sum, series) => sum + series.currentNumber, 0)}
+                  </td>
                   <td>
                     <div className={styles.rowFlags}>
                       {voucherType.isSystem && <Lock size={13} aria-label="System voucher type" />}

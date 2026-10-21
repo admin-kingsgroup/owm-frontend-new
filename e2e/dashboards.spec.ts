@@ -57,7 +57,7 @@ test.describe('signing in', () => {
 
     // Company selection, not a company. Which set of books is a decision, and it is made here.
     await expect(page).toHaveURL(/\/companies$/);
-    await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
 
     await page.getByRole('link', { name: 'Open ADB - INR' }).click();
 
@@ -85,7 +85,7 @@ test.describe('the reads behind the dashboard', () => {
   test('a plain company reports nothing unread', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     // Balance sheet, profit and loss, cash flow, exceptions and the register, all in one line.
@@ -99,7 +99,7 @@ test.describe('the reads behind the dashboard', () => {
   }) => {
     await signIn(page);
     await page.goto(`/companies/${featuredId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     /*
@@ -115,7 +115,7 @@ test.describe('the reads behind the dashboard', () => {
   test('a company without those features is not shown their cards', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     // Not merely empty — absent. An empty ageing card reads as "nothing overdue".
@@ -145,7 +145,7 @@ test.describe('signing out and back in', () => {
     await page.getByLabel('Email').fill(ACCOUNT.email);
     await page.getByLabel('Password').fill(ACCOUNT.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     const readsBefore = listReads.length;
@@ -158,7 +158,7 @@ test.describe('signing out and back in', () => {
     await page.getByLabel('Email').fill(ACCOUNT.email);
     await page.getByLabel('Password').fill(ACCOUNT.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('heading', { name: 'Companies', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     /*
@@ -176,38 +176,24 @@ test.describe('signing out and back in', () => {
 });
 
 /**
- * Choosing a company happens in one place, top right.
- *
- * The menu bar and the function-key strip each used to offer their own way back to the company
- * list. Two of the three are gone; what these check is that they stayed gone, and that the one
- * that remains can actually reach everything the other two did.
+ * Choosing a company: the switcher at the head of the sidebar, and the group overview as the
+ * sidebar's first place. The key strip stays out of it — it is for what this screen can do.
  */
 test.describe('choosing a company', () => {
-  test('is offered nowhere on the menu bar or the strip', async ({ page }) => {
+  test('is the sidebar’s first place, and not the strip’s business', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
-    // Every menu on the bar, opened in turn, and every item it holds.
-    const menus = await page.locator('[aria-haspopup="menu"][aria-expanded]').all();
-    const destinations: string[] = [];
-    for (const menu of menus) {
-      const label = (await menu.getAttribute('aria-label')) ?? '';
-      // The switcher is the one control that is allowed to reach it; it is checked below.
-      if (label === '') continue;
-      await menu.click();
-      for (const item of await page.getByRole('menuitem').all()) {
-        destinations.push((await item.getAttribute('href')) ?? '');
-      }
-      await page.keyboard.press('Escape');
-    }
+    const sidebar = page.getByRole('complementary', { name: 'Main navigation' });
+    await expect(sidebar.getByRole('link', { name: /Group overview/ })).toHaveAttribute(
+      'href',
+      '/companies',
+    );
 
-    expect(destinations.length, 'no menu opened').toBeGreaterThan(10);
-    expect(destinations.filter((href) => href === '/companies')).toEqual([]);
-
-    // And the strip: no action on it leads to the list either.
-    const strip = await page.getByRole('button').allInnerTexts();
-    expect(strip.filter((text) => /^Company$/.test(text.trim()))).toEqual([]);
+    const strip = page.getByRole('complementary', { name: 'Actions for this screen' });
+    const labels = await strip.getByRole('button').allInnerTexts();
+    expect(labels.filter((text) => /Compan/.test(text))).toEqual([]);
   });
 
   test('reaches the full list from the switcher, and nothing else does', async ({ page }) => {
@@ -248,28 +234,36 @@ test.describe('choosing a company', () => {
 });
 
 /**
- * The two keys this session moved. Alt+D was the Day Book and is now the Dashboards menu; the Day
- * Book took Alt+K. Both are bound by different handlers on the same document, which is exactly the
- * arrangement that hid the collision in the first place.
+ * The keys that reach the places in the sidebar. Each is printed beside the place it reaches, and
+ * each must go there from wherever you are — not only from the screen it was tried on.
  */
-test.describe('the keys that moved', () => {
-  test('Alt+D opens the Dashboards menu', async ({ page }) => {
+test.describe('the keys that move between places', () => {
+  test('Alt+G opens the group overview from inside a company', async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/companies/${companyId}/reports?report=trial-balance`);
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
+
+    await page.keyboard.press('Alt+KeyG');
+
+    await expect(page).toHaveURL(/\/companies$/);
+    await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
+  });
+
+  test('Alt+M opens the masters', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Dashboards' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
-    await page.keyboard.press('Alt+KeyD');
+    await page.keyboard.press('Alt+KeyM');
 
-    await expect(page.getByRole('menuitem', { name: /Company dashboard/ })).toBeVisible();
-    // And it did not also fire the Day Book underneath the menu it opened.
-    await expect(page).toHaveURL(new RegExp(`/companies/${companyId}$`));
+    await expect(page).toHaveURL(/tab=accounts/);
   });
 
   test('Alt+O opens the dashboard from wherever you are', async ({ page }) => {
     await signIn(page);
     // From a report, which is where somebody actually presses it.
     await page.goto(`/companies/${companyId}/reports?report=trial-balance`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     await page.keyboard.press('Alt+KeyO');
 
@@ -280,7 +274,7 @@ test.describe('the keys that moved', () => {
   test('Alt+K still opens the Day Book', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     await page.keyboard.press('Alt+KeyK');
 
@@ -303,7 +297,7 @@ test.describe('an address that names no company', () => {
 
     await signIn(page);
     await page.goto('/companies/000000000000000000000000');
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     // Said out loud rather than left blank.
@@ -326,7 +320,7 @@ test.describe('the portfolio dashboard', () => {
     await signIn(page);
     await page.addInitScript(() => window.localStorage.setItem('owm.theme', 'dark'));
     await page.goto(`/companies/${analyticsId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -354,7 +348,7 @@ test.describe('the portfolio dashboard', () => {
   test('is not offered the statements it can never have', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${analyticsId}`);
-    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     /*
@@ -363,7 +357,11 @@ test.describe('the portfolio dashboard', () => {
       the menu is drawn while the type is still unknown, and asserting before that would pass on a
       frame that has not decided yet.
     */
-    await expect(page.getByRole('button', { name: 'Reports' })).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('complementary', { name: 'Main navigation' })
+        .getByRole('link', { name: /^Reports/ }),
+    ).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Balance Sheet/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Profit & Loss/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Day Book/ })).toHaveCount(0);
@@ -390,7 +388,7 @@ test.describe('at the width between the two', () => {
     test(`${screen.name} does not spill`, async ({ page }) => {
       await signIn(page);
       await page.goto(screen.path());
-      await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
       await page.waitForLoadState('networkidle');
 
       const overflow = await page.evaluate(
@@ -428,7 +426,7 @@ test.describe('on a narrow screen', () => {
     test(`${screen.name} fits`, async ({ page }) => {
       await signIn(page);
       await page.goto(screen.path());
-      await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'More' })).toBeVisible();
       await page.waitForLoadState('networkidle');
 
       await page.screenshot({ path: `e2e/screenshots/${screen.file}-narrow.png`, fullPage: true });
@@ -454,8 +452,8 @@ test.describe('on a narrow screen', () => {
       );
       expect(spilling, `${spilling} card(s) overflow their own width`).toBe(0);
 
-      // The switcher is the only company control there is, so it has to survive the narrow width.
-      await expect(page.locator('[aria-haspopup="menu"]').first()).toBeVisible();
+      // The company chip in the top bar is how a phone switches company, so it has to survive.
+      await expect(page.getByRole('button', { name: 'Switch company' })).toBeVisible();
     });
   }
 });

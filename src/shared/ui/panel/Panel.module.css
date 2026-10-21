@@ -74,3 +74,43 @@
     padding: var(--space-2);
   }
 }
+
+/*
+  The new interface: a card rather than a box with a recessed header strip. The title reads as a
+  heading in sentence case, the card lifts off the page with a soft shadow, and it arrives with the
+  same rise as every other card.
+*/
+.panel {
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.header {
+  padding: 0.875rem 1.125rem 0.375rem;
+  border-bottom: 0;
+  background-color: transparent;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 0.90625rem;
+  font-weight: 600;
+  letter-spacing: var(--display-tracking);
+  text-transform: none;
+  color: var(--ink);
+}
+
+.body {
+  padding: 0.75rem 1.125rem 1rem;
+}
+
+.flush {
+  padding: 0.25rem 0 0;
+}
+
+@media print {
+  .panel {
+    animation: none;
+    box-shadow: none;
+  }
+}

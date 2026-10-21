@@ -12,6 +12,7 @@ import type {
   PartnerStatement,
   PortfolioView,
   Snapshot,
+  TrajectoryPoint,
 } from '../model/types';
 
 const unwrap = <T>(response: { data: ApiSuccessResponse<T> }) => response.data.data;
@@ -187,6 +188,18 @@ export async function getForecast(
   return unwrap(
     await apiClient.get<ApiSuccessResponse<ForecastResult[]>>(
       endpoints.kg.forecast(companyId, businessId),
+    ),
+  );
+}
+
+/** A business's locked months, oldest first, in the portfolio's currency. */
+export async function getTrajectory(
+  companyId: string,
+  businessId: string,
+): Promise<TrajectoryPoint[]> {
+  return unwrap(
+    await apiClient.get<ApiSuccessResponse<TrajectoryPoint[]>>(
+      endpoints.kg.trajectory(companyId, businessId),
     ),
   );
 }

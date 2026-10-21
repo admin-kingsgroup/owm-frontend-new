@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useCompanyStore } from '@/entities/company';
@@ -11,10 +11,10 @@ import { useButtonBar } from '../model/button-bar';
 import { AppShell } from './AppShell';
 
 /**
- * The context strip reads its year and its difference from the server, not from the company record
+ * The top bar reads its year and its difference from the server, not from the company record
  * — `financialYearStart` there is the first year the company was ever given, not the one it is
- * posting into. So the strip renders nothing until those calls resolve, and a test that stubs
- * neither asserts against an empty strip.
+ * posting into. So the year chip renders nothing until those calls resolve, and a test that stubs
+ * neither asserts against an empty bar.
  *
  * Only the two network calls are stubbed. `currentFinancialYear` stays real, because which year it
  * picks out of the list is the logic worth exercising here rather than replacing.
@@ -165,13 +165,19 @@ function renderShell(options: { companies?: Company[] | null; screen?: React.Rea
   );
 }
 
-const openMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+/** Opens the search the way a person does — Ctrl+K toggles it, so only if it is shut — and types. */
+function search(query: string) {
+  if (!screen.queryByRole('combobox')) fireEvent.keyDown(document, { key: 'k', ctrlKey: true });
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: query } });
+}
+
+const sidebar = () => screen.getByRole('complementary', { name: 'Main navigation' });
 
 /**
- * The shell is the whole navigation model of the product now — a menu bar, a context strip and a
- * button bar of shortcuts. These cover what would silently stop working: a menu item pointing at
- * the wrong report, a feature-gated report appearing for a company that cannot produce it, and a
- * shortcut stealing a keystroke from a field someone is typing in.
+ * The shell is the navigation model of the product — a sidebar of the places a day is spent in, a
+ * search that reaches every report and register, and a strip of shortcuts. These cover what would
+ * silently stop working: a link pointing at the wrong report, a feature-gated report appearing for
+ * a company that cannot produce it, and a shortcut stealing a keystroke from a field.
  */
 describe('AppShell', () => {
   beforeEach(() => {
@@ -181,25 +187,35 @@ describe('AppShell', () => {
 
   afterEach(cleanup);
 
-  it('carries the whole product in four menus', () => {
+  it('puts the places a day is spent in down the sidebar', () => {
     renderShell();
 
-    for (const label of ['Company', 'Masters', 'Transactions', 'Reports']) {
-      expect(screen.getByRole('button', { name: label })).toBeTruthy();
+    for (const label of [
+      'Group overview',
+      'Dashboard',
+      'Masters',
+      'Vouchers',
+      'Reports',
+      'Audit trail',
+    ]) {
+      expect(within(sidebar()).getByRole('link', { name: new RegExp(label) })).toBeTruthy();
     }
+    expect(
+      within(sidebar())
+        .getByRole('link', { name: /Masters/ })
+        .getAttribute('href'),
+    ).toBe('/companies/c1?tab=accounts');
   });
 
-  it('opens a menu with its mnemonic and closes it again', () => {
+  it('opens the search with Ctrl+K and closes it again with Escape', () => {
     renderShell();
 
-    fireEvent.keyDown(document, { code: 'KeyR', altKey: true });
-    expect(screen.getByRole('menu')).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: /Balance Sheet/ })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: 'Search' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: /Balance Sheet/ })).toBeTruthy();
 
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).toBeNull();
-    // Focus goes back to the menu it came from, not to the top of the page.
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reports' }));
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Search' })).toBeNull();
   });
 
   it('labels each group in the button bar, so its actions are read together', () => {
@@ -209,105 +225,99 @@ describe('AppShell', () => {
     expect(group.querySelectorAll('button').length).toBeGreaterThan(1);
   });
 
-  it('links each report at its own address, not just at the reports page', () => {
+  it('reaches each report at its own address, not just at the reports page', () => {
     renderShell();
-    openMenu('Reports');
+    search('trial balance');
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /Trial Balance/ }));
+    fireEvent.click(screen.getByRole('option', { name: /^Trial Balance/ }));
 
     expect(screen.getByTestId('here').textContent).toBe(
       '/companies/c1/reports?report=trial-balance',
     );
-    // Following a link closes the bar rather than leaving it over the new screen.
-    expect(screen.queryByRole('menu')).toBeNull();
+    // Choosing closes the search rather than leaving it over the new screen.
+    expect(screen.queryByRole('dialog', { name: 'Search' })).toBeNull();
   });
 
-  it('marks only the report actually open as current', () => {
+  it('marks only the place actually open as current', () => {
     renderShell();
-    openMenu('Reports');
-    fireEvent.click(screen.getByRole('menuitem', { name: /Profit & Loss/ }));
-    openMenu('Reports');
 
-    const current = screen.getAllByRole('menuitem').filter((item) => item.ariaCurrent === 'true');
+    const current = within(sidebar())
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('aria-current') === 'page');
     expect(current).toHaveLength(1);
-    expect(current[0].textContent).toContain('Profit & Loss');
+    expect(current[0].textContent).toContain('Reports');
   });
 
-  it('drops the reports a company cannot produce', () => {
+  it('leaves out the reports a company cannot produce', () => {
     renderShell({
-      companies: [
-        company({
-          features: {
-            billWiseDetails: false,
-            multiCurrency: false,
-          },
-        }),
-      ],
+      companies: [company({ features: { billWiseDetails: false, multiCurrency: false } })],
     });
-    openMenu('Reports');
 
-    expect(screen.queryByRole('menuitem', { name: /Receivables/ })).toBeNull();
-    expect(screen.queryByRole('menuitem', { name: /Forex/ })).toBeNull();
-    expect(screen.getByRole('menuitem', { name: /Balance Sheet/ })).toBeTruthy();
-
-    openMenu('Company');
-    expect(screen.queryByRole('menuitem', { name: /Currencies/ })).toBeNull();
+    search('receivables');
+    expect(screen.queryByRole('option', { name: /Receivables/ })).toBeNull();
+    search('forex');
+    expect(screen.queryByRole('option', { name: /Forex/ })).toBeNull();
+    search('currencies');
+    expect(screen.queryByRole('option', { name: /Currencies/ })).toBeNull();
+    search('balance sheet');
+    expect(screen.getByRole('option', { name: /Balance Sheet/ })).toBeTruthy();
   });
 
-  it('offers an analytics workspace the portfolio and its own four documents', () => {
+  it('gives an analytics workspace the portfolio and its own four documents', () => {
     /*
       Both, not one instead of the other. The registry is what the workspace is mostly for, and it
-      also posts now — capital in, profit reported, profit shared out and a correction — so a menu
-      naming only the registry left four seeded documents with no way to raise any of them.
+      also posts — capital in, profit reported, profit shared out and a correction — so offering
+      only the registry left four seeded documents with no way to raise any of them.
 
-      No key printed against Vouchers here: Alt+V still reaches the portfolio for this kind of
-      company, and a menu naming a key that does something else is worse than one naming none.
+      No Reports: nothing is ever posted to a workspace, so every statement would be blank.
     */
     renderShell({ companies: [company({ type: 'ANALYTICS' })] });
-    openMenu('Transactions');
 
-    expect(screen.getByRole('menuitem', { name: 'Portfolio' })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: 'Vouchers' })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: /Capital Introduction/ })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: /Business Profit/ })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: /Profit Allocation/ })).toBeTruthy();
-    expect(screen.getByRole('menuitem', { name: /Adjustment/ })).toBeTruthy();
+    expect(within(sidebar()).getByRole('link', { name: /Portfolio/ })).toBeTruthy();
+    expect(within(sidebar()).getByRole('link', { name: /Vouchers/ })).toBeTruthy();
+    expect(within(sidebar()).queryByRole('link', { name: /^Reports/ })).toBeNull();
+
+    for (const name of [
+      'Capital Introduction',
+      'Business Profit',
+      'Profit Allocation',
+      'Adjustment',
+    ]) {
+      search(name);
+      expect(screen.getByRole('option', { name: new RegExp(name) })).toBeTruthy();
+    }
   });
 
   it('draws no data entry at all until the company has been identified', async () => {
     /*
-      The strip has its own copy of this guard and must agree with the menu's. Without it a
+      The strip has its own copy of this guard and must agree with the search's. Without it a
       portfolio whose company record had not arrived was handed the books' four — Contra, Payment,
       Receipt, Journal — because "not a portfolio" and "not known yet" are the same boolean.
     */
     renderShell({ companies: null });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Company' })).toBeTruthy());
+    await waitFor(() => expect(sidebar()).toBeTruthy());
     expect(screen.queryByRole('group', { name: 'Data entry' })).toBeNull();
     expect(screen.queryByRole('button', { name: /Contra/ })).toBeNull();
   });
 
-  it('states the year and currency once for the whole app', async () => {
+  it('states the year and the currency for the whole app', async () => {
     renderShell();
 
-    /*
-      The company is named by the switcher, not by this strip — once, at the top right, where it is
-      also the control that changes it. The strip carries only what is stated nowhere else.
-    */
-    expect(screen.getByRole('button', { name: /ADB - INR/ })).toBeTruthy();
-    expect(screen.queryByText('ADB - INR', { selector: 'b' })).toBeNull();
-    // The label exactly as the server wrote it: the strip prints it rather than reformatting, so
-    // what is on screen and what the reports API answers with can never drift apart.
-    expect(await screen.findByText('2026-2027')).toBeTruthy();
-    expect(screen.getByText('INR')).toBeTruthy();
+    // The switcher names the company, and is the control that changes it.
+    expect(within(sidebar()).getByRole('button', { name: /ADB - INR/ })).toBeTruthy();
+    // The label exactly as the server wrote it: printed rather than reformatted, so what is on
+    // screen and what the reports API answers with can never drift apart.
+    const chip = await screen.findByText(/FY 2026-2027/);
+    expect(chip.textContent).toContain('INR');
   });
 
-  it('renders nothing of the context strip until the company list arrives', () => {
+  it('says nothing about a year until the company list arrives', () => {
     renderShell({ companies: null });
 
-    expect(screen.queryByText('ADB - INR')).toBeNull();
-    // The menus still stand, so the shell is never a blank frame.
-    expect(screen.getByRole('button', { name: 'Company' })).toBeTruthy();
+    expect(screen.queryByText(/FY 2026-2027/)).toBeNull();
+    // The sidebar still stands, so the shell is never a blank frame.
+    expect(within(sidebar()).getByRole('link', { name: /Group overview/ })).toBeTruthy();
   });
 
   describe('button bar', () => {

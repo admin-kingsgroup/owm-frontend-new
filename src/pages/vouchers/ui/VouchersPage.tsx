@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Plus, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, CircleCheck, Files, Plus } from 'lucide-react';
 
 import { listVouchers, getVoucher, voucherStatusVariant } from '@/entities/voucher';
 import type { Voucher, VoucherSummary, VoucherStatus } from '@/entities/voucher';
-import { listVoucherTypes } from '@/entities/voucher-type';
+import { functionKeyFor, inFunctionKeyOrder, listVoucherTypes } from '@/entities/voucher-type';
 import { getTrialBalance } from '@/entities/report';
 import type { VoucherType } from '@/entities/voucher-type';
 import { listLedgers } from '@/entities/ledger';
@@ -15,14 +16,28 @@ import { listCurrencies } from '@/entities/currency';
 import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
-import { Button, Modal, Select, Loading, EmptyState, Badge, Table, toast } from '@/shared/ui';
-import { getErrorMessage, formatCalendarDay, formatMoney, formatMoneyWithSide } from '@/shared/lib';
+import { Button, Modal, Loading, EmptyState, Badge, Table, toast } from '@/shared/ui';
+import {
+  cn,
+  getErrorMessage,
+  formatCalendarDay,
+  formatMoney,
+  formatMoneyWithSide,
+} from '@/shared/lib';
 import { useCompanyReadout } from '@/widgets/app-shell';
 
 import styles from './VouchersPage.module.css';
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS: VoucherStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
+
+/** The words a person reads for each status, in the order the status bar lists them. */
+const STATUS_LABELS: Record<VoucherStatus, string> = {
+  POSTED: 'Posted',
+  DRAFT: 'Draft',
+  CANCELLED: 'Cancelled',
+};
+const STATUS_ORDER: VoucherStatus[] = ['POSTED', 'DRAFT', 'CANCELLED'];
 
 export function VouchersPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -100,6 +115,18 @@ export function VouchersPage() {
     balances: ReadonlyMap<string, string>;
   } | null>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  /**
+   * How many vouchers stand in each status, for the summary above the register. One request per
+   * status asking for a single row — the total is what is wanted, not the rows. Tagged with the
+   * company it describes. Null until read, and after a read that failed: the summary is context,
+   * and the register below is the same either way.
+   */
+  const [counts, setCounts] = useState<{
+    companyId: string;
+    byStatus: Record<VoucherStatus, number>;
+  } | null>(null);
+  /** The voucher just filed, marked in the register so the eye finds it. */
+  const [justFiled, setJustFiled] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -178,6 +205,28 @@ export function VouchersPage() {
       cancelled = true;
     };
   }, [companyId, statusFilter, typeFilter, page, refreshKey]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    const id = companyId;
+    let cancelled = false;
+
+    Promise.all(STATUS_ORDER.map((status) => listVouchers(id, { status, page: 1, limit: 1 })))
+      .then((results) => {
+        if (cancelled) return;
+        const byStatus = Object.fromEntries(
+          STATUS_ORDER.map((status, index) => [status, results[index].total]),
+        ) as Record<VoucherStatus, number>;
+        setCounts({ companyId: id, byStatus });
+      })
+      .catch(() => {
+        // Context, not content — see `counts`.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, refreshKey]);
 
   function typeName(voucherTypeId: string): string {
     return voucherTypes.find((type) => type.id === voucherTypeId)?.name ?? '—';
@@ -292,180 +341,294 @@ export function VouchersPage() {
     return <Loading label="Loading vouchers…" />;
   }
 
+  const country = loaded?.company?.country;
+  const money = (value: string | number) => formatMoney(value, { country });
+  const raisable = inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
+  const canCreate = setupLoadedOk && !setupIncomplete;
+  const companyCounts = counts?.companyId === companyId ? counts.byStatus : null;
+  const counted = companyCounts
+    ? STATUS_ORDER.reduce((sum, status) => sum + companyCounts[status], 0)
+    : 0;
+
+  function chooseType(code: string) {
+    setPage(1);
+    setTypeFilter(code);
+  }
+
+  function chooseStatus(status: VoucherStatus | '') {
+    setPage(1);
+    setStatusFilter(status);
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div>
+        <div className={styles.titles}>
+          <span className={styles.eyebrow}>
+            <Files size={13} aria-hidden="true" />
+            Transactions
+          </span>
           <h1 className={styles.title}>Vouchers</h1>
           {/* The reason the action is unavailable has to be readable, not just a tooltip: a
               disabled button takes no focus, so screen readers never reach its title. */}
           <p className={styles.subtitle} id="vouchers-subtitle">
             {setupIncomplete
               ? `Add ${setupMissing.join(' and ')} before vouchers can be created.`
-              : 'Double-entry transactions for this company.'}
+              : 'Raise, post and review every document. A function key starts one from any screen.'}
           </p>
         </div>
         {/*
-          Offered to every company again. A portfolio workspace was sent to the registry from here
-          instead, correctly, while the only documents it held were the four it files about a
-          business — those cannot use this form at all. It has its own Contra, Payment, Receipt and
-          Journal from seed v6, and those are ordinary vouchers against ordinary accounts, so a
-          screen that refused to raise one was refusing the only thing it could actually do. The
-          four that still need the registry are routed there by the menu and the strip instead —
-          see raiseVoucherPath, which decides by document rather than by company.
+          Offered to every company. A portfolio workspace has its own Contra, Payment, Receipt and
+          Journal, which are ordinary vouchers; the four it files about a business are routed to the
+          registry by the strip and the search instead — see raiseVoucherPath.
         */}
         <Button
           type="button"
           variant="primary"
           onClick={() => openCreate(null)}
           /*
-            Also while the setup is still in flight. `setupMissing` is empty until it lands, so
-            this read as "nothing missing" and let the form open on no ledgers and no voucher
-            types — where it announced "Finish setting up this company" about a company that is
-            set up perfectly well. The same distinction the subtitle above already draws.
+            Also while the setup is still in flight: `setupMissing` is empty until it lands, and
+            opening the form then would announce a company as not set up when it is merely loading.
           */
-          disabled={!setupLoadedOk || setupIncomplete}
+          disabled={!canCreate}
           aria-describedby={setupIncomplete ? 'vouchers-subtitle' : undefined}
         >
           <Plus size={16} /> New voucher
         </Button>
       </div>
 
-      <div className={styles.filters}>
-        <Select
-          value={statusFilter}
-          onChange={(event) => {
-            setPage(1);
-            setStatusFilter(event.target.value as VoucherStatus | '');
-          }}
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </Select>
-        <Select
-          value={typeFilter}
-          onChange={(event) => {
-            setPage(1);
-            setTypeFilter(event.target.value);
-          }}
-        >
-          <option value="">All voucher types</option>
-          {voucherTypes.map((type) => (
-            <option key={type.id} value={type.code}>
-              {type.name}
-            </option>
-          ))}
-        </Select>
+      <div className={styles.overview}>
+        {/* Every document this company raises, with its key — one click, or the key, from here. */}
+        <section className={styles.card} style={{ '--i': 1 } as CSSProperties}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>Create</h2>
+            <span className={styles.cardSub}>one click, or the key from any screen</span>
+          </div>
+          {raisable.length === 0 ? (
+            <p className={styles.quiet}>
+              {setupLoadedOk ? 'No voucher type is switched on.' : 'Reading voucher types…'}
+            </p>
+          ) : (
+            <div className={styles.createGrid}>
+              {raisable.map((type, index) => {
+                const key = functionKeyFor(type.code);
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    className={styles.createTile}
+                    style={{ '--i': index } as CSSProperties}
+                    onClick={() => openCreate(type.code)}
+                    disabled={!canCreate}
+                  >
+                    <span className={styles.createTop}>
+                      <Plus size={15} aria-hidden="true" />
+                      {key && <kbd className={styles.kbd}>{key}</kbd>}
+                    </span>
+                    <b>{type.name}</b>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/*
+          Where the register stands: how much of it is in the books, how much is waiting, how much
+          was withdrawn. Each part is a way into the register filtered to it.
+        */}
+        <section className={styles.card} style={{ '--i': 2 } as CSSProperties}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>Where the register stands</h2>
+          </div>
+          {companyCounts === null ? (
+            <p className={styles.quiet}>Counting…</p>
+          ) : counted === 0 ? (
+            <p className={styles.quiet}>Nothing has been filed yet.</p>
+          ) : (
+            <>
+              <div className={styles.statusTrack} aria-hidden="true">
+                {STATUS_ORDER.map((status) =>
+                  companyCounts[status] > 0 ? (
+                    <span
+                      key={status}
+                      className={cn(styles.statusPart, styles[`part${status}`])}
+                      style={{ flex: companyCounts[status] }}
+                    />
+                  ) : null,
+                )}
+              </div>
+              <div className={styles.statusList}>
+                {STATUS_ORDER.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={cn(styles.statusItem, statusFilter === status && styles.statusOn)}
+                    onClick={() => chooseStatus(statusFilter === status ? '' : status)}
+                    aria-pressed={statusFilter === status}
+                  >
+                    <i
+                      className={cn(styles.statusDot, styles[`part${status}`])}
+                      aria-hidden="true"
+                    />
+                    {STATUS_LABELS[status]}
+                    <b>{companyCounts[status]}</b>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
       </div>
 
-      {error && <p className={styles.error}>{error}</p>}
-
-      {loading ? (
-        <Loading label="Loading vouchers…" />
-      ) : vouchers.length === 0 && setupIncomplete ? (
-        <EmptyState
-          title="This company is not set up yet"
-          description={`Vouchers reference ledgers and voucher types. This company still needs ${setupMissing.join(' and ')}.`}
-          action={
-            <Link to={`/companies/${companyId}`} className={styles.setupLink}>
-              Go to chart of accounts <ArrowRight size={14} />
-            </Link>
-          }
-        />
-      ) : vouchers.length === 0 ? (
-        <EmptyState
-          title="No vouchers found"
-          /* Not "create one to get started" for a workspace that cannot create one here — the
-             header directly above already says where they are entered. */
-          description="Create a voucher to get started."
-        />
-      ) : (
-        <>
-          {/* The grid gets a frame of its own, so a short list stops floating in an empty pane and
-              a long one scrolls under a heading that stays put — the same treatment the statements
-              got. The pagination below stays outside it, where it belongs to the page rather than
-              to the rows. */}
-          <Table stack sticky className={styles.registerGrid}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Narration</th>
-                <th data-num>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((voucher) => (
-                <tr key={voucher.id} className={styles.row} onClick={() => openVoucher(voucher.id)}>
-                  <td data-mono title={voucher.id}>
-                    {voucher.voucherNumber}
-                  </td>
-                  <td>{formatCalendarDay(voucher.voucherDate, loaded?.company?.country)}</td>
-                  <td>{typeName(voucher.voucherTypeId)}</td>
-                  <td data-clip>{voucher.narration ?? '—'}</td>
-                  {/* What the voucher is worth. A list of postings without amounts is a list of
-                      dates and narrations, and nobody scanning a day of them is looking for those. */}
-                  <td data-num>
-                    {/* No symbol. Inside a company every figure is in that company's currency, the
-                        status strip says which, and the reports have written them bare since the
-                        density pass — this column was the one place left repeating it, so the same
-                        amount was written two ways depending on which screen you were on. Where
-                        companies are listed side by side the symbol stays, because there it is
-                        telling you something. */}
-                    {formatMoney(voucher.amount, { country: loaded?.company?.country })}
-                  </td>
-                  <td>
-                    <Badge variant={voucherStatusVariant(voucher.status)}>{voucher.status}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-
-          <div className={styles.pagination}>
-            <span className={styles.pageLabel}>
-              Page {page} of {totalPages} · {total} voucher{total === 1 ? '' : 's'}
-            </span>
-            <div className={styles.pageButtons}>
-              <Button
+      <section className={cn(styles.card, styles.register)} style={{ '--i': 3 } as CSSProperties}>
+        <div className={styles.filters}>
+          <div className={styles.chips} role="group" aria-label="Voucher type">
+            <button
+              type="button"
+              className={styles.chip}
+              aria-pressed={typeFilter === ''}
+              onClick={() => chooseType('')}
+            >
+              All types
+            </button>
+            {inFunctionKeyOrder(voucherTypes).map((type) => (
+              <button
+                key={type.id}
                 type="button"
-                variant="ghost"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page <= 1}
+                className={styles.chip}
+                aria-pressed={typeFilter === type.code}
+                onClick={() => chooseType(type.code)}
               >
-                <ChevronLeft size={15} />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                disabled={page >= totalPages}
-              >
-                <ChevronRight size={15} />
-              </Button>
-            </div>
+                {type.name}
+              </button>
+            ))}
           </div>
-        </>
-      )}
+          <div className={styles.segment} role="group" aria-label="Status">
+            <button
+              type="button"
+              aria-pressed={statusFilter === ''}
+              onClick={() => chooseStatus('')}
+            >
+              All
+            </button>
+            {STATUS_ORDER.map((status) => (
+              <button
+                key={status}
+                type="button"
+                aria-pressed={statusFilter === status}
+                onClick={() => chooseStatus(status)}
+              >
+                {STATUS_LABELS[status]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error && <p className={styles.error}>{error}</p>}
+
+        {loading ? (
+          <Loading label="Loading vouchers…" />
+        ) : vouchers.length === 0 && setupIncomplete ? (
+          <EmptyState
+            title="This company is not set up yet"
+            description={`Vouchers reference ledgers and voucher types. This company still needs ${setupMissing.join(' and ')}.`}
+            action={
+              <Link to={`/companies/${companyId}`} className={styles.setupLink}>
+                Go to chart of accounts <ArrowRight size={14} />
+              </Link>
+            }
+          />
+        ) : vouchers.length === 0 ? (
+          <EmptyState
+            title="No vouchers found"
+            description={
+              typeFilter || statusFilter
+                ? 'Nothing matches these filters.'
+                : 'Create a voucher to get started.'
+            }
+          />
+        ) : (
+          <>
+            <p className={styles.summary}>
+              <b>{total}</b> voucher{total === 1 ? '' : 's'}
+              {(typeFilter || statusFilter) && ' match'}
+              <span className={styles.summaryPage}>
+                · page {page} of {totalPages}
+              </span>
+            </p>
+            {/* The grid scrolls under a heading that stays put, the same treatment as the statements. */}
+            <Table stack sticky className={styles.registerGrid}>
+              <thead>
+                <tr>
+                  <th>Voucher</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Narration</th>
+                  <th data-num>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vouchers.map((voucher, index) => (
+                  <tr
+                    key={voucher.id}
+                    className={cn(styles.row, voucher.id === justFiled && styles.flash)}
+                    style={{ '--i': index } as CSSProperties}
+                    onClick={() => openVoucher(voucher.id)}
+                  >
+                    <td data-mono title={voucher.id}>
+                      {voucher.voucherNumber}
+                    </td>
+                    <td>{formatCalendarDay(voucher.voucherDate, country)}</td>
+                    <td>{typeName(voucher.voucherTypeId)}</td>
+                    <td data-clip>{voucher.narration ?? '—'}</td>
+                    {/* Bare, like the statements: inside a company every figure is in its currency. */}
+                    <td data-num>{money(voucher.amount)}</td>
+                    <td>
+                      <Badge variant={voucherStatusVariant(voucher.status)}>
+                        {STATUS_LABELS[voucher.status]}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+
+            <div className={styles.pagination}>
+              <span className={styles.pageLabel}>
+                Page {page} of {totalPages} · {total} voucher{total === 1 ? '' : 's'}
+              </span>
+              <div className={styles.pageButtons}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label="Previous page"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1}
+                >
+                  <ChevronLeft size={15} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label="Next page"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page >= totalPages}
+                >
+                  <ChevronRight size={15} />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
       <Modal open={createModalOpen} onClose={() => closeCreate()} title="New voucher" size="wide">
         {/*
-          Held back until the masters are in.
-
-          The form reads the ledger list once, when it mounts, to decide what each line starts on.
-          Mounting it before the list arrives left both lines holding an empty ledger code while the
-          select — which falls back to its first option when its value matches none — showed the
-          first account as though it were chosen. Nothing looked wrong, the balance beside each line
-          could not be found, and accepting it would have posted a voucher against no account at all.
-
-          It only became reachable when ?new= let a function key open this form on first paint;
-          before that the button was the only way in, and by then the masters had long arrived.
+          Held back until the masters are in. The form reads the ledger list once, when it mounts,
+          to decide what each line starts on — mounted before the list arrives, its lines held no
+          account while the select showed the first one as though it were chosen.
         */}
         {!setupLoadedOk ? (
           <Loading label="Loading accounts…" />
@@ -482,9 +645,18 @@ export function VouchersPage() {
             ledgerBalances={
               ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
             }
-            onCreated={() => {
+            onCreated={(voucher) => {
               closeCreate();
+              setJustFiled(voucher.id);
               booksChanged();
+              /*
+                What it is worth is its debit side. Added up from its lines rather than read from
+                `amount`, which the register's summaries carry and a voucher fresh from a post may not.
+              */
+              const worth = voucher.entries.reduce((sum, entry) => sum + Number(entry.debit), 0);
+              toast.success(
+                `${voucher.voucherNumber} ${voucher.status === 'POSTED' ? 'posted' : 'saved as a draft'} · ${money(worth)}`,
+              );
             }}
             onCancel={() => closeCreate()}
           />
@@ -495,92 +667,130 @@ export function VouchersPage() {
         open={selectedVoucher !== null || detailLoading}
         onClose={() => setSelectedVoucher(null)}
         title={selectedVoucher ? `Voucher ${selectedVoucher.voucherNumber}` : 'Loading…'}
-        /*
-          Its entries are a table — line, ledger, debit, credit — which is the same shape as a
-          statement and wants the same room. It was not overflowing the default box, because the
-          grid scrolls inside itself, but four columns of figures inside 28rem meant reading a
-          voucher by dragging it sideways.
-        */
-        size="wide"
+        /* One record read beside the list it came from — a panel down the right edge. */
+        size="drawer"
       >
         {detailLoading || !selectedVoucher ? (
           <Loading />
         ) : (
-          <div className={styles.detail}>
-            <div className={styles.detailMeta}>
-              <Badge variant={voucherStatusVariant(selectedVoucher.status)}>
-                {selectedVoucher.status}
-              </Badge>
-              <span>
-                {formatCalendarDay(selectedVoucher.voucherDate, loaded?.company?.country)}
-              </span>
-              {selectedVoucher.referenceNumber && (
-                <span>Ref: {selectedVoucher.referenceNumber}</span>
-              )}
-            </div>
-            {selectedVoucher.narration && (
-              <p className={styles.detailNarration}>{selectedVoucher.narration}</p>
-            )}
-
-            <Table stack>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Ledger</th>
-                  <th data-num>Debit</th>
-                  <th data-num>Credit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedVoucher.entries.map((entry, index) => (
-                  <tr key={entry.id}>
-                    <td data-mono title={entry.id}>
-                      {selectedVoucher.voucherNumber}/{index + 1}
-                    </td>
-                    <td>
-                      {entry.ledgerCode}
-                      {/*
-                        A foreign line shows what was actually typed and the rate it was converted
-                        at. The Debit and Credit columns are always base currency, so without this
-                        the line is indistinguishable from an ordinary one.
-                      */}
-                      {entry.currencyCode && (
-                        <span className={styles.entryForeign}>
-                          {entry.fcAmount && (
-                            <>
-                              {' '}
-                              {entry.currencyCode} {Math.abs(Number(entry.fcAmount)).toFixed(2)}
-                            </>
-                          )}
-                          {entry.exchangeRate && <> @ {entry.exchangeRate}</>}
-                        </span>
-                      )}
-                    </td>
-                    {/* Bare, like the list this drawer opened from. The same amount carrying a
-                        symbol here and none one click away is the inconsistency, not the symbol. */}
-                    <td data-num>
-                      {Number(entry.debit) > 0
-                        ? formatMoney(entry.debit, { country: loaded?.company?.country })
-                        : ''}
-                    </td>
-                    <td data-num>
-                      {Number(entry.credit) > 0
-                        ? formatMoney(entry.credit, { country: loaded?.company?.country })
-                        : ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-
+          <VoucherDetail
+            voucher={selectedVoucher}
+            typeName={typeName(selectedVoucher.voucherTypeId)}
+            country={country}
+          >
             <VoucherActions
               companyId={companyId}
               voucher={selectedVoucher}
               onChanged={handleVoucherChanged}
             />
-          </div>
+          </VoucherDetail>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/**
+ * One voucher, read in full: what it is, every line of it with its side, that it balances, and what
+ * has happened to it since it was keyed.
+ */
+function VoucherDetail({
+  voucher,
+  typeName,
+  country,
+  children,
+}: {
+  voucher: Voucher;
+  typeName: string;
+  country?: string;
+  children: ReactNode;
+}) {
+  const money = (value: string) => formatMoney(value, { country });
+  const debit = voucher.entries.reduce((sum, entry) => sum + Number(entry.debit), 0);
+  const credit = voucher.entries.reduce((sum, entry) => sum + Number(entry.credit), 0);
+  const balanced = Math.abs(debit - credit) < 0.005;
+
+  return (
+    <div className={styles.detail}>
+      <div className={styles.detailMeta}>
+        <Badge variant={voucherStatusVariant(voucher.status)}>
+          {STATUS_LABELS[voucher.status]}
+        </Badge>
+        <span>{typeName}</span>
+        <span>{formatCalendarDay(voucher.voucherDate, country)}</span>
+        {voucher.referenceNumber && <span>Ref: {voucher.referenceNumber}</span>}
+      </div>
+      {voucher.narration && <p className={styles.detailNarration}>{voucher.narration}</p>}
+
+      <Table stack>
+        <thead>
+          <tr>
+            <th>Ledger</th>
+            <th data-num>Debit</th>
+            <th data-num>Credit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {voucher.entries.map((entry) => (
+            <tr key={entry.id}>
+              <td>
+                {entry.ledgerCode}
+                {/*
+                  A foreign line shows what was actually typed and the rate it was converted at. The
+                  columns are always base currency, so without this it looks like any other line.
+                */}
+                {entry.currencyCode && (
+                  <span className={styles.entryForeign}>
+                    {entry.fcAmount && (
+                      <>
+                        {' '}
+                        {entry.currencyCode} {Math.abs(Number(entry.fcAmount)).toFixed(2)}
+                      </>
+                    )}
+                    {entry.exchangeRate && <> @ {entry.exchangeRate}</>}
+                  </span>
+                )}
+              </td>
+              <td data-num>{Number(entry.debit) > 0 ? money(entry.debit) : ''}</td>
+              <td data-num>{Number(entry.credit) > 0 ? money(entry.credit) : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td data-num>{money(String(debit))}</td>
+            <td data-num>{money(String(credit))}</td>
+          </tr>
+        </tfoot>
+      </Table>
+
+      {balanced && (
+        <p className={styles.balanced}>
+          <CircleCheck size={16} aria-hidden="true" /> Balanced — debits equal credits
+        </p>
+      )}
+
+      <ol className={styles.timeline} aria-label="What has happened to it">
+        <li className={styles.tlCreated}>
+          <b>Keyed</b>
+          <span>as a draft</span>
+        </li>
+        {voucher.postedAt && (
+          <li className={styles.tlPosted}>
+            <b>Posted</b>
+            <span>{formatCalendarDay(voucher.postedAt, country)}</span>
+          </li>
+        )}
+        {voucher.cancelledAt && (
+          <li className={styles.tlCancelled}>
+            <b>Cancelled</b>
+            <span>{formatCalendarDay(voucher.cancelledAt, country)}</span>
+          </li>
+        )}
+      </ol>
+
+      {children}
     </div>
   );
 }

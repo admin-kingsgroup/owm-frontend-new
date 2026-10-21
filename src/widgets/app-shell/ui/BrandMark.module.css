@@ -1,0 +1,20 @@
+.mark {
+  flex: none;
+}
+
+.wheel {
+  transform-origin: 22px 22px;
+  animation: spin 14s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media print {
+  .wheel {
+    animation: none;
+  }
+}

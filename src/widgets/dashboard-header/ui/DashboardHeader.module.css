@@ -1,68 +1,80 @@
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
+  gap: 0.875rem 1.25rem;
+  animation: owm-rise 0.45s var(--ease-out) both;
 }
 
 .identity {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0.25rem;
   min-width: 0;
+  flex: 1 1 20rem;
+}
+
+/* Which dashboard this is, said before the name, small and tracked out. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
 .titleRow {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 0.625rem;
 }
 
 .title {
   margin: 0;
   font-family: var(--font-display);
-  letter-spacing: var(--display-tracking);
-  font-size: var(--text-2xl);
-  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-size: 1.625rem;
+  font-weight: 650;
   color: var(--ink);
+  text-wrap: balance;
 }
 
 .meta {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
+  gap: 0.375rem;
+  margin: 0.125rem 0 0;
   font-size: var(--text-sm);
   color: var(--ink-faint);
-}
-
-/* Which dashboard this is — the one word that says what the figures below are about. */
-.kind {
-  color: var(--ink-soft);
-  font-weight: 500;
 }
 
 .code {
   font-family: var(--font-mono);
 }
 
-/*
-  Separators, quieter than the words they separate — but still read.
-
-  --border is the divider colour, and globals.css says what it is for: 1px rules, nothing else. As
-  text it came out at 1.21:1, which is not quiet, it is absent. --ink-faint is the tier this wanted:
-  the quietest colour in the palette that a reader can still make out.
-*/
+/* Quieter than the words they separate, but still legible — --ink-faint, never --border. */
 .dot {
   color: var(--ink-faint);
 }
 
 .actions {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 0.5rem;
+}
+
+@media (max-width: 34rem) {
+  .title {
+    font-size: 1.375rem;
+  }
+
+  .actions {
+    width: 100%;
+  }
 }

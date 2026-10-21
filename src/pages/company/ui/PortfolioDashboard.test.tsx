@@ -60,6 +60,8 @@ vi.mock('@/entities/kg', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/kg')>()),
   getRanking: (...args: unknown[]) => getRanking(...args),
   listBusinesses: (...args: unknown[]) => listBusinesses(...args),
+  // The trend under the tiles. No history by default, so each test reads the month alone.
+  getTrajectory: () => Promise.resolve([]),
 }));
 
 const company: Company = {
@@ -201,7 +203,7 @@ describe('PortfolioDashboard', () => {
     renderDashboard();
 
     const league = await screen.findByRole('heading', { name: /League table/ });
-    const table = league.parentElement as HTMLElement;
+    const table = league.closest('section') as HTMLElement;
 
     // A business with no turnover did not miss a margin target; it had no margin to measure.
     expect(within(table).queryByText('0.0%')).toBeNull();

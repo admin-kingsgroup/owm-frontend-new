@@ -1,13 +1,23 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  CircleCheck,
+  Plus,
+  Save,
+  Scale,
+  Send,
+  Trash2,
+} from 'lucide-react';
 
-import { createVoucher } from '@/entities/voucher';
+import { createVoucher, postVoucher } from '@/entities/voucher';
 import type { Voucher, VoucherEntryInput, BillAllocationInput } from '@/entities/voucher';
 import type { Currency } from '@/entities/currency';
+import { functionKeyFor, inFunctionKeyOrder } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import type { Ledger } from '@/entities/ledger';
-import { Button, Input, Select, Textarea, EmptyState } from '@/shared/ui';
+import { Button, Input, Select, Textarea, EmptyState, toast } from '@/shared/ui';
 import { getErrorMessage, cn, todayAsDateInput } from '@/shared/lib';
 
 import { computeBalance } from '../lib/balance';
@@ -39,6 +49,10 @@ export interface CreateVoucherFormProps {
    * company has no active type with that code, which leaves the first active type as before.
    */
   initialVoucherTypeCode?: string;
+  /**
+   * The voucher as it stands once the form is done with it — posted when Post voucher was pressed
+   * and the post went through, a draft otherwise.
+   */
   onCreated: (voucher: Voucher) => void;
   onCancel: () => void;
 }
@@ -95,7 +109,8 @@ export function CreateVoucherForm({
   onCreated,
   onCancel,
 }: CreateVoucherFormProps) {
-  const activeVoucherTypes = voucherTypes.filter((type) => type.isActive);
+  // In the order the keys run — F4, F5, F6 … — so the tabs read the way the hand moves.
+  const activeVoucherTypes = inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
   const defaultLedgerCode = ledgers[0]?.code ?? '';
 
   // The dialog unmounts when it closes, so this is re-read every time it is opened — which is what
@@ -113,7 +128,9 @@ export function CreateVoucherForm({
     newRow(defaultLedgerCode),
   ]);
 
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<'draft' | 'post' | null>(null);
+  /** The Post button, which Ctrl+Enter presses — so the browser's own validation runs first. */
+  const postButton = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   const ledgerByCode = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
@@ -146,9 +163,15 @@ export function CreateVoucherForm({
     setEntries((rows) => (rows.length > 2 ? rows.filter((row) => row.key !== key) : rows));
   }
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
+    /*
+      Which button sent it. Post voucher creates and then posts; Save as draft only creates, which
+      is what this form did on its own before — a draft is in no statement until someone posts it.
+    */
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const mode: 'draft' | 'post' = submitter?.value === 'draft' ? 'draft' : 'post';
+    setSubmitting(mode);
     setError(null);
 
     const payloadEntries: VoucherEntryInput[] = entries.map((row) => {
@@ -174,20 +197,38 @@ export function CreateVoucherForm({
       };
     });
 
+    let voucher: Voucher;
     try {
-      const voucher = await createVoucher(companyId, {
+      voucher = await createVoucher(companyId, {
         voucherTypeCode,
         voucherDate,
         referenceNumber: referenceNumber || undefined,
         narration: narration || undefined,
         entries: payloadEntries,
       });
-      onCreated(voucher);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not create voucher'));
-    } finally {
-      setSubmitting(false);
+      setSubmitting(null);
+      return;
     }
+
+    if (mode === 'post') {
+      try {
+        voucher = await postVoucher(companyId, voucher.id);
+      } catch (err) {
+        /*
+          The voucher exists either way — it was created before the post was refused. Saying so is
+          the whole point: keying it again would file it twice. It stays a draft, in the register,
+          for whoever fixes what the server objected to.
+        */
+        toast.error(
+          `${voucher.voucherNumber} was saved as a draft but not posted: ${getErrorMessage(err, 'the post was refused')}`,
+        );
+      }
+    }
+
+    setSubmitting(null);
+    onCreated(voucher);
   }
 
   // A company now starts with no masters at all, so both <select>s can legitimately be empty.
@@ -227,30 +268,43 @@ export function CreateVoucherForm({
     if (!accept) return;
 
     event.preventDefault();
-    // requestSubmit rather than handleSubmit, so the browser's own validation still runs first.
-    event.currentTarget.requestSubmit();
+    // requestSubmit rather than handleSubmit, so the browser's own validation still runs first —
+    // and through the Post button, because accepting from the keyboard is accepting into the books.
+    if (postButton.current && !postButton.current.disabled) {
+      event.currentTarget.requestSubmit(postButton.current);
+    }
   }
+
+  const difference = Math.abs(totalDebit - totalCredit);
+  const nothingEntered = totalDebit === 0 && totalCredit === 0;
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
+      {/*
+        The company's own voucher types as tabs, each with the key that raises it from anywhere — so
+        the form teaches the keys while it is being used. A radio group: one is always chosen.
+      */}
+      <div className={styles.types} role="radiogroup" aria-label="Voucher type">
+        {activeVoucherTypes.map((type) => {
+          const key = functionKeyFor(type.code);
+          const chosen = type.code === voucherTypeCode;
+          return (
+            <button
+              key={type.id}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              className={cn(styles.type, chosen && styles.typeChosen)}
+              onClick={() => setVoucherTypeCode(type.code)}
+            >
+              {type.name}
+              {key && <kbd className={styles.typeKey}>{key}</kbd>}
+            </button>
+          );
+        })}
+      </div>
+
       <div className={styles.row}>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="voucher-type">
-            Voucher type
-          </label>
-          <Select
-            id="voucher-type"
-            value={voucherTypeCode}
-            onChange={(event) => setVoucherTypeCode(event.target.value)}
-            required
-          >
-            {activeVoucherTypes.map((type) => (
-              <option key={type.id} value={type.code}>
-                {type.name}
-              </option>
-            ))}
-          </Select>
-        </div>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="voucher-date">
             Date
@@ -276,13 +330,14 @@ export function CreateVoucherForm({
         </div>
       </div>
 
-      <div className={styles.field}>
+      <div className={cn(styles.field, styles.narration)}>
         <label className={styles.label} htmlFor="voucher-narration">
           Narration (optional)
         </label>
         <Textarea
           id="voucher-narration"
           placeholder="Office rent payment for May 2026"
+          rows={1}
           value={narration}
           onChange={(event) => setNarration(event.target.value)}
         />
@@ -475,21 +530,64 @@ export function CreateVoucherForm({
         </table>
       </div>
 
+      {/*
+        Whether it can go into the books, said in words as well as colour, and the one figure that
+        has to reach zero. Announced politely as it changes, so a screen reader hears "Balanced"
+        the moment the last amount is typed.
+      */}
+      <div
+        className={cn(
+          styles.state,
+          isBalanced ? styles.stateOk : nothingEntered ? styles.stateIdle : styles.stateOff,
+        )}
+        role="status"
+        aria-live="polite"
+      >
+        {isBalanced ? <CircleCheck size={22} /> : <Scale size={22} />}
+        <span>
+          <b>
+            {awaitingRate
+              ? 'Exchange rate needed'
+              : isBalanced
+                ? 'Balanced — ready to post'
+                : nothingEntered
+                  ? 'Enter the amounts'
+                  : `Out by ${difference.toFixed(2)}`}
+          </b>
+          <small>
+            {isBalanced
+              ? 'Debits equal credits'
+              : 'A voucher posts only when its debits equal its credits'}
+          </small>
+        </span>
+      </div>
+
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.actions}>
         <span className={styles.acceptHint}>
-          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> accepts
+          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> posts
         </span>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
         <Button
           type="submit"
-          variant="primary"
-          disabled={submitting || !isBalanced || !voucherTypeCode}
+          value="draft"
+          variant="ghost"
+          className={styles.draftButton}
+          disabled={submitting !== null || !isBalanced || !voucherTypeCode}
         >
-          {submitting ? 'Saving…' : 'Accept voucher'}
+          <Save size={15} /> {submitting === 'draft' ? 'Saving…' : 'Save as draft'}
+        </Button>
+        <Button
+          ref={postButton}
+          type="submit"
+          value="post"
+          variant="primary"
+          disabled={submitting !== null || !isBalanced || !voucherTypeCode}
+        >
+          <Send size={15} /> {submitting === 'post' ? 'Posting…' : 'Post voucher'}
         </Button>
       </div>
     </form>

@@ -143,3 +143,43 @@ export function formatMoneyWithSide(
   const magnitude = formatMoney(Math.abs(numeric), options);
   return `${magnitude} ${numeric < 0 ? 'Cr' : 'Dr'}`;
 }
+
+const compactCache = new Map<string, Intl.NumberFormat>();
+
+/**
+ * An amount shortened for a chart axis or a headline tile — 1.2Cr, 58.27L, 2.35M.
+ *
+ * The full figure is never replaced by this: a tile shows it in its tooltip and the statement one
+ * click behind it carries it to the paisa. This is for the places where the eye wants a magnitude,
+ * and twelve digits on a y-axis is noise.
+ *
+ * The short forms are the region's own, from `Intl` — lakh and crore for an Indian company,
+ * thousand and million elsewhere — so, like `formatMoney`, nothing about any one country is
+ * written down here. Negatives take a plain minus: an axis tick in brackets reads as a footnote.
+ */
+export function formatCompactMoney(
+  value: string | number,
+  options: Pick<FormatMoneyOptions, 'currency' | 'country'> = {},
+): string {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) return typeof value === 'string' ? value : '—';
+
+  const locale = localeFor(options.country);
+  const key = `${locale ?? ''}|${options.currency ?? ''}`;
+  let formatter = compactCache.get(key);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat(locale, {
+        ...(options.currency ? { style: 'currency', currency: options.currency } : {}),
+        notation: 'compact',
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      formatter = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 2 });
+    }
+    compactCache.set(key, formatter);
+  }
+
+  const magnitude = formatter.format(Math.abs(numeric));
+  return numeric < 0 ? `−${magnitude}` : magnitude;
+}

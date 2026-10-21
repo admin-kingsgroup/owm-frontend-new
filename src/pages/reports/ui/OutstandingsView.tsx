@@ -1,8 +1,8 @@
-import type { OutstandingsReport } from '@/entities/outstanding';
+import type { AgeingBucket, OutstandingsReport } from '@/entities/outstanding';
 import { cn, formatMoney, toCalendarDay } from '@/shared/lib';
 
 import styles from './ReportsPage.module.css';
-import { Table } from '@/shared/ui';
+import { StackedBars, Table } from '@/shared/ui';
 
 /** Ageing bands, written the way a person reads them rather than the way they are stored. */
 const BUCKET_LABELS: Record<string, string> = {
@@ -17,7 +17,15 @@ interface OutstandingsViewProps {
   outstandings: OutstandingsReport;
   /** Formats an amount the way the company writes money. */
   money: (value: string) => string;
+  /** A figure in full, nil included — for the ageing bars, where a blank would read as unread. */
+  figure: (value: string | number) => string;
+  kind: 'receivable' | 'payable';
 }
+
+const BUCKETS: AgeingBucket[] = ['NOT_DUE', '0_30', '31_60', '61_90', 'OVER_90'];
+
+/** How many parties the ageing chart lists before folding the rest into one row. */
+const TOP_PARTIES = 8;
 
 /**
  * What is still owed, bill by bill, with how long each one has been owed for.
@@ -26,9 +34,45 @@ interface OutstandingsViewProps {
  * two would drift, and an ageing band that means one thing on one screen and another on the other
  * is worse than no ageing at all.
  */
-export function OutstandingsView({ outstandings, money }: OutstandingsViewProps) {
+export function OutstandingsView({ outstandings, money, figure, kind }: OutstandingsViewProps) {
+  /*
+    Who owes what and for how long, party by party: each bill's outstanding added into its party's
+    row under the band the bill is in. The largest first, and beyond the first eight the rest as one
+    row — a chart of forty slivers is no chart.
+  */
+  const byParty = new Map<string, number[]>();
+  for (const bill of outstandings.bills) {
+    const parts = byParty.get(bill.ledgerName) ?? BUCKETS.map(() => 0);
+    parts[BUCKETS.indexOf(bill.bucket)] += Number(bill.outstanding);
+    byParty.set(bill.ledgerName, parts);
+  }
+  const total = (parts: number[]) => parts.reduce((sum, part) => sum + part, 0);
+  const ranked = [...byParty.entries()]
+    .map(([label, parts]) => ({ label, parts }))
+    .sort((a, b) => total(b.parts) - total(a.parts));
+  const rows = ranked.slice(0, TOP_PARTIES);
+  if (ranked.length > TOP_PARTIES) {
+    const rest = ranked.slice(TOP_PARTIES);
+    rows.push({
+      label: `${rest.length} more`,
+      parts: BUCKETS.map((_, i) => rest.reduce((sum, row) => sum + row.parts[i], 0)),
+    });
+  }
+
   return (
     <section className={styles.panel}>
+      {rows.length > 0 && (
+        <div className={styles.ageing}>
+          <h2 className={styles.chartTitle}>
+            {kind === 'receivable' ? 'Owed to us' : 'Owed by us'}, by party and age
+          </h2>
+          <StackedBars
+            rows={rows}
+            buckets={BUCKETS.map((bucket) => BUCKET_LABELS[bucket])}
+            formatValue={figure}
+          />
+        </div>
+      )}
       <div className={styles.buckets}>
         {Object.entries(outstandings.totals.byBucket).map(([bucket, amount]) => (
           <div key={bucket} className={styles.bucket}>

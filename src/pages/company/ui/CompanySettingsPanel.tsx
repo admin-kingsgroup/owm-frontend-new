@@ -1,16 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import {
-  getPendingDefaultMasters,
-  syncDefaultMasters,
-  updateCompany,
-} from '@/entities/company';
-import type {
-  Company,
-  CompanyFeatures,
-  PendingMasters,
-  SeedResult,
-} from '@/entities/company';
+import { getPendingDefaultMasters, syncDefaultMasters, updateCompany } from '@/entities/company';
+import type { Company, CompanyFeatures, PendingMasters, SeedResult } from '@/entities/company';
 import { Button, Checkbox } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
@@ -253,6 +244,7 @@ export function CompanySettingsPanel({
           return (
             <Checkbox
               key={feature.key}
+              switchStyle
               id={`feature-${feature.key}`}
               label={feature.label}
               hint={available ? feature.hint : (feature.unavailableHint?.(company) ?? feature.hint)}

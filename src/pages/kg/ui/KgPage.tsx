@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { BriefcaseBusiness } from 'lucide-react';
 
 import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listBusinesses, listPartners } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
-import { Loading, EmptyState, Button, Tabs } from '@/shared/ui';
+import { Loading, EmptyState, Button, Tabs, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import { PartnersPanel } from './PartnersPanel';
@@ -14,6 +15,8 @@ import { PortfolioPanel } from './PortfolioPanel';
 import styles from './KgPage.module.css';
 
 type Tab = 'portfolio' | 'businesses' | 'partners';
+
+const now = new Date();
 
 /**
  * KG Business: the portfolio workspace over businesses that sit entirely outside OWM.
@@ -31,6 +34,9 @@ export function KgPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [tab, setTab] = useState<Tab>('portfolio');
+  /** The month the portfolio is read for. The header's, since it governs the whole tab. */
+  const [year, setYear] = useState(now.getUTCFullYear());
+  const [month, setMonth] = useState(now.getUTCMonth() + 1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +85,11 @@ export function KgPage() {
     return (
       <div className={styles.page}>
         <div className={styles.header}>
-          <div>
+          <div className={styles.titles}>
+            <span className={styles.eyebrow}>
+              <BriefcaseBusiness size={13} aria-hidden="true" />
+              Portfolio
+            </span>
             <h1 className={styles.title}>KG Business</h1>
           </div>
         </div>
@@ -118,10 +128,14 @@ export function KgPage() {
       {/*
         The company, its year and its currency are stated once by the shell's context strip, so the
         heading names the screen instead of repeating them — the same shape Vouchers and Reports
-        took. Navigation is the menu bar's job, so there is no back link here either.
+        took. Navigation is the sidebar's job, so there is no back link here either.
       */}
       <div className={styles.header}>
-        <div>
+        <div className={styles.titles}>
+          <span className={styles.eyebrow}>
+            <BriefcaseBusiness size={13} aria-hidden="true" />
+            KG Business
+          </span>
           <h1 className={styles.title}>Portfolio</h1>
           <p className={styles.subtitle}>
             {businesses.length === 0
@@ -131,6 +145,29 @@ export function KgPage() {
             Figures come from month-end statements, not from books kept here.
           </p>
         </div>
+
+        {/* The month every figure on the Portfolio tab is for. The other tabs are not by month. */}
+        {tab === 'portfolio' && (
+          <div className={styles.period}>
+            <Select
+              value={month}
+              onChange={(event) => setMonth(Number(event.target.value))}
+              aria-label="Month"
+            >
+              {Array.from({ length: 12 }, (_, index) => (
+                <option key={index + 1} value={index + 1}>
+                  {new Date(Date.UTC(2000, index, 1)).toLocaleString('en', { month: 'long' })}
+                </option>
+              ))}
+            </Select>
+            <Input
+              type="number"
+              value={year}
+              onChange={(event) => setYear(Number(event.target.value))}
+              aria-label="Year"
+            />
+          </div>
+        )}
       </div>
 
       <Tabs
@@ -146,15 +183,19 @@ export function KgPage() {
 
       {tab === 'portfolio' && (
         <PortfolioPanel
-          companyId={companyId}
+          company={company}
           partners={partners}
-          businessCount={businesses.length}
+          businesses={businesses}
+          year={year}
+          month={month}
         />
       )}
 
       {tab === 'businesses' && (
         <BusinessesPanel
           companyId={companyId}
+          country={company.country}
+          portfolioCurrency={company.baseCurrency}
           businesses={businesses}
           partners={partners}
           onChanged={setBusinesses}
@@ -162,7 +203,12 @@ export function KgPage() {
       )}
 
       {tab === 'partners' && (
-        <PartnersPanel companyId={companyId} partners={partners} onChanged={setPartners} />
+        <PartnersPanel
+          companyId={companyId}
+          partners={partners}
+          businesses={businesses}
+          onChanged={setPartners}
+        />
       )}
     </div>
   );

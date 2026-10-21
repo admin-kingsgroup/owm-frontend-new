@@ -5,7 +5,9 @@
   align-items: center;
   justify-content: center;
   background-color: var(--overlay);
+  backdrop-filter: blur(3px);
   z-index: var(--z-modal);
+  animation: owm-fade 0.15s both;
 }
 
 .modal {
@@ -13,8 +15,14 @@
   max-width: 28rem;
   margin: 1rem;
   background-color: var(--paper-card);
-  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
   box-shadow: var(--shadow-3);
+  animation: owm-pop 0.26s var(--ease-spring) both;
+  /* Never taller than the window: a long voucher scrolls inside the dialog, header kept in view. */
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
 }
 
 /*
@@ -64,6 +72,7 @@
 
 .content {
   padding: 1rem;
+  overflow-y: auto;
   /*
     Content too wide for the dialog scrolls inside it rather than escaping over the page.
 
@@ -85,6 +94,39 @@
   what is left; anchored to the bottom edge it gets the full width, opens next to the thumb, and
   scrolls itself rather than the page.
 */
+/*
+  A panel down the right edge, full height, for reading one record beside the list it came from.
+  It slides in from the side it lives on rather than popping in the middle.
+*/
+.overlayDrawer {
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.drawer {
+  max-width: 32rem;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  border-width: 0 0 0 1px;
+  animation: drawer-in 0.3s var(--ease-out) both;
+}
+
+.drawer .content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
 @media (max-width: 40rem) {
   .overlay {
     align-items: flex-end;
@@ -93,7 +135,9 @@
   .modal {
     max-width: none;
     margin: 0;
-    border-radius: 0.875rem 0.875rem 0 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    border-width: 1px 0 0;
+    animation: owm-sheet-up 0.3s var(--ease-spring) both;
     /* Never taller than the visible viewport — dvh, so an open keyboard is accounted for. */
     max-height: 92dvh;
     display: flex;

@@ -49,6 +49,8 @@ function nextYearRange(years: FinancialYear[]): { start: string; end: string } {
  * period lock: nothing new can be filed into it afterwards.
  */
 export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
+  /* Today, read once when the panel opens — what the progress bars measure the open year against. */
+  const [now] = useState(() => Date.now());
   const [years, setYears] = useState<FinancialYear[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +219,7 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
             <th>Starts</th>
             <th>Ends</th>
             <th>Status</th>
+            <th>Progress</th>
             <th />
           </tr>
         </thead>
@@ -230,6 +233,9 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
                 <Badge variant={year.status === 'OPEN' ? 'success' : 'neutral'}>
                   {year.status}
                 </Badge>
+              </td>
+              <td>
+                <YearProgress year={year} now={now} />
               </td>
               <td>
                 <IconButtonGroup>
@@ -286,5 +292,31 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
         </ConfirmDialog>
       )}
     </div>
+  );
+}
+
+/**
+ * How far through its span a year is, as a bar — for an open year, today's place in it; a closed
+ * year is drawn full and grey, because it is finished whatever today is. Worked out from the year's
+ * own dates and nothing else.
+ */
+function YearProgress({ year, now }: { year: FinancialYear; now: number }) {
+  const start = new Date(year.startDate).getTime();
+  const end = new Date(year.endDate).getTime();
+  const closed = year.status === 'CLOSED';
+  const share = closed ? 1 : Math.min(1, Math.max(0, (now - start) / (end - start || 1)));
+
+  return (
+    <span className={styles.progress}>
+      <span className={styles.track} aria-hidden="true">
+        <span
+          className={closed ? styles.fillClosed : styles.fill}
+          style={{ width: `${(share * 100).toFixed(1)}%` }}
+        />
+      </span>
+      <span className={styles.progressText}>
+        {closed ? 'Closed' : `${Math.round(share * 100)}% through`}
+      </span>
+    </span>
   );
 }

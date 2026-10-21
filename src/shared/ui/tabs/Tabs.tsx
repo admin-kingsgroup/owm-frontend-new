@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { cn } from '@/shared/lib';
 
 import styles from './Tabs.module.css';
@@ -33,8 +35,27 @@ export function Tabs<Id extends string = string>({
   label,
   className,
 }: TabsProps<Id>) {
+  const strip = useRef<HTMLDivElement>(null);
+
+  /*
+    On a phone the strip is wider than the screen, so the selected tab — opened from a link, or
+    reached with the arrow keys — can sit half off the edge. Slide the strip, and only the strip,
+    until it shows: scrollIntoView would move the page up or down as well.
+  */
+  useEffect(() => {
+    const row = strip.current;
+    const tab = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
+    const left =
+      tab.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
+    const right = left + tab.offsetWidth;
+    if (left < row.scrollLeft) row.scrollLeft = left - 16;
+    else if (right > row.scrollLeft + row.clientWidth)
+      row.scrollLeft = right - row.clientWidth + 16;
+  }, [value]);
+
   return (
-    <div className={cn(styles.tabs, className)} role="tablist" aria-label={label}>
+    <div ref={strip} className={cn(styles.tabs, className)} role="tablist" aria-label={label}>
       {items.map((item) => {
         const selected = item.id === value;
 

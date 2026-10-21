@@ -108,3 +108,56 @@
     flex-wrap: wrap;
   }
 }
+
+/* ---- The new interface: a card like every other ------------------------ */
+
+.panel {
+  padding: 1rem 1.125rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.title {
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 9rem;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--paper-sunken);
+}
+
+.fill,
+.fillClosed {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 8px;
+  transform-origin: left;
+  animation: owm-grow-x 0.9s var(--ease-out) both;
+}
+
+.fill {
+  background: linear-gradient(90deg, var(--series-1), var(--seq-4));
+}
+
+.fillClosed {
+  background: var(--neutral-bd);
+}
+
+.progressText {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}

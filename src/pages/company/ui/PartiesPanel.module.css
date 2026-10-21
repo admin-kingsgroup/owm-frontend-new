@@ -159,3 +159,48 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* ---- The new interface ------------------------------------------------ */
+
+.list,
+.detail {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.detail {
+  animation-delay: 60ms;
+}
+
+.listItem {
+  position: relative;
+  transition: background-color 0.15s;
+}
+
+.listItem:hover {
+  background: var(--hover-tint);
+}
+
+/* The party being read: the accent on the list's edge, the way the sidebar marks its page. */
+.listItemActive,
+.listItemActive:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+}
+
+.listItemActive::before {
+  content: '';
+  position: absolute;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.title {
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
+}

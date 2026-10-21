@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { ChartColumnBig, X } from 'lucide-react';
 
 import { useStackedTables } from '@/shared/hooks';
 import { getCompany } from '@/entities/company';
@@ -81,6 +82,7 @@ import { CashFlowView } from './CashFlowView';
 import { exportReport, periodOf, type LoadedReports } from './export-report';
 import { TAB_LABELS, isTab, usesPeriod, isComparable, showsMoney, type Tab } from './tabs';
 import { OutstandingsView } from './OutstandingsView';
+import { ReportNav } from './ReportNav';
 import styles from './ReportsPage.module.css';
 
 /**
@@ -626,6 +628,15 @@ export function ReportsPage() {
     [company, showZeros],
   );
 
+  /**
+   * A figure written in full, nil included — for the headline tiles above a statement, where a
+   * blank tile would read as a figure that failed to load rather than as nil.
+   */
+  const figure = useCallback(
+    (value: string | number) => formatMoney(value, { country: company?.country }),
+    [company?.country],
+  );
+
   /*
     What this screen can do, printed down the right-hand side with the key that does it. Declared
     before the early returns below, because a hook cannot be called conditionally — the bar simply
@@ -674,10 +685,13 @@ export function ReportsPage() {
   */
   const header = (
     <div className={styles.header}>
-      <div>
-        {/* The report itself, not the word "Reports" — the shell's context strip already says
-            which company and year these figures belong to, and this is the line that gets
-            printed at the top of the page. */}
+      <div className={styles.titles}>
+        <span className={styles.eyebrow}>
+          <ChartColumnBig size={13} aria-hidden="true" />
+          Reports
+        </span>
+        {/* The report itself, not the word "Reports" — the top bar already says which company and
+            year these figures belong to, and this is the line that gets printed on the page. */}
         <h1 className={styles.title}>{TAB_LABELS[tab]}</h1>
         {!loading && !loadError && period && (
           <p className={styles.subtitle}>
@@ -807,12 +821,25 @@ export function ReportsPage() {
     </div>
   );
 
-  if (loading)
-    return (
+  /*
+    The list of reports down the left, and the report beside it. Every state — loading, failed,
+    drawn — keeps the list, so a report that will not load is never a dead end.
+  */
+  const frame = (content: ReactNode) => (
+    <div className={styles.frame}>
+      <ReportNav tab={tab} company={company} />
       <div className={styles.page} ref={pageRef}>
+        {content}
+      </div>
+    </div>
+  );
+
+  if (loading)
+    return frame(
+      <>
         {header}
         <Loading label="Loading…" />
-      </div>
+      </>,
     );
 
   /*
@@ -822,17 +849,17 @@ export function ReportsPage() {
     on the one screen state where wanting to change something is most likely.
   */
   if (loadError)
-    return (
-      <div className={styles.page} ref={pageRef}>
+    return frame(
+      <>
         {header}
         <p className={styles.error} role="alert">
           {loadError}
         </p>
-      </div>
+      </>,
     );
 
-  return (
-    <div className={styles.page} ref={pageRef}>
+  return frame(
+    <>
       {header}
 
       {error && (
@@ -850,19 +877,25 @@ export function ReportsPage() {
       )}
 
       {/*
-        No tab strip. Nine of them across the top was the thing that made this screen unreadable,
-        and the menu bar now lists every report under a heading, with Alt+B, Alt+P and Alt+K for the
-        three reached most often. The heading above says which one is open.
+        No tab strip: nine across the top made this screen unreadable. The list down the left names
+        every report under a heading, with Alt+B, Alt+P and Alt+K for the three reached most often.
       */}
 
       {tab === 'balance-sheet' && balanceSheet && (
-        <BalanceSheetView report={balanceSheet} money={money} openLedger={openLedger} />
+        <BalanceSheetView
+          report={balanceSheet}
+          money={money}
+          figure={figure}
+          openLedger={openLedger}
+        />
       )}
 
       {tab === 'profit-loss' && profitLoss && (
         <ProfitLossView
           report={profitLoss}
           money={money}
+          figure={figure}
+          country={company?.country}
           monthLabel={monthLabel}
           openLedger={openLedger}
         />
@@ -900,7 +933,13 @@ export function ReportsPage() {
         <p className={styles.empty}>Choose an account to see its statement.</p>
       )}
       {tab === 'ledger' && subjectLedgerId && ledgerReport && (
-        <LedgerStatement statement={ledgerReport} money={money} day={day} />
+        <LedgerStatement
+          statement={ledgerReport}
+          money={money}
+          day={day}
+          chart
+          country={company?.country}
+        />
       )}
 
       {tab === 'bank-reconciliation' && !subjectLedgerId && (
@@ -934,7 +973,7 @@ export function ReportsPage() {
       )}
 
       {tab === 'funds-flow' && fundsFlow && <FundsFlowView report={fundsFlow} money={money} />}
-      {tab === 'ratios' && ratios && <RatioView report={ratios} money={money} />}
+      {tab === 'ratios' && ratios && <RatioView report={ratios} money={figure} />}
       {tab === 'exceptions' && exceptions && <ExceptionView report={exceptions} />}
 
       {tab === 'day-book' && dayBook && (
@@ -949,13 +988,20 @@ export function ReportsPage() {
         <CashFlowView
           report={cashFlow}
           money={money}
+          figure={figure}
+          country={company?.country}
           monthLabel={monthLabel}
           openLedger={openLedger}
         />
       )}
 
       {(tab === 'receivables' || tab === 'payables') && outstandings && (
-        <OutstandingsView outstandings={outstandings} money={money} />
+        <OutstandingsView
+          outstandings={outstandings}
+          money={money}
+          figure={figure}
+          kind={tab === 'receivables' ? 'receivable' : 'payable'}
+        />
       )}
 
       {tab === 'forex' && forex && <ForexView forex={forex} money={money} day={day} />}
@@ -1009,6 +1055,6 @@ export function ReportsPage() {
           </>
         )}
       </Modal>
-    </div>
+    </>,
   );
 }

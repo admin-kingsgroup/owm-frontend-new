@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 import { seed } from './seed';
+import { inGroup, search } from './search';
 
 let companyId: string;
 let token: string;
@@ -27,7 +28,7 @@ test.describe('reporting a fault', () => {
   test('an unhandled rejection is filed and reaches the list', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}/reports`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     const message = `e2e rejection ${Date.now()}`;
     await page.evaluate((text) => {
@@ -47,7 +48,7 @@ test.describe('reporting a fault', () => {
   test('an uncaught throw is filed too — a boundary never sees those', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     const message = `e2e uncaught ${Date.now()}`;
     await page.evaluate((text) => {
@@ -64,7 +65,7 @@ test.describe('reporting a fault', () => {
   test('the page survives raising one', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     await page.evaluate(() => {
       void Promise.reject(new Error('e2e: the page must outlive this'));
@@ -72,7 +73,7 @@ test.describe('reporting a fault', () => {
     await page.waitForTimeout(800);
 
     // Whatever else a fault does, it must not take the shell with it.
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
   });
 });
 
@@ -105,7 +106,7 @@ test.describe('reading what was reported', () => {
     */
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     const rejection = `filter-check rejection ${Date.now()}`;
     const uncaught = `filter-check uncaught ${Date.now()}`;
@@ -139,7 +140,11 @@ test.describe('reading what was reported', () => {
     await page.goto('/reported-errors?kind=RENDER');
     await expect(page.getByRole('heading', { name: 'Reported errors' })).toBeVisible();
 
-    await expect(page.getByRole('button', { name: /Clear filters/ })).toBeVisible();
+    /*
+      Enabled, not merely visible: the action is drawn greyed out while the list loads and its key
+      does nothing until then, which is what the button says. Pressing on sight raced that load.
+    */
+    await expect(page.getByRole('button', { name: /Clear filters/ })).toBeEnabled();
     await page.keyboard.press('Alt+KeyA');
 
     await expect(page).not.toHaveURL(/kind=/);
@@ -205,31 +210,29 @@ test.describe('reading what was reported', () => {
  * for documents that will never be raised.
  */
 test.describe('the household voucher types', () => {
-  test('Income and Expense are on the Transactions menu, with the rest', async ({ page }) => {
+  test('Income and Expense can be raised from the search, with the rest', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await page.getByRole('button', { name: 'Transactions' }).click();
-
     /*
       Waited for before the list is read. The shell loads the company's voucher types after it
-      first paints, so the menu opens holding only the fixed entries and fills in a moment later —
-      reading it immediately catches it half-built and reports the product broken.
+      first paints, so the Create list holds only the fixed entries for a moment — reading it
+      immediately catches it half-built and reports the product broken.
     */
-    await expect(page.getByRole('menuitem').filter({ hasText: 'Income' })).toBeVisible();
+    await page.getByRole('button', { name: 'Income' }).waitFor();
+    await search(page, '');
 
     /*
       Read as a list rather than probed one at a time: a keyed type renders its shortcut inside the
-      accessible name — "Contra F4" — so an exact match on the label alone finds nothing and would
-      report the product broken when it is the selector that is wrong.
+      accessible name — "Contra F4" — so an exact match on the label alone finds nothing.
     */
-    const items = (await page.getByRole('menuitem').allInnerTexts()).map((text) =>
+    const items = (await inGroup(page, 'Create').allInnerTexts()).map((text) =>
       text.replace(/\s+/g, ' ').trim(),
     );
 
     for (const name of ['Income', 'Expense', 'Receipt', 'Payment', 'Contra', 'Journal']) {
       expect(
         items.some((item) => item === name || item.startsWith(`${name} `)),
-        `${name} is missing from Transactions — saw ${JSON.stringify(items)}`,
+        `${name} is missing from Create — saw ${JSON.stringify(items)}`,
       ).toBe(true);
     }
 
@@ -242,16 +245,16 @@ test.describe('the household voucher types', () => {
     }
   });
 
-  test('the Income menu item opens the form it points at', async ({ page }) => {
+  test('choosing Income in the search opens the form it points at', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await page.getByRole('button', { name: 'Transactions' }).click();
-    /*
-      Matched on the label rather than the whole name: a type with a function key renders the key
-      inside its accessible name, so this is "Income F8" and an exact match on "Income" waits for
-      something that will never appear. It found that out the hard way when F8 was bound.
-    */
-    await page.getByRole('menuitem', { name: 'Income' }).click();
+    await page.getByRole('button', { name: 'Income' }).waitFor();
+    await search(page, 'income');
+    /* The Create entry, not the Income register under Reports. */
+    await inGroup(page, 'Create')
+      .filter({ hasText: /^Income/ })
+      .first()
+      .click();
 
     await expect(page).toHaveURL(/new=INCOME/);
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -269,7 +272,7 @@ test.describe('the household voucher types', () => {
     */
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     const bar = await page.evaluate(() =>
@@ -314,16 +317,16 @@ test.describe('the household voucher types', () => {
     );
 
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     const entry = page.getByRole('button', { name: /^(Contra|Payment|Receipt|Journal)/ });
     await expect(entry.first(), 'no way to enter a voucher at all').toBeVisible();
     expect(await entry.count()).toBe(4);
 
     // Not these: whether the company has them is precisely what could not be read.
-    await expect(page.getByRole('button', { name: /^(Income|Expense|Sales|Purchase)/ })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole('button', { name: /^(Income|Expense|Sales|Purchase)/ }),
+    ).toHaveCount(0);
   });
 
   test('each type gets a register of its own', async ({ page }) => {
@@ -333,11 +336,12 @@ test.describe('the household voucher types', () => {
     */
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await page.getByRole('button', { name: 'Reports' }).click();
+    await page.getByRole('button', { name: 'Search' }).waitFor();
+    await search(page, 'register');
 
     // Auto-retrying, for the same reason as above: the registers are built from the voucher types,
-    // so they are the last part of this menu to exist.
-    const registers = page.getByRole('menuitem').filter({ hasText: /Register/i });
+    // so they are the last part of the list to exist.
+    const registers = page.getByRole('option').filter({ hasText: /Register/i });
     await expect(registers.first(), 'no register is listed for any voucher type').toBeVisible();
 
     /*

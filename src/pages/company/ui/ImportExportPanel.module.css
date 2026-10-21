@@ -147,3 +147,19 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ---- The new interface ------------------------------------------------ */
+
+.card {
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.card + .card {
+  animation-delay: 60ms;
+}
+
+.title {
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
+}

@@ -17,9 +17,9 @@
   transition: background-color 0.15s ease;
 }
 
-/* The trigger is on the chrome; the menu it opens is on paper and keeps its own colours. */
+/* The trigger sits on the top bar, which is paper now rather than chrome. */
 .trigger:hover {
-  background-color: var(--sidebar-hover);
+  background-color: var(--paper-sunken);
 }
 
 .avatar {
@@ -27,8 +27,8 @@
   height: 2rem;
   flex-shrink: 0;
   border-radius: 999px;
-  background: var(--brand-gradient);
-  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--series-1), var(--series-3));
+  color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
   display: flex;
@@ -39,11 +39,18 @@
 .name {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--sidebar-text);
+  color: var(--ink);
+}
+
+/* The name gives way first when the bar is short of room; the avatar still says who. */
+@media (max-width: 75rem) {
+  .name {
+    display: none;
+  }
 }
 
 .chevron {
-  color: var(--sidebar-dim);
+  color: var(--ink-faint);
   transition: transform 0.15s ease;
 }
 

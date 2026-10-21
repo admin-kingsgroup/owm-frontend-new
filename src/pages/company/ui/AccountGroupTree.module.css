@@ -153,3 +153,19 @@
   line-height: 1.5;
   color: var(--ink-soft);
 }
+
+/* ---- The new interface: the chosen group in the accent, like the sidebar's page ---- */
+
+.row {
+  transition: background-color 0.15s;
+}
+
+.rowSelected,
+.itemSelected {
+  background-color: rgba(var(--accent-rgb), 0.1);
+}
+
+.rowSelected .item,
+.itemSelected {
+  color: var(--accent);
+}
