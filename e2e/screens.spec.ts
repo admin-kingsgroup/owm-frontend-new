@@ -744,9 +744,15 @@ test.describe('the frame', () => {
     await page.goto(`/companies/${companyId}/reports`);
     await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
-    await page.keyboard.press('F4');
-
-    await expect(page).toHaveURL(/vouchers\?new=CONTRA/);
+    /*
+      Pressed again until it lands, as the strip's own check does: the frame being drawn does not
+      prove the company's voucher types — which say what F4 raises — have arrived, and a key pressed
+      before then is swallowed rather than delayed.
+    */
+    await expect(async () => {
+      await page.keyboard.press('F4');
+      await expect(page).toHaveURL(/vouchers\?new=CONTRA/, { timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 
