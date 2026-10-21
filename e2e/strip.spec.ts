@@ -124,7 +124,10 @@ test.describe('the data entry strip', () => {
     await page.getByRole('button', { name: 'Petty Cash' }).click();
 
     await expect(page).toHaveURL(/vouchers\?new=PETTY_CASH/);
-    await expect(page.getByLabel('Voucher type')).toHaveValue('PETTY_CASH');
+    // The form's tabs are a radio group named Voucher type; the chosen one is the invented type.
+    await expect(
+      page.getByRole('radiogroup', { name: 'Voucher type' }).getByRole('radio', { checked: true }),
+    ).toHaveText(/^Petty Cash/);
   });
 
   test('still answers its function keys from another screen', async ({ page }) => {
@@ -330,16 +333,19 @@ test.describe('the data entry strip in a portfolio workspace', () => {
       await expect(page).toHaveURL(/vouchers\?new=PAYMENT/, { timeout: 3_000 });
     }).toPass({ timeout: 30_000 });
 
-    const type = page.getByLabel('Voucher type');
+    const type = page
+      .getByRole('radiogroup', { name: 'Voucher type' })
+      .getByRole('radio', { checked: true });
     await type.waitFor({ timeout: 20_000 });
-    await expect(type).toHaveValue('PAYMENT');
+    await expect(type).toHaveText(/^Payment/);
 
     const accounts = page.locator('table tbody select');
     await accounts.first().selectOption('KG_FEES');
     await accounts.nth(1).selectOption('KG_BANK');
     await page.locator('table tbody input[aria-label^="Debit"]').first().fill('5000');
     await page.locator('table tbody input[aria-label^="Credit"]').nth(1).fill('5000');
-    await page.getByRole('button', { name: 'Accept voucher' }).click();
+    // Post voucher files it and posts it in one go — no separate post step left for the API.
+    await page.getByRole('button', { name: /Post voucher/ }).click();
 
     await expect
       .poll(async () => (await api(`/companies/${portfolioId}/vouchers?limit=1`)).body?.data?.total)
@@ -347,7 +353,7 @@ test.describe('the data entry strip in a portfolio workspace', () => {
 
     // And it reaches the books, on the right side of each account.
     const raised = (await api(`/companies/${portfolioId}/vouchers?limit=1`)).body.data.items[0];
-    await api(`/companies/${portfolioId}/vouchers/${raised.id}/post`, { method: 'POST' });
+    expect(raised.status).toBe('POSTED');
 
     const trial = await api(`/companies/${portfolioId}/reports/trial-balance`);
     const byCode = new Map(

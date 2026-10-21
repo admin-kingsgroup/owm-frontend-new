@@ -1,177 +1,524 @@
 /*
-  What is left after the grid moved into shared/ui.
+  The vouchers screen: a way to raise each document and where the register stands, then the
+  register itself — filtered by chips, read in a grid, opened in a panel down the right.
 
-  The table, its sticky heading, its zebra and its amount column are Table's now — see
-  Table.module.css. What remains is this screen's layout and the register's own marks.
+  The grid's own look (sticky heading, amount column, cards on a phone) is shared/ui's Table.
 */
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  width: 100%;
-  /* Fills the pane, so the grid below can reach the bottom of the frame. `min-height`, so a long
-     list still grows past it and scrolls as it always did. */
-  min-height: 100%;
-}
-
-/*
-  The register takes the room left over.
-
-  A list of six vouchers was a small table with a third of the screen empty beneath it. This takes
-  the rest, and the rows scroll inside it while the heading holds the top — Table's `sticky` draws
-  the heading; this is what gives it something to scroll within.
-*/
-.registerGrid {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* A card list on a phone is a page, not a frame, and must not be boxed into a scroller. */
-@media screen and (max-width: 48rem) {
-  .registerGrid {
-    flex: none;
-    overflow: visible;
-  }
-}
-
-@media print {
-  .registerGrid {
-    overflow: visible;
-  }
+  gap: 1rem;
+  max-width: 90rem;
+  margin: 0 auto;
 }
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.875rem 1.25rem;
+  animation: owm-rise 0.45s var(--ease-out) both;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
 .title {
+  margin: 0;
   font-family: var(--font-display);
-  letter-spacing: var(--display-tracking);
-  font-size: var(--text-2xl);
-  font-weight: 600;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
   color: var(--ink);
-  margin: 0 0 0.25rem;
 }
 
 .subtitle {
+  max-width: 68ch;
+  margin: 0.125rem 0 0;
   font-size: var(--text-base);
+  color: var(--ink-faint);
+}
+
+/* ---- Cards ------------------------------------------------------------ */
+
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 0.90625rem;
+  font-weight: 600;
+  letter-spacing: var(--display-tracking);
+}
+
+.cardSub,
+.quiet {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+/* ---- Create ----------------------------------------------------------- */
+
+.createGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.createTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--paper-card);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+  animation: owm-rise 0.4s var(--ease-out) both;
+  animation-delay: calc(0.1s + var(--i, 0) * 40ms);
+}
+
+.createTile:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--neutral-bd);
+  box-shadow: var(--shadow-2);
+}
+
+.createTile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.createTile b {
+  font-weight: 600;
+}
+
+.createTop {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  color: var(--accent);
+}
+
+.kbd {
+  margin-left: auto;
+  padding: 0 0.3125rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 0.3125rem;
+  font-family: var(--font-mono);
+  font-size: 0.65625rem;
   color: var(--ink-soft);
-  margin: 0;
+}
+
+/* ---- Where the register stands --------------------------------------- */
+
+.statusTrack {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  margin-bottom: 0.875rem;
+  overflow: hidden;
+  border-radius: 6px;
+  transform-origin: left;
+  animation: owm-grow-x 0.8s var(--ease-out) both;
+}
+
+.statusPart {
+  min-width: 4px;
+}
+
+/* State colours, because these are states — and each is also named in words beside it. */
+.partPOSTED {
+  background: var(--success-fg);
+}
+
+.partDRAFT {
+  background: var(--warning-fg);
+}
+
+.partCANCELLED {
+  background: var(--danger-fg);
+}
+
+.statusList {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.4375rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.statusItem:hover {
+  background: var(--hover-tint);
+}
+
+.statusOn {
+  border-color: var(--border);
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.statusItem b {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.statusDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* ---- The register ----------------------------------------------------- */
+
+.register {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .filters {
   display: flex;
-  gap: 0.75rem;
-  max-width: 28rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.chip {
+  padding: 0.3125rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--paper-card);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--neutral-bd);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper-card);
+}
+
+.segment {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--paper-sunken);
+}
+
+.segment button {
+  padding: 0.25rem 0.625rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.segment button[aria-pressed='true'] {
+  background: var(--paper-card);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.summary {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.summary b {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.summaryPage {
+  margin-left: 0.375rem;
+}
+
+/*
+  The register scrolls inside its card under a heading that holds the top, so a long list keeps
+  its column names in view — Table's `sticky` draws the heading; this gives it something to scroll
+  within.
+*/
+.registerGrid {
+  max-height: min(36rem, 62dvh);
+  overflow: auto;
+}
+
+.row {
+  cursor: pointer;
+  animation: owm-fade 0.35s both;
+  animation-delay: calc(var(--i, 0) * 25ms);
+}
+
+/* The voucher just filed, picked out for a moment so the eye finds it. */
+.flash {
+  animation: flash 2s var(--ease-out);
+}
+
+@keyframes flash {
+  from {
+    background-color: rgba(var(--accent-rgb), 0.16);
+  }
 }
 
 .error {
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.75rem;
   border-radius: var(--radius-md);
-  background-color: var(--danger-bg-soft);
+  background: var(--danger-bg-soft);
   color: var(--danger-fg);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
 }
 
-/* A row that opens the voucher it names. */
-.row {
-  cursor: pointer;
-  transition: background-color 0.1s ease;
+.setupLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.setupLink:hover {
+  text-decoration: underline;
 }
 
 .pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .pageLabel {
   font-size: var(--text-sm);
-  color: var(--ink-soft);
+  color: var(--ink-faint);
 }
 
 .pageButtons {
   display: flex;
-  gap: 0.375rem;
+  gap: 0.25rem;
 }
+
+/* ---- One voucher, in the panel --------------------------------------- */
 
 .detail {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .detailMeta {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
   font-size: var(--text-sm);
   color: var(--ink-soft);
 }
 
 .detailNarration {
-  margin: 0;
   font-size: var(--text-base);
-  color: var(--ink-soft);
+  color: var(--ink);
 }
 
-.setupLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 2.5rem;
-  padding: 0 1rem;
-  border-radius: var(--radius-md);
-  background: var(--brand-gradient);
-  color: var(--on-accent);
-  font-size: var(--text-base);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.setupLink:hover {
-  filter: brightness(0.94);
-}
-
-/* What a foreign line was typed in, beside the ledger it was posted to. Recessive: the base-currency
-   figures in the Debit and Credit columns are still the ones that add up. */
 .entryForeign {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--ink-faint);
-  white-space: nowrap;
 }
 
-/*
-  Below this the action beside the title has to wrap to two lines to fit next to it, which crowds
-  both. Stacked, the title reads on one line and the action spans the width — where a thumb is
-  going anyway.
-*/
-@media (max-width: 40rem) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
+.balanced {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--success-fg);
+}
+
+.timeline {
+  position: relative;
+  margin: 0;
+  padding: 0 0 0 1.5rem;
+  list-style: none;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  left: 0.5rem;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0.75rem;
+  font-size: var(--text-sm);
+}
+
+.timeline li::before {
+  content: '';
+  position: absolute;
+  top: 0.25rem;
+  left: -1.3125rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  background: var(--paper-card);
+}
+
+.timeline span {
+  color: var(--ink-faint);
+}
+
+.tlPosted::before {
+  border-color: var(--success-fg) !important;
+}
+
+.tlCancelled::before {
+  border-color: var(--danger-fg) !important;
+}
+
+@media (max-width: 75rem) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A card list on a phone is a page, not a frame, and must not be boxed into a scroller. */
+@media screen and (max-width: 48rem) {
+  .registerGrid {
+    max-height: none;
+    overflow: visible;
   }
 
-  .filters {
-    flex-direction: column;
-    max-width: none;
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -1.125rem;
+    padding: 0 1.125rem 0.25rem;
+    scrollbar-width: none;
   }
 
-  /* The page count above the arrows rather than beside them, so neither is squeezed. */
+  .chip {
+    flex: none;
+  }
+
+  .segment {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 34rem) {
+  .title {
+    font-size: 1.375rem;
+  }
+
+  .createGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media print {
+  .registerGrid {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .overview,
+  .filters,
   .pagination {
-    justify-content: center;
-  }
-
-  .pageButtons {
-    width: 100%;
-    justify-content: space-between;
+    display: none;
   }
 }

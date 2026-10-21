@@ -16,8 +16,11 @@ export interface ModalProps {
    * holding a table — voucher entry is a grid of ledger, balance, debit and credit, and squeezing
    * those into a 28rem box leaves every column too narrow to read. Sizing is ignored below 40rem,
    * where every dialog is already a full-width sheet.
+   *
+   * 'drawer' is a panel down the right edge, full height — for reading one record beside the list
+   * it came from, a voucher out of the register. On a phone it is the same sheet as the others.
    */
-  size?: 'default' | 'wide';
+  size?: 'default' | 'wide' | 'drawer';
   children: ReactNode;
 }
 
@@ -47,10 +50,17 @@ export function Modal({ open, onClose, title, size = 'default', children }: Moda
   if (!open) return null;
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div
+      className={cn(styles.overlay, size === 'drawer' && styles.overlayDrawer)}
+      onClick={onClose}
+    >
       <div
         ref={dialogRef}
-        className={cn(styles.modal, size === 'wide' && styles.wide)}
+        className={cn(
+          styles.modal,
+          size === 'wide' && styles.wide,
+          size === 'drawer' && styles.drawer,
+        )}
         role="dialog"
         aria-modal="true"
         /*

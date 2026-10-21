@@ -78,13 +78,13 @@ describe('CreateVoucherForm', () => {
   it('opens on the voucher type a function key asked for', () => {
     renderForm({ initialVoucherTypeCode: 'RECEIPT' });
 
-    expect((screen.getByLabelText('Voucher type') as HTMLSelectElement).value).toBe('RECEIPT');
+    expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Receipt/);
   });
 
   it("falls back to the first active type when the requested one is not this company's", () => {
     renderForm({ initialVoucherTypeCode: 'SALES' });
 
-    expect((screen.getByLabelText('Voucher type') as HTMLSelectElement).value).toBe('CONTRA');
+    expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Contra/);
   });
 
   it("shows each account's balance beside it, and follows the account when it changes", () => {
@@ -98,7 +98,7 @@ describe('CreateVoucherForm', () => {
     // Both rows start on the first ledger, so its balance is the one shown.
     expect(screen.getAllByText('12,84,320.00 Dr')).toHaveLength(2);
 
-    const [firstLedgerSelect] = screen.getAllByRole('combobox').slice(1);
+    const [firstLedgerSelect] = screen.getAllByRole('combobox');
     fireEvent.change(firstLedgerSelect, { target: { value: '2201' } });
 
     expect(screen.getByText('42,90,000.00 Cr')).toBeTruthy();
@@ -124,16 +124,28 @@ describe('CreateVoucherForm', () => {
     expect(screen.getByText('Difference 0.00')).toBeTruthy();
   });
 
-  it('will not accept a voucher whose sides disagree', () => {
+  it('will neither post nor save a voucher whose sides disagree', () => {
     renderForm();
-    const accept = screen.getByRole('button', { name: /Accept voucher/ });
+    const post = screen.getByRole('button', { name: /Post voucher/ }) as HTMLButtonElement;
+    const draft = screen.getByRole('button', { name: /Save as draft/ }) as HTMLButtonElement;
 
-    expect((accept as HTMLButtonElement).disabled).toBe(true);
+    expect(post.disabled).toBe(true);
+    expect(draft.disabled).toBe(true);
+    expect(screen.getByRole('status').textContent).toContain('Enter the amounts');
 
     const amounts = screen.getAllByRole('spinbutton');
     fireEvent.change(amounts[0], { target: { value: '250' } });
-    fireEvent.change(amounts[3], { target: { value: '250' } });
+    expect(screen.getByRole('status').textContent).toContain('Out by 250.00');
 
-    expect((accept as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.change(amounts[3], { target: { value: '250' } });
+    expect(post.disabled).toBe(false);
+    expect(draft.disabled).toBe(false);
+    expect(screen.getByRole('status').textContent).toContain('Balanced');
+  });
+
+  it('switches the voucher type from its tab', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('radio', { name: /Receipt/ }));
+    expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Receipt/);
   });
 });
