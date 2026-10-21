@@ -61,10 +61,8 @@ export function OwnerHeader({
               className={styles.mobileMenuBtn}
               onClick={onToggleMobileMenu}
               aria-label="Toggle navigation menu"
-              title="Open Navigation Menu"
             >
-              <Menu size={18} />
-              <span className={styles.mobileMenuText}>Menu</span>
+              <Menu size={20} />
             </button>
             <h1 className={styles.greeting}>Good Morning, Owner</h1>
             <span className={styles.statusPill}>
