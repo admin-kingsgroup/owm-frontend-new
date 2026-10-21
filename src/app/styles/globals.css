@@ -813,6 +813,15 @@ textarea:focus-visible {
   table[data-stack] td:not([data-label])::before {
     content: none;
   }
+
+  /*
+    A totals row has gaps where a column has no total — a rank, a share. Across a table those gaps
+    hold the figures under their headings; stacked, each would be a labelled line with nothing on
+    it, so they go.
+  */
+  table[data-stack] tfoot td:empty {
+    display: none;
+  }
 }
 
 /*

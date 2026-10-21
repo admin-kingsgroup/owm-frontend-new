@@ -140,7 +140,11 @@ test.describe('reading what was reported', () => {
     await page.goto('/reported-errors?kind=RENDER');
     await expect(page.getByRole('heading', { name: 'Reported errors' })).toBeVisible();
 
-    await expect(page.getByRole('button', { name: /Clear filters/ })).toBeVisible();
+    /*
+      Enabled, not merely visible: the action is drawn greyed out while the list loads and its key
+      does nothing until then, which is what the button says. Pressing on sight raced that load.
+    */
+    await expect(page.getByRole('button', { name: /Clear filters/ })).toBeEnabled();
     await page.keyboard.press('Alt+KeyA');
 
     await expect(page).not.toHaveURL(/kind=/);

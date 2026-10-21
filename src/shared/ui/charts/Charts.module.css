@@ -265,3 +265,108 @@ a.stackLabel:hover {
     animation: none;
   }
 }
+
+/* ---- Scatter ---------------------------------------------------------- */
+
+/* The corner past both targets — where a business wants to be. */
+.zone {
+  fill: rgba(var(--accent-rgb), 0.06);
+  animation: owm-fade 0.6s var(--ease-out) both;
+}
+
+.target {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+
+.dotGroup {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: owm-pop 0.5s var(--ease-spring) both;
+  transition: opacity 0.15s;
+  touch-action: pan-y;
+}
+
+.hovering .dotGroup:not(.hot) {
+  opacity: 0.35;
+}
+
+.dotHit {
+  fill: transparent;
+}
+
+.dot {
+  fill: var(--series-1);
+  stroke: var(--paper-card);
+  stroke-width: 2;
+}
+
+.dotRing {
+  fill: var(--paper-card);
+  stroke: var(--series-1);
+  stroke-width: 2;
+}
+
+.dotLabel {
+  fill: var(--ink-soft);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+/* ---- Donut ------------------------------------------------------------ */
+
+.donut {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.donut svg {
+  display: block;
+}
+
+.donutTrack {
+  fill: none;
+  stroke: var(--paper-sunken);
+}
+
+.donutArc {
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    stroke-width 0.15s;
+  animation: owm-fade 0.6s var(--ease-out) both;
+}
+
+.hovering .donutArc:not(.hot) {
+  opacity: 0.35;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  pointer-events: none;
+  text-align: center;
+}
+
+.donutCenter b {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--display-tracking);
+}
+
+.donutCenter span {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}

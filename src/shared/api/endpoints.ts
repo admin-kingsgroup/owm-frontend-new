@@ -5,8 +5,7 @@ export const endpoints = {
     byId: (companyId: string) => `/companies/${companyId}`,
     seedPreview: (type: string) => `/companies/seed-preview?type=${encodeURIComponent(type)}`,
     syncDefaultMasters: (companyId: string) => `/companies/${companyId}/sync-default-masters`,
-    pendingDefaultMasters: (companyId: string) =>
-      `/companies/${companyId}/default-masters/pending`,
+    pendingDefaultMasters: (companyId: string) => `/companies/${companyId}/default-masters/pending`,
   },
   financialYears: {
     list: (companyId: string) => `/companies/${companyId}/financial-years`,
@@ -69,6 +68,9 @@ export const endpoints = {
       `?periodYear=${year}&periodMonth=${month}`,
     forecast: (companyId: string, businessId: string) =>
       `/companies/${companyId}/kg/portfolio/businesses/${businessId}/forecast`,
+    /** A business's locked months, oldest first, already in the portfolio's currency. */
+    trajectory: (companyId: string, businessId: string) =>
+      `/companies/${companyId}/kg/portfolio/businesses/${businessId}/trajectory`,
   },
   outstandings: {
     receivables: (companyId: string) => `/companies/${companyId}/outstandings/receivables`,

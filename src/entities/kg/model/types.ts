@@ -147,3 +147,16 @@ export interface ForecastResult {
   /** Present when no forecast was made. Shown as written — it explains itself. */
   refusedBecause?: string;
 }
+
+/**
+ * One locked month of a business, converted into the portfolio's currency at that month's own
+ * average rate — so months, and businesses, can be added together.
+ */
+export interface TrajectoryPoint {
+  periodYear: number;
+  periodMonth: number;
+  turnover: string;
+  netProfit: string;
+  netMarginPercent?: string;
+  roiPercent?: string;
+}

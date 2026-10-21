@@ -1182,3 +1182,236 @@
 .titles .zeroToggle {
   align-self: flex-start;
 }
+
+/* ---- Audit trail: a timeline, grouped by day --------------------------- */
+
+.auditPanel {
+  gap: 1rem;
+}
+
+.auditFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.auditFilter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.3125rem 0.5rem 0.3125rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--paper-card);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.auditFilter:hover {
+  border-color: var(--neutral-bd);
+  background: var(--hover-tint);
+}
+
+.auditFilterOn,
+.auditFilterOn:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.auditCount {
+  min-width: 1.25rem;
+  padding: 0 0.3125rem;
+  border-radius: var(--radius-full);
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-align: center;
+}
+
+.auditDay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auditDayTitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The thread the marks hang on. */
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.8125rem;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.timelineItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  animation: owm-rise 0.45s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.timelineMark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--paper-card);
+}
+
+.auditMade {
+  background: var(--success-bg-soft);
+  color: var(--success-fg);
+}
+
+.auditChanged {
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+.auditRemoved {
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+}
+
+.timelineBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  padding-top: 0.125rem;
+}
+
+.timelineHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+}
+
+.timelineHead b {
+  font-weight: 600;
+}
+
+.timelineSummary {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.timelineMeta {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* What a change did, field by field: the old value struck through, the new one marked in. */
+.diff {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.375rem 0 0;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--paper-sunken);
+}
+
+.diffRow {
+  display: grid;
+  grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+  gap: 0.75rem;
+  font-size: var(--text-sm);
+}
+
+.diffRow dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.diffRow dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.diffRow del,
+.diffRow ins {
+  overflow-wrap: anywhere;
+  padding: 0 0.3125rem;
+  border-radius: 0.25rem;
+  text-decoration-thickness: 1px;
+}
+
+.diffRow del {
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+}
+
+.diffRow ins {
+  background: var(--success-bg-soft);
+  color: var(--success-fg);
+  text-decoration: none;
+}
+
+.diffRow svg {
+  flex: none;
+  color: var(--ink-faint);
+}
+
+/* On a phone the field's name goes above its values, which then have the width to themselves. */
+@media (max-width: 34rem) {
+  .diffRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.125rem;
+  }
+}
+
+@media print {
+  .auditFilters {
+    display: none;
+  }
+
+  .timelineItem {
+    animation: none;
+  }
+}

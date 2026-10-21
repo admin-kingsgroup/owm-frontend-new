@@ -14,6 +14,11 @@ export interface KpiTileProps {
   value: number | null;
   /** How the figure is written. The tile counts up through the same formatter. */
   format: (value: number) => string;
+  /**
+   * Drawn in place of the counted figure, for a headline that is not one number — "3 of 4".
+   * `value` still decides whether anything is known yet: null draws the dash either way.
+   */
+  display?: ReactNode;
   /** Written after the figure, quieter — Dr or Cr. */
   suffix?: ReactNode;
   /** One line under the figure: what it is made of, or what it is compared with. */
@@ -45,6 +50,7 @@ export function KpiTile({
   icon,
   value,
   format,
+  display,
   suffix,
   hint,
   delta,
@@ -70,7 +76,7 @@ export function KpiTile({
         {value === null ? (
           <span className={styles.nil}>—</span>
         ) : (
-          <CountUp value={value} format={format} />
+          (display ?? <CountUp value={value} format={format} />)
         )}
         {value !== null && suffix && <span className={styles.suffix}>{suffix}</span>}
       </span>

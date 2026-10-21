@@ -23,6 +23,16 @@
   font-size: var(--text-sm);
 }
 
+/* A read that failed outright — the portfolio dashboard's ranking, say. */
+.error {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--danger-bd, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: var(--text-sm);
+}
+
 /* ---- Header actions --------------------------------------------------- */
 
 .action {
@@ -429,6 +439,38 @@ a.chip:hover {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--chip-fg);
+}
+
+/* ---- Portfolio: a business yet to report ------------------------------ */
+
+.pendingRow {
+  position: relative;
+  overflow: hidden;
+  padding-left: 1rem;
+}
+
+.pendingBar {
+  position: absolute;
+  inset: 0.5rem auto 0.5rem 0.375rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--warning-fg);
+}
+
+.pendingText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pendingText b {
+  font-weight: 600;
+}
+
+.pendingText span {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
 }
 
 /* ---- Narrower screens ------------------------------------------------- */

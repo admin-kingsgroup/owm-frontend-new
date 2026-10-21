@@ -1,9 +1,15 @@
-import { Fragment, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Trash2, Download, ChevronRight, ChevronDown } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
+import { Trash2, Download, ChevronRight, ChevronDown, Lock, Plus } from 'lucide-react';
 
-import { createBusiness, deleteBusiness, fetchTemplate, listBusinesses } from '@/entities/kg';
-import type { Business, Partner } from '@/entities/kg';
+import {
+  createBusiness,
+  deleteBusiness,
+  fetchTemplate,
+  listBusinesses,
+  listSnapshots,
+} from '@/entities/kg';
+import type { Business, Partner, Snapshot } from '@/entities/kg';
 import {
   Button,
   Input,
@@ -15,7 +21,7 @@ import {
   ConfirmDialog,
   toast,
 } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/lib';
+import { cn, getErrorMessage } from '@/shared/lib';
 
 import { BusinessWorkspace } from './BusinessWorkspace';
 import styles from './KgPage.module.css';
@@ -24,8 +30,15 @@ export interface BusinessesPanelProps {
   companyId: string;
   businesses: Business[];
   partners: Partner[];
+  /** The portfolio's country and currency, for the figures in an opened business. */
+  country: string;
+  portfolioCurrency: string;
   onChanged: (businesses: Business[]) => void;
 }
+
+const MONTHS = Array.from({ length: 12 }, (_, i) =>
+  new Date(Date.UTC(2000, i, 1)).toLocaleString('en', { month: 'short', timeZone: 'UTC' }),
+);
 
 interface ShareRow {
   partnerId: string;
@@ -43,6 +56,8 @@ export function BusinessesPanel({
   companyId,
   businesses,
   partners,
+  country,
+  portfolioCurrency,
   onChanged,
 }: BusinessesPanelProps) {
   const [code, setCode] = useState('');
@@ -64,6 +79,32 @@ export function BusinessesPanel({
   const [pendingDelete, setPendingDelete] = useState<Business | null>(null);
   const [pendingForce, setPendingForce] = useState<Business | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  /** Every business's snapshots, for the grid of months reported. Keyed by business. */
+  const [snapshots, setSnapshots] = useState<Record<string, Snapshot[]>>({});
+  const [gridYear] = useState(() => new Date().getUTCFullYear());
+
+  const loadSnapshots = useCallback(async () => {
+    const results = await Promise.allSettled(
+      businesses.map((business) => listSnapshots(companyId, business.id)),
+    );
+    return Object.fromEntries(
+      results.map((result, i) => [
+        businesses[i].id,
+        result.status === 'fulfilled' ? result.value : [],
+      ]),
+    );
+  }, [companyId, businesses]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSnapshots().then((result) => {
+      if (!cancelled) setSnapshots(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSnapshots]);
 
   const total = shares.reduce((sum, row) => sum + (Number(row.percent) || 0), 0);
   const sharesValid = shares.length === 0 || Math.abs(total - 100) < 0.005;
@@ -171,8 +212,85 @@ export function BusinessesPanel({
 
   return (
     <div className={styles.panel}>
-      <form className={styles.stackedForm} onSubmit={handleAdd}>
-        <div className={styles.inlineForm}>
+      {businesses.length > 0 && (
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>Months reported · {gridYear}</h2>
+            <span className={styles.cardSub}>a month counts once it is locked</span>
+            <div className={cn(styles.heatKey, styles.cardRight)}>
+              <span>
+                <i className={styles.heatLocked} /> Locked
+              </span>
+              <span>
+                <i className={styles.heatDraft} /> Draft
+              </span>
+              <span>
+                <i className={styles.heatNone} /> Not reported
+              </span>
+            </div>
+          </div>
+          <div className={styles.heatScroll}>
+            <div className={styles.heat} role="table" aria-label={`Months reported in ${gridYear}`}>
+              <div className={styles.heatRow} role="row">
+                <span role="columnheader" className={styles.heatName}>
+                  Business
+                </span>
+                {MONTHS.map((name) => (
+                  <span key={name} role="columnheader" className={styles.heatMonth}>
+                    {name}
+                  </span>
+                ))}
+              </div>
+              {businesses.map((business, row) => (
+                <div key={business.id} className={styles.heatRow} role="row">
+                  <span role="rowheader" className={styles.heatName}>
+                    {business.name}
+                  </span>
+                  {MONTHS.map((name, i) => {
+                    const month = (snapshots[business.id] ?? []).filter(
+                      (snap) => snap.periodYear === gridYear && snap.periodMonth === i + 1,
+                    );
+                    const state = month.some((snap) => snap.status === 'LOCKED')
+                      ? 'locked'
+                      : month.length > 0
+                        ? 'draft'
+                        : 'none';
+                    return (
+                      <span
+                        key={name}
+                        role="cell"
+                        className={cn(
+                          styles.heatCell,
+                          state === 'locked' && styles.heatLocked,
+                          state === 'draft' && styles.heatDraft,
+                          state === 'none' && styles.heatNone,
+                        )}
+                        style={{ '--i': row * 12 + i } as CSSProperties}
+                        title={`${business.name} · ${name} ${gridYear}: ${state === 'locked' ? 'locked' : state === 'draft' ? 'draft' : 'not reported'}`}
+                      >
+                        {state === 'locked' ? (
+                          <Lock size={10} aria-label="Locked" />
+                        ) : state === 'draft' ? (
+                          'D'
+                        ) : (
+                          <span aria-label="Not reported">·</span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <form className={cn(styles.card, styles.stackedForm)} onSubmit={handleAdd}>
+        <div className={styles.cardHead}>
+          <h2 className={styles.cardTitle}>Add a business</h2>
+          <span className={styles.cardSub}>external — it reports its own figures each month</span>
+        </div>
+        <div className={styles.fieldRow}>
           <Input
             placeholder="Code (BIZ01)"
             value={code}
@@ -255,9 +373,12 @@ export function BusinessesPanel({
           </div>
         )}
 
-        <Button type="submit" variant="primary" disabled={busy || !sharesValid}>
-          {busy ? 'Adding…' : 'Add business'}
-        </Button>
+        <div>
+          <Button type="submit" variant="primary" disabled={busy || !sharesValid}>
+            <Plus size={14} aria-hidden="true" />
+            {busy ? 'Adding…' : 'Add business'}
+          </Button>
+        </div>
       </form>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -268,83 +389,99 @@ export function BusinessesPanel({
           description="Add the businesses whose figures you want compared. They are external — nothing is posted here, their statements are uploaded each month."
         />
       ) : (
-        <Table surface="plain" stack>
-          <thead>
-            <tr>
-              <th />
-              <th>Code</th>
-              <th>Name</th>
-              <th>Reports in</th>
-              <th>Partners</th>
-              <th />
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {businesses.map((business) => (
-              <Fragment key={business.id}>
-                <tr>
-                  <td>
-                    <IconButton
-                      label={`Open ${business.name}`}
-                      title="Import a month, place ledgers, lock"
-                      aria-expanded={openId === business.id}
-                      onClick={() => setOpenId(openId === business.id ? null : business.id)}
-                    >
-                      {openId === business.id ? (
-                        <ChevronDown size={14} />
-                      ) : (
-                        <ChevronRight size={14} />
-                      )}
-                    </IconButton>
-                  </td>
-                  <td data-mono>{business.code}</td>
-                  <td>{business.name}</td>
-                  <td className={styles.mono}>{business.reportingCurrency}</td>
-                  <td>
-                    {business.partners.length === 0 ? (
-                      <span className={styles.hint}>Wholly owned</span>
-                    ) : (
-                      business.partners
-                        .map((share) => `${share.partnerName} ${Number(share.profitSharePercent)}%`)
-                        .join(' · ')
-                    )}
-                  </td>
-                  <td>{!business.isActive && <Badge variant="neutral">Inactive</Badge>}</td>
-                  <td>
-                    <div className={styles.rowActions}>
-                      <IconButton
-                        label={`Download statement template for ${business.name}`}
-                        title="Download the statement template"
-                        onClick={() => handleTemplate(business)}
-                      >
-                        <Download size={14} />
-                      </IconButton>
-                      <IconButton
-                        label={`Remove ${business.name}`}
-                        variant="danger"
-                        onClick={() => setPendingDelete(business)}
-                      >
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </div>
-                  </td>
-                </tr>
-                {openId === business.id && (
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>Businesses</h2>
+            <span className={styles.count}>{businesses.length}</span>
+            <span className={styles.cardSub}>
+              open one to import, place ledgers and lock a month
+            </span>
+          </div>
+          <Table surface="plain" stack zebra={false}>
+            <thead>
+              <tr>
+                <th />
+                <th>Code</th>
+                <th>Name</th>
+                <th>Reports in</th>
+                <th>Partners</th>
+                <th />
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {businesses.map((business) => (
+                <Fragment key={business.id}>
                   <tr>
-                    <td colSpan={7}>
-                      <BusinessWorkspace
-                        companyId={companyId}
-                        business={business}
-                        partners={partners}
-                      />
+                    <td>
+                      <IconButton
+                        label={`Open ${business.name}`}
+                        title="Import a month, place ledgers, lock"
+                        aria-expanded={openId === business.id}
+                        onClick={() => setOpenId(openId === business.id ? null : business.id)}
+                      >
+                        {openId === business.id ? (
+                          <ChevronDown size={14} />
+                        ) : (
+                          <ChevronRight size={14} />
+                        )}
+                      </IconButton>
+                    </td>
+                    <td data-mono>{business.code}</td>
+                    <td>{business.name}</td>
+                    <td className={styles.mono}>{business.reportingCurrency}</td>
+                    <td>
+                      {business.partners.length === 0 ? (
+                        <span className={styles.hint}>Wholly owned</span>
+                      ) : (
+                        <span className={styles.shareChips}>
+                          {business.partners.map((share) => (
+                            <span key={share.partnerId} className={styles.shareChip}>
+                              {share.partnerName} <b>{Number(share.profitSharePercent)}%</b>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
+                    <td>{!business.isActive && <Badge variant="neutral">Inactive</Badge>}</td>
+                    <td>
+                      <div className={styles.rowActions}>
+                        <IconButton
+                          label={`Download statement template for ${business.name}`}
+                          title="Download the statement template"
+                          onClick={() => handleTemplate(business)}
+                        >
+                          <Download size={14} />
+                        </IconButton>
+                        <IconButton
+                          label={`Remove ${business.name}`}
+                          variant="danger"
+                          onClick={() => setPendingDelete(business)}
+                        >
+                          <Trash2 size={14} />
+                        </IconButton>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </Table>
+                  {openId === business.id && (
+                    <tr>
+                      <td colSpan={7}>
+                        <BusinessWorkspace
+                          companyId={companyId}
+                          business={business}
+                          partners={partners}
+                          country={country}
+                          portfolioCurrency={portfolioCurrency}
+                          onSnapshotsChanged={() => void loadSnapshots().then(setSnapshots)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </Table>
+        </section>
       )}
 
       {/* The ordinary ask. */}

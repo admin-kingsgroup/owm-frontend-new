@@ -8,3 +8,7 @@ export { ChartLegend } from './ChartLegend';
 export type { LegendItem } from './ChartLegend';
 export { Waterfall } from './Waterfall';
 export type { WaterfallProps, WaterfallStep } from './Waterfall';
+export { ScatterChart } from './ScatterChart';
+export type { ScatterChartProps, ScatterPoint } from './ScatterChart';
+export { DonutChart } from './DonutChart';
+export type { DonutChartProps, DonutPart } from './DonutChart';
