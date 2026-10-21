@@ -172,10 +172,20 @@ export function formatCompactMoney(
       formatter = new Intl.NumberFormat(locale, {
         ...(options.currency ? { style: 'currency', currency: options.currency } : {}),
         notation: 'compact',
+        /*
+          The floor said out loud. Left to default, a currency's own two decimals became the floor
+          on older engines — Node 22, and the browsers built on the same V8 — which wrote ₹1.20Cr
+          where newer ones write ₹1.2Cr. An axis tick wants the short form everywhere.
+        */
+        minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });
     } catch {
-      formatter = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 2 });
+      formatter = new Intl.NumberFormat(locale, {
+        notation: 'compact',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
     }
     compactCache.set(key, formatter);
   }
