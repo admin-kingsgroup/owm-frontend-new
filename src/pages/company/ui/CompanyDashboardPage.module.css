@@ -153,3 +153,116 @@
     justify-content: center;
   }
 }
+
+/* ---- The new interface ------------------------------------------------ */
+
+.page {
+  gap: 1rem;
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+.header {
+  align-items: flex-end;
+  animation: owm-rise 0.45s var(--ease-out) both;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.title {
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.headerTop {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.companyName {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.subtitle {
+  margin-top: 0.125rem;
+  color: var(--ink-faint);
+}
+
+.vouchersLink {
+  background: var(--accent);
+  box-shadow: var(--shadow-1);
+  transition:
+    box-shadow 0.2s,
+    transform 0.12s;
+}
+
+.vouchersLink:hover {
+  filter: none;
+  box-shadow: var(--shadow-2);
+}
+
+/* The opening balances do not net to zero: a warning card with its icon, not a red bar. */
+.openingDiff {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border-color: var(--warning-bd);
+  border-radius: var(--radius-lg);
+  background-color: var(--warning-bg-soft);
+  color: var(--warning-fg);
+  animation: owm-rise 0.45s var(--ease-out) both;
+}
+
+.openingIcon {
+  grid-row: span 2;
+  margin-top: 0.125rem;
+}
+
+.accountsLayout {
+  gap: 1rem;
+}
+
+/* Side by side only where the earlier rule keeps two columns; below it, one stacked column. */
+@media screen and (min-width: 60.0625rem) {
+  .accountsLayout {
+    grid-template-columns: 18rem minmax(0, 1fr);
+  }
+}
+
+.key {
+  padding: 0 0.3125rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 0.3125rem;
+  background: var(--paper-card);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+@media (max-width: 34rem) {
+  .title {
+    font-size: 1.375rem;
+  }
+}

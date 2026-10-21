@@ -124,3 +124,28 @@
     font-weight: 700;
   }
 }
+
+/*
+  The new interface: the selected tab is marked by its rule alone, which grows in from the middle
+  when it is chosen — the demo's underline. The fill went because, beside cards that already have
+  a surface of their own, a second shaded block read as one more card.
+*/
+.active,
+.active:hover {
+  background-color: transparent;
+}
+
+.tab::after {
+  bottom: 0;
+  transform-origin: center;
+}
+
+.active::after {
+  animation: tab-in 0.25s var(--ease-out);
+}
+
+@keyframes tab-in {
+  from {
+    transform: scaleX(0);
+  }
+}

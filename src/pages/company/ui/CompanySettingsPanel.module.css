@@ -100,3 +100,17 @@
   line-height: 1.5;
   color: var(--ink);
 }
+
+/* ---- The new interface: a card like every other ------------------------ */
+
+.panel {
+  padding: 1rem 1.125rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.title {
+  font-family: var(--font-display);
+  letter-spacing: var(--display-tracking);
+}
