@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import { seed, seedFeatured, seedAnalytics } from './seed';
+import { inGroup, search } from './search';
 
 let companyId: string;
 let token: string;
@@ -107,7 +108,7 @@ test.describe('every screen, drawn', () => {
         it arrives, so the wait was racing the company list. Help is on the bar whatever the company
         turns out to be.
       */
-      await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
       await page.waitForLoadState('networkidle');
 
       /*
@@ -151,16 +152,17 @@ test.describe('the frame', () => {
     await signIn(page);
     await page.goto(`/companies/${companyId}/reports?report=trial-balance`);
 
-    const strip = page.locator('header + div').first();
-    await expect(strip).toContainText('Financial year');
+    /* The year chip in the top bar — what the context strip said, said once for every screen. */
+    const chip = page.locator('header').getByText(/FY /).first();
+    await expect(chip).toBeVisible();
 
     /*
-      The fault this guards against shipped once: the strip read the company record's first year and
-      said 2019 above a 2026 statement. Both now come from the server's own period, so the year on
-      the strip and the year under the report's title must be the same string.
+      The fault this guards against shipped once: the frame read the company record's first year
+      and said 2019 above a 2026 statement. Both now come from the server's own period, so the year
+      in the bar and the year under the report's title must be the same string.
     */
     const year = new Date().getUTCFullYear().toString();
-    await expect(strip).toContainText(year);
+    await expect(chip).toContainText(year);
     await expect(page.getByRole('heading', { name: 'Trial Balance' })).toBeVisible();
   });
 
@@ -235,30 +237,31 @@ test.describe('the frame', () => {
     expect(outstanding, 'the bills do not add up to the total').toBeCloseTo(total, 2);
   });
 
-  test('opens a menu with its mnemonic and goes where the item points', async ({ page }) => {
+  test('opens the search with Ctrl+K and goes where the choice points', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
-    await page.keyboard.press('Alt+KeyR');
-    await expect(page.getByRole('menu')).toBeVisible();
-
-    await page.getByRole('menuitem', { name: /Day Book/ }).click();
+    await search(page, 'day book');
+    await page
+      .getByRole('option', { name: /^Day Book/ })
+      .first()
+      .click();
     await expect(page).toHaveURL(/report=day-book/);
   });
 
   /**
-   * Every report the menu offers has to open on something. A menu item pointing at a report the
-   * page does not know how to draw falls back to the balance sheet silently — the heading would be
-   * the only clue, and only to someone who noticed it had not changed.
+   * Every report the search offers has to open on something. An entry pointing at a report the page
+   * does not know how to draw falls back to the balance sheet silently — the heading would be the
+   * only clue, and only to someone who noticed it had not changed.
    */
-  test('opens every report the menu lists, on the report it names', async ({ page }) => {
+  test('opens every report the search lists, on the report it names', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Reports' }).click();
-    const items = await page.getByRole('menuitem').all();
+    await search(page, 'reports');
+    const items = await inGroup(page, 'Reports').all();
     const reports: Array<{ id: string; href: string }> = [];
     for (const item of items) {
       const href = (await item.getAttribute('href')) ?? '';
@@ -266,7 +269,8 @@ test.describe('the frame', () => {
       if (!id) continue;
       reports.push({ id, href });
     }
-    expect(reports.length, 'the Reports menu is empty').toBeGreaterThan(8);
+    expect(reports.length, 'the search lists no reports').toBeGreaterThan(8);
+    await page.keyboard.press('Escape');
 
     /*
       Against the id in the link, not the menu's wording. A menu entry is allowed to phrase the job
@@ -435,20 +439,21 @@ test.describe('the frame', () => {
     await signIn(page);
 
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByText('SHOT01').first()).toBeVisible();
+    /* The code under the dashboard's heading — exact, so the print-only line does not count. */
+    await expect(page.getByRole('main').getByText('SHOT01', { exact: true })).toBeVisible();
 
     /*
       Through the switcher rather than by address. Typing an address reloads the page, which throws
       the held screen away for free and so proves nothing; the switcher moves within the running
       application, which is where holding it would show.
     */
-    await page.getByRole('button', { name: /SHOT01/ }).click();
+    await page.getByRole('button', { name: /ADB - INR/ }).click();
     await page
       .getByRole('menu', { name: 'Switch company' })
       .getByRole('menuitem', { name: /ADB - Multi/ })
       .click();
 
-    await expect(page.getByText('SHOT02').first()).toBeVisible();
+    await expect(page.getByRole('main').getByText('SHOT02', { exact: true })).toBeVisible();
     await expect(page.getByText('SHOT01')).toHaveCount(0);
   });
 
@@ -613,7 +618,7 @@ test.describe('the frame', () => {
     // Stamped before the first paint, the same way the app's own pre-paint script does it.
     await page.addInitScript(() => window.localStorage.setItem('owm.theme', 'dark'));
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -737,7 +742,7 @@ test.describe('the frame', () => {
   test('raises a voucher from a function key, on any screen', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}/reports`);
-    await expect(page.getByRole('button', { name: 'Reports' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search' })).toBeVisible();
 
     await page.keyboard.press('F4');
 
@@ -777,7 +782,7 @@ test.describe('on a narrow screen', () => {
   test('the gateway fits, and its controls are reachable', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'More' })).toBeVisible();
     await page.waitForLoadState('networkidle');
 
     await page.screenshot({ path: 'e2e/screenshots/gateway-narrow.png', fullPage: true });
@@ -787,10 +792,11 @@ test.describe('on a narrow screen', () => {
     );
     expect(overflow, `the gateway scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
 
-    const menuButton = page.getByRole('button', { name: 'Open navigation' });
-    const box = await menuButton.boundingBox();
-    expect(box?.height ?? 0, 'the menu button is smaller than a fingertip').toBeGreaterThanOrEqual(
-      40,
-    );
+    /* Every tab along the bottom is a fingertip's size, the + included. */
+    const tabs = page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button');
+    for (const tab of await tabs.all()) {
+      const box = await tab.boundingBox();
+      expect(box?.height ?? 0, 'a tab is smaller than a fingertip').toBeGreaterThanOrEqual(40);
+    }
   });
 });

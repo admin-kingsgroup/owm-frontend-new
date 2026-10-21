@@ -22,3 +22,11 @@ export * from './form';
 export * from './toast';
 export * from './confirm-dialog';
 export * from './skeleton';
+
+/* The new interface: figures that move, charts that answer a hover or a tap, and the two overlays a
+   phone and a keyboard user reach for — a search over everything, and a sheet from the bottom. */
+export * from './count-up';
+export * from './charts';
+export * from './kpi-tile';
+export * from './command-palette';
+export * from './bottom-sheet';

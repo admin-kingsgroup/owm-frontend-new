@@ -1,0 +1,38 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
+  animation: owm-fade 0.15s both;
+}
+
+.sheet {
+  width: min(35rem, 100%);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 2.5rem);
+  overflow-y: auto;
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-3);
+  animation: owm-sheet-up 0.3s var(--ease-spring) both;
+  overscroll-behavior: contain;
+}
+
+.handle {
+  display: block;
+  width: 2.5rem;
+  height: 5px;
+  margin: 0.125rem auto 0.75rem;
+  border-radius: 3px;
+  background: var(--neutral-bd);
+}
+
+.title {
+  margin: 0 0.25rem 0.5rem;
+  font-size: var(--text-md);
+  font-weight: 600;
+}

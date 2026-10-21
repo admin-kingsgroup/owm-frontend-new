@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 import { seed, seedAnalytics, seedInvented } from './seed';
+import { inGroup, search } from './search';
 
 const API = process.env.VITE_API_BASE_URL ?? 'http://localhost:5099/api/v1';
 
@@ -151,15 +152,15 @@ test.describe('the data entry strip', () => {
     await expect(sheet.getByText('Petty Cash', { exact: true })).toHaveCount(0);
   });
 
-  /* The strip and the Transactions menu are two doors to the same set of documents. Built from
-     the same list in the same order, so neither can offer one the other does not. */
-  test('agrees with the Transactions menu about what can be raised', async ({ page }) => {
+  /* The strip and the search are two doors to the same set of documents. Built from the same
+     list in the same order, so neither can offer one the other does not. */
+  test('agrees with the search about what can be raised', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
     await page.getByRole('button', { name: 'Petty Cash' }).waitFor();
 
-    await page.getByRole('button', { name: 'Transactions' }).click();
-    const items = await page.getByRole('menuitem').allTextContents();
+    await search(page, '');
+    const items = await inGroup(page, 'Create').allTextContents();
 
     expect(items.some((item) => item.includes('Petty Cash'))).toBe(true);
     expect(items.some((item) => item.includes('Income'))).toBe(true);
@@ -181,36 +182,34 @@ test.describe('the data entry strip', () => {
     await expect(petty).toBeInViewport();
   });
 
-  test('fits on a narrow screen, keyless row included', async ({ page }) => {
+  /*
+    A phone has no function keys, so the strip is not drawn there: the + in the tab bar opens the
+    same list as a sheet. Same documents, same order, keyless ones included.
+  */
+  test('hands its documents to the Create sheet on a phone, keyless one included', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 420, height: 820 });
     await signIn(page);
     await page.goto(`/companies/${companyId}`);
-    await page.getByRole('button', { name: 'Petty Cash' }).waitFor();
+
+    const create = page.getByRole('button', { name: 'Create a voucher' });
+    await expect(create).toBeEnabled();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `the page scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(1);
 
-    /*
-      Laid out in a row each action is a chip, and the key sits at its far end. An empty key slot
-      would stretch the keyless one into a wide box with its label pinned left.
-    */
-    const widths = await page.evaluate(() => {
-      const bar = document.querySelector('[aria-label="Actions for this screen"]');
-      const buttons = [...(bar?.querySelectorAll('button') ?? [])];
-      const widthOf = (text: string) => {
-        const found = buttons.find((button) => (button.textContent ?? '').startsWith(text));
-        return found ? Math.round(found.getBoundingClientRect().width) : -1;
-      };
-      return { petty: widthOf('Petty Cash'), contra: widthOf('Contra') };
-    });
+    await create.click();
+    const sheet = page.getByRole('dialog', { name: /^Create/ });
+    await expect(sheet.getByRole('button', { name: /Petty Cash/ })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: /Contra/ })).toBeVisible();
 
-    expect(widths.petty).toBeGreaterThan(0);
-    expect(
-      widths.petty,
-      `the keyless chip is ${widths.petty}px against ${widths.contra}px for a keyed one`,
-    ).toBeLessThanOrEqual(widths.contra + 20);
+    /* The keyless document is a tile the same size as the keyed ones beside it. */
+    const petty = await sheet.getByRole('button', { name: /Petty Cash/ }).boundingBox();
+    const contra = await sheet.getByRole('button', { name: /Contra/ }).boundingBox();
+    expect(Math.abs((petty?.width ?? 0) - (contra?.width ?? 0))).toBeLessThanOrEqual(2);
   });
 });
 
@@ -254,18 +253,17 @@ test.describe('the data entry strip in a portfolio workspace', () => {
   });
 
   /* Both, not one instead of the other — the registry is still what the workspace is mostly for. */
-  test('keeps the portfolio on the Transactions menu beside them', async ({ page }) => {
+  test('keeps the portfolio in the sidebar beside its documents', async ({ page }) => {
     await signIn(page);
     await page.goto(`/companies/${portfolioId}`);
     await page.getByRole('button', { name: 'Adjustment' }).waitFor();
 
-    await page.getByRole('button', { name: 'Transactions' }).click();
+    const sidebar = page.getByRole('complementary', { name: 'Main navigation' });
+    await expect(sidebar.getByRole('link', { name: /Portfolio/ })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: /Vouchers/ })).toBeVisible();
 
-    expect(await page.getByRole('menuitem').allTextContents()).toEqual([
-      'Portfolio',
-      'Vouchers',
-      ...PORTFOLIO_STRIP,
-    ]);
+    await search(page, '');
+    expect(await inGroup(page, 'Create').allTextContents()).toEqual(PORTFOLIO_STRIP);
   });
 
   test('raises its own money-movement vouchers on the vouchers screen', async ({ page }) => {

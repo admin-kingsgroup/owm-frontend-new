@@ -1,5 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  CalendarRange,
+  CircleCheck,
+  Coins,
+  Files,
+  FolderTree,
+  Gem,
+  Landmark,
+  OctagonAlert,
+  Plus,
+  Scale,
+  Settings2,
+  TrendingUp,
+  TriangleAlert,
+  Users,
+} from 'lucide-react';
 
 import type { Company } from '@/entities/company';
 import { getForexGainLoss } from '@/entities/currency';
@@ -14,11 +34,12 @@ import type {
   ProfitAndLossReport,
   ReportNode,
 } from '@/entities/report';
-import { listVouchers } from '@/entities/voucher';
+import { listVouchers, voucherStatusVariant } from '@/entities/voucher';
 import type { VoucherSummary } from '@/entities/voucher';
+import { functionKeyFor, inFunctionKeyOrder } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
-import { cn, formatMoney, localeFor } from '@/shared/lib';
-import { ColumnChart, Sparkline } from '@/shared/ui';
+import { cn, formatCalendarDay, formatCompactMoney, formatMoney, localeFor } from '@/shared/lib';
+import { Badge, BarChart, ChartLegend, KpiTile, LineChart, StackedBars } from '@/shared/ui';
 import { useCompanyReadout } from '@/widgets/app-shell';
 import { DashboardHeader } from '@/widgets/dashboard-header';
 
@@ -81,11 +102,10 @@ const AGEING: Array<{ bucket: AgeingBucket; label: string }> = [
  * The company dashboard: what this company is worth, where the money sits, how it moved, and what
  * is unfinished.
  *
- * It replaced a written-out menu. Tally opens on one, and that reasoning held while the menu bar
- * was the only navigation in the product — but the bar now carries every one of those destinations
- * under Dashboards, Company, Masters, Transactions and Reports, and the function-key strip carries
- * the rest. A third copy of the same list was the least valuable thing that could occupy the screen
- * seen most often, so the space went to the figures instead.
+ * It replaced a written-out menu. Tally opens on one, but every one of those destinations is now a
+ * sidebar item or one search away (Ctrl+K), and the function-key strip raises the documents. A
+ * third copy of the same list was the least valuable thing that could occupy the screen seen most
+ * often, so the space went to the figures instead.
  *
  * Every figure is read from the reports the statements themselves are drawn from — nothing here is
  * computed a second way — so no tile can disagree with the statement one click behind it.
@@ -349,18 +369,54 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
       ? `${base}/reports?report=ledger&ledgerId=${node.id}`
       : `${base}/reports?report=monthly-summary&groupId=${node.id}`;
 
+  /** Short figures for chart axes — 12L, 1.2Cr — in this company's own units. */
+  const axis = (value: number) => formatCompactMoney(value, { country: company.country });
+  const moneyNumber = (value: number) => money(value);
+
+  /**
+   * The one document this dashboard offers to raise: the company's main document — Sales for a
+   * business, Income for a household — and only if it is switched on. The full list is the key
+   * strip's and the + on a phone; this is the shortcut to the commonest one.
+   */
+  const primary = useMemo(() => {
+    const active = inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
+    return (
+      active.find((type) => type.code === 'SALES' || type.code === 'INCOME') ??
+      active.find((type) => type.code === 'RECEIPT') ??
+      active[0] ??
+      null
+    );
+  }, [voucherTypes]);
+  const primaryKey = primary ? functionKeyFor(primary.code) : undefined;
+
+  const balanced = context !== null && Number(context.difference) === 0;
+  const tone = { warn: styles.chipWarn, bad: styles.chipBad } as const;
+
   return (
     <div className={styles.gateway}>
-      {/*
-        No actions on the header. Raising a voucher belongs to the function-key strip, which is on
-        screen everywhere rather than only here — listing the types again on this one screen was the
-        same menu printed twice on one page, and it taught that data entry starts by coming back to
-        the dashboard.
-      */}
       <DashboardHeader
         company={company}
         kind="Company dashboard"
         asOn={balanceSheet?.period.to ?? null}
+        period={context?.period.financialYearLabel ?? null}
+        actions={
+          <>
+            <Link className={styles.action} to={`${base}/reports?report=day-book`}>
+              <BookOpen size={15} aria-hidden="true" />
+              Day Book <kbd className={styles.kbd}>Alt K</kbd>
+            </Link>
+            {primary && (
+              <Link
+                className={cn(styles.action, styles.actionPrimary)}
+                to={`${base}/vouchers?new=${primary.code}`}
+              >
+                <Plus size={15} aria-hidden="true" />
+                New {primary.name}
+                {primaryKey && <kbd className={styles.kbd}>{primaryKey}</kbd>}
+              </Link>
+            )}
+          </>
+        }
       />
 
       {unread.length > 0 && (
@@ -370,332 +426,194 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
       )}
 
       {/*
-        What is outstanding, before anything it is outstanding about.
-
-        This used to be the first card of the right-hand column, below the tiles and the balance
-        sheet extract — which put the only part of the screen that wants doing below the fold on a
-        laptop. Absent entirely when there is nothing to report, so the band never becomes
-        furniture people stop reading.
+        What is outstanding, before anything it is outstanding about — each item a link to where it
+        is fixed. The all-clear is said once, quietly, when there is nothing; never as a list that
+        is always there and stops being read.
       */}
-      {attention.length > 0 && (
-        <div
-          className={cn(
-            styles.attention,
-            /* Anything actually wrong pitches the band from amber to red — see .attentionBad. */
-            attention.some((item) => item.severity === 'bad') && styles.attentionBad,
-          )}
-        >
-          <span className={styles.attentionLabel}>Needs attention</span>
-          {attention.map((item) => (
-            <Link className={styles.attentionItem} key={item.key} to={item.to}>
-              <span
-                className={cn(
-                  styles.attentionDot,
-                  item.severity === 'bad' ? styles.attentionDotBad : styles.attentionDotWarn,
-                )}
-                aria-hidden="true"
-              />
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className={styles.attention} aria-label="Needs attention">
+        {attention.map((item) => (
+          <Link className={cn(styles.chip, tone[item.severity])} key={item.key} to={item.to}>
+            {item.severity === 'bad' ? (
+              <OctagonAlert size={15} aria-hidden="true" />
+            ) : (
+              <TriangleAlert size={15} aria-hidden="true" />
+            )}
+            {item.label}
+          </Link>
+        ))}
+        {attention.length === 0 && (
+          <span className={cn(styles.chip, styles.chipGood)}>
+            <CircleCheck size={15} aria-hidden="true" />
+            {drafts === null && loading
+              ? 'Checking…'
+              : 'Nothing outstanding — the books are square.'}
+          </span>
+        )}
+        {balanced && (
+          <Link
+            className={cn(styles.chip, styles.chipGood)}
+            to={`${base}/reports?report=trial-balance`}
+          >
+            <Scale size={15} aria-hidden="true" />
+            Books balanced · Dr = Cr
+          </Link>
+        )}
+        {context && context.period.financialYearStatus === 'OPEN' && (
+          <Link className={cn(styles.chip, styles.chipInfo)} to={`${base}?tab=financial-years`}>
+            <CalendarRange size={15} aria-hidden="true" />
+            FY {context.period.financialYearLabel} open for vouchers
+          </Link>
+        )}
+      </div>
 
       {/*
         The four figures worth knowing before choosing where to go next. Each opens the statement it
         came from — a dashboard number nobody can question is a number nobody should trust.
       */}
       <div className={styles.kpis}>
-        <Link className={styles.kpi} to={`${base}/reports?report=balance-sheet`}>
-          <span className={styles.kpiLabel}>Net worth</span>
-          <span className={styles.kpiValue}>
-            {netWorth === null ? <span className={styles.nil}>—</span> : money(netWorth)}
-          </span>
-          {balanceSheet && (
-            <span className={styles.kpiHint}>
-              Assets {money(balanceSheet.totals.assets)} · liabilities{' '}
-              {money(balanceSheet.totals.liabilities)}
-            </span>
-          )}
-        </Link>
-
-        <Link className={styles.kpi} to={`${base}/reports?report=cash-flow`}>
-          <span className={styles.kpiLabel}>Cash &amp; bank</span>
-          <span className={styles.kpiValue}>
-            {cashFlow ? (
-              <>
-                {money(cashFlow.closingBalance)}{' '}
-                <span className={styles.side}>
-                  {cashFlow.closingSide === 'DEBIT' ? 'Dr' : 'Cr'}
-                </span>
-              </>
-            ) : (
-              <span className={styles.nil}>—</span>
-            )}
-          </span>
-          {cashFlow && (
-            <span className={styles.kpiHint}>
-              {Number(cashFlow.totals.netChange) < 0 ? 'Down' : 'Up'}{' '}
-              {money(Math.abs(Number(cashFlow.totals.netChange)))} over the year
-            </span>
-          )}
-          {/* The trajectory behind the balance — see runningTotal. A data colour, not the accent,
-              so the line is never read as something to press. */}
-          <Sparkline
-            values={cashTrend}
-            color="var(--data-1)"
-            label="Cash and bank, month by month"
-          />
-        </Link>
-
-        <Link className={styles.kpi} to={`${base}/reports?report=profit-loss`}>
-          <span className={styles.kpiLabel}>Net profit</span>
-          <span
-            className={cn(
-              styles.kpiValue,
-              profitAndLoss !== null &&
-                Number(profitAndLoss.totals.netProfit) < 0 &&
-                styles.kpiNegative,
-            )}
-          >
-            {profitAndLoss ? (
-              money(profitAndLoss.totals.netProfit)
-            ) : (
-              <span className={styles.nil}>—</span>
-            )}
-          </span>
-          {profitAndLoss && (
-            <span className={styles.kpiHint}>
-              Income {money(profitAndLoss.totals.income)} · expenses{' '}
-              {money(profitAndLoss.totals.expenses)}
-            </span>
-          )}
-          <Sparkline
-            values={profitTrend}
-            color="var(--data-3)"
-            label="Profit accumulated month by month"
-          />
-        </Link>
-
-        <Link className={styles.kpi} to={`${base}/reports?report=receipts-payments`}>
-          {/* The last month anything moved, named for the month it is — see latestMonth. */}
-          <span className={styles.kpiLabel}>
-            {latestMonth ? monthLabel(latestMonth.month) : 'Latest month'}
-          </span>
-          <span className={styles.kpiValue}>
-            {latestMonth ? money(latestMonth.netChange) : <span className={styles.nil}>—</span>}
-          </span>
-          {latestMonth && (
-            <span className={styles.kpiHint}>
-              In {money(latestMonth.inflow)} · out {money(latestMonth.outflow)}
-            </span>
-          )}
-        </Link>
+        <KpiTile
+          index={0}
+          label="Net worth"
+          icon={<Gem />}
+          value={netWorth === null ? null : Number(netWorth)}
+          format={moneyNumber}
+          negative={netWorth !== null && Number(netWorth) < 0}
+          hint={
+            balanceSheet &&
+            `Assets ${money(balanceSheet.totals.assets)} · liabilities ${money(balanceSheet.totals.liabilities)}`
+          }
+          to={`${base}/reports?report=balance-sheet`}
+        />
+        <KpiTile
+          index={1}
+          label="Cash & bank"
+          icon={<Landmark />}
+          value={cashFlow ? Number(cashFlow.closingBalance) : null}
+          format={moneyNumber}
+          suffix={cashFlow ? (cashFlow.closingSide === 'DEBIT' ? 'Dr' : 'Cr') : undefined}
+          hint={
+            cashFlow &&
+            `${Number(cashFlow.totals.netChange) < 0 ? 'Down' : 'Up'} ${money(Math.abs(Number(cashFlow.totals.netChange)))} over the year`
+          }
+          trend={cashTrend}
+          trendLabels={cashFlow?.monthly.map((month) => monthLabel(month.month))}
+          trendColor="var(--series-1)"
+          to={`${base}/reports?report=cash-flow`}
+        />
+        <KpiTile
+          index={2}
+          label="Net profit"
+          icon={<TrendingUp />}
+          value={profitAndLoss ? Number(profitAndLoss.totals.netProfit) : null}
+          format={moneyNumber}
+          negative={profitAndLoss !== null && Number(profitAndLoss.totals.netProfit) < 0}
+          hint={
+            profitAndLoss &&
+            `Income ${money(profitAndLoss.totals.income)} · expenses ${money(profitAndLoss.totals.expenses)}`
+          }
+          trend={profitTrend}
+          trendLabels={profitAndLoss?.monthly.map((month) => monthLabel(month.month))}
+          trendColor="var(--series-4)"
+          to={`${base}/reports?report=profit-loss`}
+        />
+        {/* The last month anything moved, named for the month it is — see latestMonth. */}
+        <KpiTile
+          index={3}
+          label={latestMonth ? monthLabel(latestMonth.month) : 'Latest month'}
+          icon={<CalendarDays />}
+          value={latestMonth ? Number(latestMonth.netChange) : null}
+          format={moneyNumber}
+          negative={latestMonth !== null && Number(latestMonth.netChange) < 0}
+          hint={
+            latestMonth && `In ${money(latestMonth.inflow)} · out ${money(latestMonth.outflow)}`
+          }
+          to={`${base}/reports?report=receipts-payments`}
+        />
       </div>
 
       <div className={styles.columns}>
         <div className={styles.column}>
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Where the money is</h2>
-
-            {!balanceSheet && (
-              <p className={styles.pending}>
-                {loading ? 'Reading the books…' : 'The balance sheet could not be read.'}
-              </p>
-            )}
-
-            {balanceSheet && (
-              <table className={styles.figures}>
-                {/*
-                  The statement's own top-level groups, in its own order and under its own two
-                  headings — nothing is named here, so a company with a different chart of accounts
-                  still reads correctly. Without the headings the two lists ran together and the
-                  only thing separating a holding from a debt was the sign in front of it.
-
-                  Each figure carries Dr or Cr, the way the statements themselves show it, and a bar
-                  showing its share of that side — which is what "where is the money" is really
-                  asking, and the question a column of figures answers slowest.
-                */}
-                {[
-                  {
-                    heading: 'Assets',
-                    nodes: balanceSheet.assets,
-                    total: balanceSheet.totals.assets,
-                  },
-                  {
-                    heading: 'Liabilities',
-                    nodes: balanceSheet.liabilities,
-                    total: balanceSheet.totals.liabilities,
-                  },
-                ].map((section) => {
-                  const total = Math.abs(Number(section.total));
-
-                  return (
-                    <tbody key={section.heading}>
-                      <tr>
-                        <th scope="colgroup" colSpan={3} className={styles.figuresHeading}>
-                          {section.heading}
-                        </th>
-                      </tr>
-                      {section.nodes.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className={styles.figuresEmpty}>
-                            None
-                          </td>
-                        </tr>
-                      ) : (
-                        section.nodes.map((node) => {
-                          /* Nil over nil is not a share, and an unmeasurable one draws nothing. */
-                          const share = total > 0 ? Math.abs(Number(node.balance)) / total : 0;
-
-                          return (
-                            <tr key={node.id} className={styles.figureRow}>
-                              {/*
-                                Every other figure in this product opens the working behind it, and
-                                these were once the exception — the one place a reader could see a
-                                number they wanted to question and had to go and find the report
-                                themselves.
-
-                                The link sits on the name rather than the amount: it is the reliable
-                                place to click, it reads as a link, and it keeps the amount column
-                                scanning as a column of figures.
-                              */}
-                              <td>
-                                <Link className={styles.figureLink} to={workingFor(node)}>
-                                  {node.name}
-                                </Link>
-                              </td>
-                              <td className={styles.amount}>
-                                {gridMoney(node.balance) ? (
-                                  <>
-                                    {gridMoney(node.balance)}{' '}
-                                    <span className={styles.side}>
-                                      {node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}
-                                    </span>
-                                  </>
-                                ) : (
-                                  /* Nil. The side has nothing left to qualify, and printed anyway
-                                     it reads as a figure that failed to load rather than as a group
-                                     holding nothing. */
-                                  <span className={styles.nil}>·</span>
-                                )}
-                              </td>
-                              <td className={styles.shareCell}>
-                                {/*
-                                  Nothing at all for a group holding nothing. An empty track drawn
-                                  for every nil row was six grey pills down a chart of accounts,
-                                  which reads as six bars that failed to load rather than as six
-                                  accounts with no share of anything.
-
-                                  Decoration over a figure already stated beside it, so what is
-                                  drawn is hidden from the accessibility tree rather than read out
-                                  as a second, vaguer version of the same number.
-                                */}
-                                {share > 0 && (
-                                  <span className={styles.shareTrack} aria-hidden="true">
-                                    <span
-                                      className={styles.shareFill}
-                                      style={{ width: `${(share * 100).toFixed(1)}%` }}
-                                    />
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  );
-                })}
-                {/*
-                  No net-worth footing here. The figure sits in the tile directly above this card,
-                  and stating it twice within one screen invites the reading that they are two
-                  different numbers — which is precisely what a reader would assume of a total that
-                  disagreed by a rounding step.
-                */}
-              </table>
-            )}
-          </section>
-
-          {/*
-            Only where there is a period to plot. One month is a bar, not a shape, and a chart of it
-            says less than the figure already above it.
-          */}
+          {/* Only where there is a period to plot. One month is a bar, not a shape. */}
           {cashFlow && cashFlow.monthly.length > 1 && (
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Cash, month by month</h2>
-              <div className={styles.chartBody}>
-                <ColumnChart
-                  labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
-                  formatValue={money}
-                  scaleLabel={money}
-                  caption="Cash in and cash out for each month of the year so far"
-                  series={[
-                    {
-                      label: 'Cash in',
-                      color: 'var(--data-1)',
-                      values: cashFlow.monthly.map((month) => Number(month.inflow)),
-                    },
-                    {
-                      label: 'Cash out',
-                      color: 'var(--data-2)',
-                      values: cashFlow.monthly.map((month) => Number(month.outflow)),
-                    },
+            <section className={styles.card} style={{ '--i': 4 } as CSSProperties}>
+              <div className={styles.cardHead}>
+                <h2 className={styles.cardTitle}>Cash, month by month</h2>
+                <span className={styles.cardSub}>in and out of cash and bank</span>
+                <ChartLegend
+                  className={styles.cardRight}
+                  items={[
+                    { label: 'Cash in', color: 'var(--series-1)' },
+                    { label: 'Cash out', color: 'var(--series-2)' },
                   ]}
                 />
               </div>
+              <BarChart
+                labels={cashFlow.monthly.map((month) => monthLabel(month.month))}
+                series={[
+                  {
+                    label: 'Cash in',
+                    color: 'var(--series-1)',
+                    values: cashFlow.monthly.map((month) => Number(month.inflow)),
+                  },
+                  {
+                    label: 'Cash out',
+                    color: 'var(--series-2)',
+                    values: cashFlow.monthly.map((month) => Number(month.outflow)),
+                  },
+                ]}
+                formatValue={moneyNumber}
+                formatAxis={axis}
+                footer={(i) => ({
+                  color: 'transparent',
+                  label: 'Net',
+                  value: money(cashFlow.monthly[i].netChange),
+                })}
+                caption="Cash in and cash out for each month of the year so far"
+              />
             </section>
           )}
-          {/*
-            The five master screens. The menu bar reaches every one of them, but this is the list a
-            person scans when they do not yet know which one they want — and unlike the voucher
-            types above, these have no function key, so the bar is not already offering them.
-          */}
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Masters</h2>
-            <Link className={styles.item} to={`${base}?tab=accounts`}>
-              <span>Groups &amp; ledgers — chart of accounts</span>
-            </Link>
-            <Link className={styles.item} to={`${base}?tab=parties`}>
-              <span>Parties — customers &amp; suppliers</span>
-            </Link>
-            <Link className={styles.item} to={`${base}?tab=voucher-types`}>
-              <span>Voucher types &amp; numbering</span>
-              <span className={styles.count}>{voucherTypes.length}</span>
-            </Link>
-            {multiCurrency && (
-              <Link className={styles.item} to={`${base}?tab=currencies`}>
-                <span>Currencies &amp; rates</span>
+
+          {profitAndLoss && profitAndLoss.monthly.length > 1 && (
+            <section className={styles.card} style={{ '--i': 5 } as CSSProperties}>
+              <div className={styles.cardHead}>
+                <h2 className={styles.cardTitle}>Income &amp; expense, month by month</h2>
+                <ChartLegend
+                  className={styles.cardRight}
+                  items={[
+                    { label: 'Income', color: 'var(--series-1)', line: true },
+                    { label: 'Expenses', color: 'var(--series-2)', line: true },
+                  ]}
+                />
+              </div>
+              <LineChart
+                area
+                labels={profitAndLoss.monthly.map((month) => monthLabel(month.month))}
+                series={[
+                  {
+                    label: 'Income',
+                    color: 'var(--series-1)',
+                    values: profitAndLoss.monthly.map((month) => Number(month.income)),
+                  },
+                  {
+                    label: 'Expenses',
+                    color: 'var(--series-2)',
+                    values: profitAndLoss.monthly.map((month) => Number(month.expenses)),
+                  },
+                ]}
+                formatValue={moneyNumber}
+                formatAxis={axis}
+                caption="Income and expenses for each month of the year so far"
+              />
+            </section>
+          )}
+
+          <section className={styles.card} style={{ '--i': 6 } as CSSProperties}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>Recently filed</h2>
+              <Link className={cn(styles.more, styles.cardRight)} to={`${base}/vouchers`}>
+                All vouchers <ArrowRight size={14} aria-hidden="true" />
               </Link>
-            )}
-            <Link className={styles.item} to={`${base}?tab=financial-years`}>
-              <span>Financial years</span>
-            </Link>
-            <Link className={styles.item} to={`${base}?tab=settings`}>
-              <span>Features &amp; settings</span>
-            </Link>
-          </section>
-        </div>
-
-        <div className={styles.column}>
-          {/*
-            Only the all-clear stays down here. Anything outstanding is in the band at the top of
-            the screen; "nothing outstanding" is worth being able to confirm but is not worth the
-            most valuable space on the page, which is exactly the wrong way round from before.
-          */}
-          {attention.length === 0 && (
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Needs attention</h2>
-              <p className={styles.clear}>
-                {drafts === null && loading
-                  ? 'Checking…'
-                  : 'Nothing outstanding — the books are square.'}
-              </p>
-            </section>
-          )}
-
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Recently filed</h2>
+            </div>
 
             {recent === null && (
               <p className={styles.pending}>
@@ -708,187 +626,258 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
             )}
 
             {recent !== null && recent.length > 0 && (
-              /*
-                A record list, not a statement: one voucher per row with a handful of named fields,
-                which is what data-stack turns into a card on a phone. Without it the amount — the
-                one figure being read — was clipped at the card's edge on a 390px screen, and the
-                draft mark was pushed off it entirely.
-              */
+              /* A record list, which data-stack turns into cards on a phone. */
               <table className={styles.figures} data-stack>
-                {/*
-                  Headed for a reader who cannot see the shape of it. The columns are obvious by
-                  eye — a number, what it was for, a type, an amount — and naming them on screen
-                  would cost a third of the card's height to say what it already says.
-                */}
-                <thead className={styles.srOnly}>
+                <thead>
                   <tr>
+                    <th>Date</th>
                     <th>Voucher</th>
                     <th>Type</th>
-                    <th>Amount</th>
+                    <th className={styles.amount}>Amount</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recent.map((voucher) => (
-                    <tr key={voucher.id} className={styles.figureRow}>
+                  {recent.map((voucher, index) => (
+                    <tr
+                      key={voucher.id}
+                      className={styles.figureRow}
+                      style={{ '--i': index } as CSSProperties}
+                    >
+                      <td className={styles.recentDate} data-label="Date">
+                        {formatCalendarDay(voucher.voucherDate, company.country)}
+                      </td>
                       <td data-label="Voucher">
                         <span className={styles.recentNumber}>{voucher.voucherNumber}</span>
                         {voucher.narration && (
                           <span className={styles.recentNarration}>{voucher.narration}</span>
                         )}
                       </td>
-                      {/*
-                        Named from the company's own types — see typeNames. Blank where the type has
-                        since been deleted, rather than the id it was stored against.
-                      */}
+                      {/* Named from the company's own types — blank where the type is gone. */}
                       <td className={styles.recentType} data-label="Type">
                         {typeNames.get(voucher.voucherTypeId) ?? ''}
                       </td>
                       <td className={styles.amount} data-label="Amount">
                         {gridMoney(voucher.amount)}
                       </td>
-                      <td>
-                        {/*
-                          Posted is the ordinary case and goes unmarked; a draft is the one worth
-                          seeing, because it is in the books' totals nowhere.
-                        */}
-                        {voucher.status !== 'POSTED' && (
-                          <span className={styles.recentStatus}>
-                            {voucher.status.toLowerCase()}
-                          </span>
-                        )}
+                      <td data-label="Status">
+                        <Badge variant={voucherStatusVariant(voucher.status)}>
+                          {voucher.status.toLowerCase()}
+                        </Badge>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className={styles.total}>
-                    <th scope="row" colSpan={4}>
-                      <Link className={styles.figureLink} to={`${base}/vouchers`}>
-                        All vouchers
-                      </Link>
-                    </th>
-                  </tr>
-                </tfoot>
               </table>
             )}
           </section>
+        </div>
 
-          {profitAndLoss && profitAndLoss.monthly.length > 1 && (
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Income &amp; expense, month by month</h2>
-              <div className={styles.chartBody}>
-                <ColumnChart
-                  labels={profitAndLoss.monthly.map((month) => monthLabel(month.month))}
-                  formatValue={money}
-                  scaleLabel={money}
-                  caption="Income and expenses for each month of the year so far"
-                  series={[
-                    {
-                      label: 'Income',
-                      color: 'var(--data-1)',
-                      values: profitAndLoss.monthly.map((month) => Number(month.income)),
-                    },
-                    {
-                      label: 'Expenses',
-                      color: 'var(--data-2)',
-                      values: profitAndLoss.monthly.map((month) => Number(month.expenses)),
-                    },
-                  ]}
-                />
-              </div>
-            </section>
-          )}
+        <div className={styles.column}>
+          <section className={styles.card} style={{ '--i': 5 } as CSSProperties}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>Where the money is</h2>
+              {balanceSheet && (
+                <span className={styles.cardSub}>
+                  {money(balanceSheet.totals.assets)} in assets
+                </span>
+              )}
+            </div>
+
+            {!balanceSheet && (
+              <p className={styles.pending}>
+                {loading ? 'Reading the books…' : 'The balance sheet could not be read.'}
+              </p>
+            )}
+
+            {/*
+              The statement's own top-level groups, in its own order and under its own two headings,
+              each with Dr or Cr and a bar for its share of that side — which is what "where is the
+              money" is really asking. Every name opens the working behind it.
+            */}
+            {balanceSheet &&
+              [
+                {
+                  heading: 'Assets',
+                  nodes: balanceSheet.assets,
+                  total: balanceSheet.totals.assets,
+                },
+                {
+                  heading: 'Liabilities',
+                  nodes: balanceSheet.liabilities,
+                  total: balanceSheet.totals.liabilities,
+                },
+              ].map((section) => {
+                const total = Math.abs(Number(section.total));
+                return (
+                  <div className={styles.moneySection} key={section.heading}>
+                    <h3 className={styles.moneyHeading}>{section.heading}</h3>
+                    {section.nodes.length === 0 && <p className={styles.clear}>None</p>}
+                    {section.nodes.map((node, index) => {
+                      const share = total > 0 ? Math.abs(Number(node.balance)) / total : 0;
+                      const figure = gridMoney(node.balance);
+                      return (
+                        <div className={styles.moneyRow} key={node.id}>
+                          <div className={styles.moneyLine}>
+                            <Link className={styles.moneyName} to={workingFor(node)}>
+                              {node.name}
+                            </Link>
+                            <span className={styles.moneyAmount}>
+                              {figure ? (
+                                <>
+                                  {figure}{' '}
+                                  <span className={styles.side}>
+                                    {node.balanceSide === 'DEBIT' ? 'Dr' : 'Cr'}
+                                  </span>
+                                </>
+                              ) : (
+                                /* Nil: the side has nothing left to qualify. */
+                                <span className={styles.nil}>·</span>
+                              )}
+                            </span>
+                          </div>
+                          {share > 0 && (
+                            <span className={styles.shareTrack} aria-hidden="true">
+                              <span
+                                className={styles.shareFill}
+                                style={
+                                  {
+                                    width: `${(share * 100).toFixed(1)}%`,
+                                    '--i': index,
+                                  } as CSSProperties
+                                }
+                              />
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+          </section>
 
           {/*
             Only for a company that keeps bills against its parties. Without bill-wise details there
-            is nothing to age, and an empty ageing card would read as "nothing overdue" rather than
-            as "this company does not track that".
+            is nothing to age, and an empty card would read as "nothing overdue".
           */}
           {billWiseDetails && (receivables !== null || payables !== null) && (
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Owed to us, owed by us</h2>
-              <table className={styles.figures}>
-                <thead>
-                  <tr>
-                    <th className={styles.figuresHeading}>Ageing</th>
-                    <th className={cn(styles.figuresHeading, styles.amount)}>Receivable</th>
-                    <th className={cn(styles.figuresHeading, styles.amount)}>Payable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {AGEING.map((row) => (
-                    <tr key={row.bucket} className={styles.figureRow}>
-                      <td>{row.label}</td>
-                      <td className={styles.amount}>
-                        {gridMoney(receivables?.totals.byBucket[row.bucket] ?? '0') || (
-                          <span className={styles.nil}>·</span>
-                        )}
-                      </td>
-                      <td className={styles.amount}>
-                        {gridMoney(payables?.totals.byBucket[row.bucket] ?? '0') || (
-                          <span className={styles.nil}>·</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className={styles.total}>
-                    <th scope="row">
-                      <Link className={styles.figureLink} to={`${base}/reports?report=receivables`}>
-                        Outstanding
-                      </Link>
-                    </th>
-                    <td className={styles.amount}>
-                      {receivables ? money(receivables.totals.outstanding) : '—'}
-                    </td>
-                    <td className={styles.amount}>
-                      {payables ? money(payables.totals.outstanding) : '—'}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+            <section className={styles.card} style={{ '--i': 6 } as CSSProperties}>
+              <div className={styles.cardHead}>
+                <h2 className={styles.cardTitle}>Owed to us, owed by us</h2>
+                <span className={styles.cardSub}>by age of bill</span>
+              </div>
+              <StackedBars
+                buckets={AGEING.map((row) => row.label)}
+                rows={[
+                  ...(receivables
+                    ? [
+                        {
+                          label: 'Receivable',
+                          to: `${base}/reports?report=receivables`,
+                          parts: AGEING.map((row) =>
+                            Number(receivables.totals.byBucket[row.bucket] ?? 0),
+                          ),
+                        },
+                      ]
+                    : []),
+                  ...(payables
+                    ? [
+                        {
+                          label: 'Payable',
+                          to: `${base}/reports?report=payables`,
+                          parts: AGEING.map((row) =>
+                            Number(payables.totals.byBucket[row.bucket] ?? 0),
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+                formatValue={moneyNumber}
+              />
+              <dl className={styles.outstanding}>
+                <div>
+                  <dt>Owed to us</dt>
+                  <dd>{receivables ? money(receivables.totals.outstanding) : '—'}</dd>
+                </div>
+                <div>
+                  <dt>Owed by us</dt>
+                  <dd>{payables ? money(payables.totals.outstanding) : '—'}</dd>
+                </div>
+              </dl>
             </section>
           )}
 
           {/*
-            Only for a company that keeps more than one currency. What the foreign balances have
-            done since they were booked — realised on bills already settled, unrealised on those
-            still open, and the part no rate could be found for, which is stated above rather than
-            folded into either.
+            What the foreign balances have done since they were booked — realised on bills settled,
+            unrealised on those still open. A bill with no closing rate is named above, not folded in.
           */}
           {multiCurrency && forex && (
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Currency exposure</h2>
-              <table className={styles.figures}>
-                <tbody>
-                  <tr className={styles.figureRow}>
-                    <td>
-                      <Link className={styles.figureLink} to={`${base}/reports?report=forex`}>
-                        Realised gain or loss
-                      </Link>
-                    </td>
-                    <td className={styles.amount}>{money(forex.totals.realised)}</td>
-                  </tr>
-                  <tr className={styles.figureRow}>
-                    <td>
-                      <Link className={styles.figureLink} to={`${base}/reports?report=forex`}>
-                        Unrealised, on bills still open
-                      </Link>
-                    </td>
-                    <td className={styles.amount}>{money(forex.totals.unrealised)}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr className={styles.total}>
-                    <th scope="row">Unadjusted</th>
-                    <td className={styles.amount}>{money(forex.totals.unadjusted)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+            <section className={styles.card} style={{ '--i': 7 } as CSSProperties}>
+              <div className={styles.cardHead}>
+                <h2 className={styles.cardTitle}>Currency exposure</h2>
+                <Link
+                  className={cn(styles.more, styles.cardRight)}
+                  to={`${base}/reports?report=forex`}
+                >
+                  Forex report <ArrowRight size={14} aria-hidden="true" />
+                </Link>
+              </div>
+              <dl className={styles.outstanding}>
+                <div>
+                  <dt>Realised gain or loss</dt>
+                  <dd>{money(forex.totals.realised)}</dd>
+                </div>
+                <div>
+                  <dt>Unrealised, on bills still open</dt>
+                  <dd>{money(forex.totals.unrealised)}</dd>
+                </div>
+                <div className={styles.outstandingTotal}>
+                  <dt>Unadjusted</dt>
+                  <dd>{money(forex.totals.unadjusted)}</dd>
+                </div>
+              </dl>
             </section>
           )}
+
+          {/*
+            The master screens, for someone who does not yet know which one they want. Unlike the
+            voucher types these have no function key, so nothing else on screen is offering them.
+          */}
+          <section className={styles.card} style={{ '--i': 8 } as CSSProperties}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitle}>Masters</h2>
+            </div>
+            <div className={styles.masters}>
+              <Link className={styles.master} to={`${base}?tab=accounts`}>
+                <FolderTree size={17} aria-hidden="true" />
+                <span>Groups &amp; ledgers — chart of accounts</span>
+              </Link>
+              <Link className={styles.master} to={`${base}?tab=parties`}>
+                <Users size={17} aria-hidden="true" />
+                <span>Parties — customers &amp; suppliers</span>
+              </Link>
+              <Link className={styles.master} to={`${base}?tab=voucher-types`}>
+                <Files size={17} aria-hidden="true" />
+                <span>Voucher types &amp; numbering</span>
+                <span className={styles.count}>{voucherTypes.length}</span>
+              </Link>
+              {multiCurrency && (
+                <Link className={styles.master} to={`${base}?tab=currencies`}>
+                  <Coins size={17} aria-hidden="true" />
+                  <span>Currencies &amp; rates</span>
+                </Link>
+              )}
+              <Link className={styles.master} to={`${base}?tab=financial-years`}>
+                <CalendarRange size={17} aria-hidden="true" />
+                <span>Financial years</span>
+              </Link>
+              <Link className={styles.master} to={`${base}?tab=settings`}>
+                <Settings2 size={17} aria-hidden="true" />
+                <span>Features &amp; settings</span>
+              </Link>
+            </div>
+          </section>
         </div>
       </div>
     </div>

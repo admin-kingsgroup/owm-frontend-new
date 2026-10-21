@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatMoney, formatMoneyWithSide } from './format-money';
+import { formatCompactMoney, formatMoney, formatMoneyWithSide } from './format-money';
 
 /**
  * Amounts arrive as decimal strings because they are Decimal128 on the server. What matters here
@@ -132,5 +132,24 @@ describe('regional grouping', () => {
     it('blanks the nil whatever else is asked of it', () => {
       expect(formatMoney('0', { blankZero: true, currency: 'INR', country: 'IN' })).toBe('');
     });
+  });
+});
+
+describe('formatCompactMoney', () => {
+  it('shortens in the region’s own units — lakh and crore in India', () => {
+    expect(formatCompactMoney('12034567', { currency: 'INR', country: 'IN' })).toBe('₹1.2Cr');
+    expect(formatCompactMoney(5826593, { currency: 'INR', country: 'IN' })).toBe('₹58.27L');
+  });
+
+  it('uses thousand and million elsewhere', () => {
+    expect(formatCompactMoney(2350000, { currency: 'USD', country: 'US' })).toBe('$2.35M');
+  });
+
+  it('writes a negative with a minus rather than brackets, for an axis', () => {
+    expect(formatCompactMoney(-45000, { country: 'IN' })).toBe('−45K');
+  });
+
+  it('shows a malformed figure as itself', () => {
+    expect(formatCompactMoney('n/a')).toBe('n/a');
   });
 });

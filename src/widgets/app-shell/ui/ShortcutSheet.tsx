@@ -1,7 +1,6 @@
 import { Modal } from '@/shared/ui';
 
 import type { ButtonBarAction } from '../model/button-bar';
-import type { Menu } from '../model/menus';
 import styles from './ShortcutSheet.module.css';
 
 interface ShortcutSheetProps {
@@ -9,7 +8,6 @@ interface ShortcutSheetProps {
   onClose: () => void;
   /** The bar as it stands on the screen behind this sheet. */
   actions: ButtonBarAction[];
-  menus: Menu[];
 }
 
 /**
@@ -20,11 +18,14 @@ interface ShortcutSheetProps {
  * withdraws an action stops advertising it. That matters more here than anywhere else — a shortcut
  * sheet that lies is worse than no sheet, because it is believed.
  */
-export function ShortcutSheet({ open, onClose, actions, menus }: ShortcutSheetProps) {
+export function ShortcutSheet({ open, onClose, actions }: ShortcutSheetProps) {
   const groups: Array<{ name: string; rows: Array<{ key: string; label: string }> }> = [
     {
-      name: 'Menus',
-      rows: menus.map((menu) => ({ key: `Alt+${menu.mnemonic}`, label: menu.label })),
+      name: 'Anywhere',
+      rows: [
+        { key: 'Ctrl+K', label: 'Search and jump to any page, report or company' },
+        { key: '?', label: 'This list of shortcuts' },
+      ],
     },
   ];
 

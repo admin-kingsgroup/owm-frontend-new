@@ -166,3 +166,78 @@
 .optionAll .optionCheck {
   color: var(--ink-faint);
 }
+
+/* ---- The sidebar's version ------------------------------------------- */
+
+.railTrigger {
+  width: 100%;
+  max-width: none;
+  gap: 0.625rem;
+  padding: 0.5625rem 0.625rem;
+  border-radius: var(--radius-lg);
+  background-color: rgba(255, 255, 255, 0.05);
+  text-align: left;
+}
+
+.chip,
+.optionChip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 0.5rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chip {
+  width: 1.875rem;
+  height: 1.875rem;
+  font-size: 0.6875rem;
+}
+
+.chipEmpty {
+  background: var(--chrome-chip-bg);
+  color: var(--chrome-chip-fg);
+}
+
+.optionChip {
+  width: 1.375rem;
+  height: 1.375rem;
+  font-size: 0.5625rem;
+}
+
+.railText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.railMeta {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  color: var(--sidebar-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The sidebar's dropdown opens as wide as the rail and a little wider, so names are not cut. */
+.railTrigger + .menu {
+  min-width: 15rem;
+}
+
+/* Icons only, on a tablet held sideways — the chip alone, with the name in its title. */
+@media (max-width: 75rem) and (min-width: 60.0625rem) {
+  .railTrigger {
+    justify-content: center;
+    width: auto;
+    padding: 0.375rem;
+  }
+
+  .railTrigger .railText,
+  .railTrigger .chevron,
+  .railTrigger .triggerInactive {
+    display: none;
+  }
+}

@@ -1,22 +1,70 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Building2, ArrowRight, Pencil } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  CalendarCheck,
+  CircleCheck,
+  CircleDollarSign,
+  FileClock,
+  Landmark,
+  Layers,
+  Pencil,
+  Plus,
+  TrendingUp,
+  UserX,
+} from 'lucide-react';
 
-import { companyStatusVariant, companyTypeLabel, useCompanyStore } from '@/entities/company';
+import {
+  companyAccent,
+  companyInitials,
+  companyStatusVariant,
+  companyTypeLabel,
+  useCompanyStore,
+} from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { getGroupOverview } from '@/entities/report';
 import type { CompanyOverview, GroupOverview } from '@/entities/report';
 import { CreateCompanyForm, EditCompanyForm } from '@/features/company';
-import { Button, Modal, Loading, EmptyState, Badge, Sparkline, IconButton } from '@/shared/ui';
-import { cn, formatMoney, getErrorMessage } from '@/shared/lib';
+import {
+  Badge,
+  Button,
+  ChartLegend,
+  EmptyState,
+  IconButton,
+  KpiTile,
+  LineChart,
+  Loading,
+  Modal,
+} from '@/shared/ui';
+import { cn, formatCompactMoney, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
 
 import styles from './CompaniesPage.module.css';
 
+/** The colours a group chart gives its companies, in order, never cycled — a fifth is left out. */
+const SERIES = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'];
+
+interface Tile {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  value: number;
+  format: (value: number) => string;
+  negative: boolean;
+  trend?: number[];
+  trendColor?: string;
+}
+
+/**
+ * The group overview: every company's cash, profit and unfinished work side by side, and the way
+ * into any one of them.
+ */
 export function CompaniesPage() {
   const navigate = useNavigate();
 
-  // One shared list, so the topbar switcher and this page cannot disagree and a company created
-  // here is visible everywhere immediately.
+  // One shared list, so the switcher and this page cannot disagree and a company created here is
+  // visible everywhere immediately.
   const companies = useCompanyStore((state) => state.companies);
   const companiesLoaded = useCompanyStore((state) => state.loaded);
   const companiesError = useCompanyStore((state) => state.error);
@@ -52,9 +100,7 @@ export function CompaniesPage() {
 
   /**
    * Which country's conventions to group a figure by. A per-currency total has no single company
-   * behind it, so it takes the country of the first company using that currency — which is the
-   * right answer whenever a currency belongs to one region, and no worse than the browser's guess
-   * when it does not.
+   * behind it, so it takes the country of the first company using that currency.
    */
   const countryOf = useCallback(
     (currency: string) => companies?.find((c) => c.baseCurrency === currency)?.country,
@@ -67,50 +113,81 @@ export function CompaniesPage() {
   );
 
   /**
-   * The group strip. Currencies are listed separately because the API totals them separately —
-   * a group holding an INR company beside a USD one has no single cash position.
+   * One currency's companies added month by month — the shape behind a group total. Only companies
+   * that could be read count, and only in their own currency: a group never has one cash position
+   * across rupees and dollars.
    */
-  const groupStats = useMemo(() => {
+  const trendFor = useCallback(
+    (currency: string, field: 'cashAndBank' | 'netProfit') => {
+      const byMonth = new Map<string, number>();
+      for (const row of overview?.companies ?? []) {
+        if (row.error || row.baseCurrency !== currency) continue;
+        for (const point of row.trend) {
+          byMonth.set(point.month, (byMonth.get(point.month) ?? 0) + Number(point[field]));
+        }
+      }
+      return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+    },
+    [overview],
+  );
+
+  /**
+   * The headline tiles. Currencies are kept apart because the API totals them apart — a group
+   * holding an INR company beside a USD one has no single cash position.
+   */
+  const tiles = useMemo<Tile[]>(() => {
     if (!overview) return [];
 
     const { totals } = overview;
     const multiCurrency = totals.byCurrency.length > 1;
 
-    // With a single company the strip would restate that company's own card word for word. The
+    // With a single company the tiles would restate that company's own card word for word. The
     // counts still earn their place, because the card does not carry them.
-    const currencyStats =
+    const currencyTiles: Tile[] =
       totals.companyCount <= 1
         ? []
-        : totals.byCurrency.flatMap((total) => {
+        : totals.byCurrency.flatMap((total, index) => {
             const country = countryOf(total.currency);
+            const format = (value: number) =>
+              formatMoney(value, { currency: total.currency, country });
             return [
               {
                 key: `${total.currency}-cash`,
                 label: multiCurrency ? `Cash & bank · ${total.currency}` : 'Cash & bank',
-                value: formatMoney(total.cashAndBank, { currency: total.currency, country }),
+                icon: index === 0 ? <Landmark /> : <CircleDollarSign />,
+                value: Number(total.cashAndBank),
+                format,
                 negative: Number(total.cashAndBank) < 0,
+                trend: trendFor(total.currency, 'cashAndBank'),
+                trendColor: SERIES[index % SERIES.length],
               },
               {
                 key: `${total.currency}-profit`,
                 label: multiCurrency ? `Net profit · ${total.currency}` : 'Net profit',
-                value: formatMoney(total.netProfit, { currency: total.currency, country }),
+                icon: <TrendingUp />,
+                value: Number(total.netProfit),
+                format,
                 negative: Number(total.netProfit) < 0,
               },
             ];
           });
 
     return [
-      ...currencyStats,
+      ...currencyTiles,
       {
         key: 'drafts',
         label: 'Awaiting posting',
-        value: String(totals.draftVoucherCount),
+        icon: <FileClock />,
+        value: totals.draftVoucherCount,
+        format: (value: number) => String(Math.round(value)),
         negative: false,
       },
       {
         key: 'years',
         label: 'Open years',
-        value: `${totals.openYearCount} of ${totals.companyCount}`,
+        icon: <CalendarCheck />,
+        value: totals.openYearCount,
+        format: (value: number) => `${Math.round(value)} of ${totals.companyCount}`,
         negative: false,
       },
       // Only worth a slot when there is something to explain — it is the reason the figures above
@@ -120,13 +197,94 @@ export function CompaniesPage() {
             {
               key: 'inactive',
               label: 'Deactivated',
-              value: `${totals.inactiveCount} · not counted`,
+              icon: <UserX />,
+              value: totals.inactiveCount,
+              format: (value: number) => `${Math.round(value)} · not counted`,
               negative: false,
             },
           ]
         : []),
     ];
+  }, [overview, countryOf, trendFor]);
+
+  /**
+   * The group chart: cash and bank month by month for each company in the group's main currency.
+   * One currency per chart, because one axis cannot hold rupees and dollars honestly.
+   */
+  const chart = useMemo(() => {
+    const rows = (overview?.companies ?? []).filter((row) => !row.error && row.trend.length > 1);
+    if (rows.length === 0) return null;
+
+    const counts = new Map<string, number>();
+    rows.forEach((row) => counts.set(row.baseCurrency, (counts.get(row.baseCurrency) ?? 0) + 1));
+    const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const chosen = rows.filter((row) => row.baseCurrency === currency).slice(0, SERIES.length);
+    const months = [
+      ...new Set(chosen.flatMap((row) => row.trend.map((point) => point.month))),
+    ].sort();
+    if (months.length < 2) return null;
+
+    const country = countryOf(currency);
+    const short = new Intl.DateTimeFormat(localeFor(country), { month: 'short', timeZone: 'UTC' });
+    const long = new Intl.DateTimeFormat(localeFor(country), {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+
+    return {
+      currency,
+      country,
+      labels: months.map((month) => short.format(new Date(month))),
+      tooltipLabels: months.map((month) => long.format(new Date(month))),
+      series: chosen.map((row, index) => {
+        const byMonth = new Map(row.trend.map((point) => [point.month, Number(point.cashAndBank)]));
+        return {
+          label: row.name,
+          color: SERIES[index],
+          values: months.map((month) => byMonth.get(month) ?? null),
+        };
+      }),
+    };
   }, [overview, countryOf]);
+
+  /** What wants doing, company by company — each line a link to where it is done. */
+  const attention = useMemo(() => {
+    const items: Array<{ key: string; company: string; text: string; to: string; bad: boolean }> =
+      [];
+    for (const row of overview?.companies ?? []) {
+      if (row.status !== 'ACTIVE') continue;
+      if (row.error) {
+        items.push({
+          key: `${row.companyId}-error`,
+          company: row.name,
+          text: row.error,
+          to: `/companies/${row.companyId}`,
+          bad: true,
+        });
+        continue;
+      }
+      if (row.draftVoucherCount > 0) {
+        items.push({
+          key: `${row.companyId}-drafts`,
+          company: row.name,
+          text: `${row.draftVoucherCount} draft ${row.draftVoucherCount === 1 ? 'voucher' : 'vouchers'} awaiting posting`,
+          to: `/companies/${row.companyId}/vouchers?status=DRAFT`,
+          bad: false,
+        });
+      }
+      if (row.financialYearStatus === 'CLOSED') {
+        items.push({
+          key: `${row.companyId}-closed`,
+          company: row.name,
+          text: `Financial year ${row.financialYearLabel ?? ''} is closed to new vouchers`,
+          to: `/companies/${row.companyId}?tab=financial-years`,
+          bad: false,
+        });
+      }
+    }
+    return items;
+  }, [overview]);
 
   function handleCreated(company: Company) {
     upsertCompany(company);
@@ -139,11 +297,7 @@ export function CompaniesPage() {
     upsertCompany(company);
   }
 
-  function renderFigures(
-    figures: CompanyOverview | undefined,
-    companyId: string,
-    country?: string,
-  ) {
+  function renderFigures(figures: CompanyOverview | undefined, company: Company) {
     if (!figures) return null;
 
     // A company that cannot be reported on still belongs on the list. Saying why beats showing
@@ -151,6 +305,9 @@ export function CompaniesPage() {
     if (figures.error) {
       return <p className={styles.cardNotice}>{figures.error}</p>;
     }
+
+    const money = (value: string) =>
+      formatMoney(value, { currency: figures.baseCurrency, country: company.country });
 
     return (
       <>
@@ -163,7 +320,7 @@ export function CompaniesPage() {
                 Number(figures.cashAndBank) < 0 && styles.figureNegative,
               )}
             >
-              {formatMoney(figures.cashAndBank, { currency: figures.baseCurrency, country })}
+              {money(figures.cashAndBank)}
             </span>
           </div>
           <div className={styles.figure}>
@@ -174,22 +331,36 @@ export function CompaniesPage() {
                 Number(figures.netProfit) < 0 && styles.figureNegative,
               )}
             >
-              {formatMoney(figures.netProfit, { currency: figures.baseCurrency, country })}
+              {money(figures.netProfit)}
             </span>
           </div>
-          {/*
-            The line is normalised to its own range, so it shows direction of travel only — the
-            figure beside it carries the amount. Nothing is drawn before two months exist, rather
-            than a flat line implying a history that is not there.
-          */}
-          {figures.trend.length > 1 && (
-            <Sparkline
-              values={figures.trend.map((point) => Number(point.cashAndBank))}
-              color={Number(figures.netProfit) < 0 ? 'var(--data-2)' : 'var(--data-1)'}
-              label={`Cash and bank over ${figures.trend.length} months`}
-            />
-          )}
         </div>
+
+        {/*
+          Direction of travel only — the figure above carries the amount. Nothing is drawn before two
+          months exist, rather than a flat line implying a history that is not there.
+        */}
+        {figures.trend.length > 1 && (
+          <div className={styles.cardTrend}>
+            <LineChart
+              mini
+              area
+              height={52}
+              labels={figures.trend.map((point) => point.month.slice(0, 7))}
+              series={[
+                {
+                  label: 'Cash & bank',
+                  color: companyAccent(company),
+                  values: figures.trend.map((point) => Number(point.cashAndBank)),
+                },
+              ]}
+              formatValue={(value) =>
+                formatMoney(value, { currency: figures.baseCurrency, country: company.country })
+              }
+              caption={`Cash and bank over ${figures.trend.length} months`}
+            />
+          </div>
+        )}
 
         <div className={styles.cardTags}>
           {figures.financialYearLabel && (
@@ -207,7 +378,7 @@ export function CompaniesPage() {
             <button
               type="button"
               className={styles.tagAction}
-              onClick={() => navigate(`/companies/${companyId}/vouchers`)}
+              onClick={() => navigate(`/companies/${company.id}/vouchers`)}
             >
               {figures.draftVoucherCount} awaiting posting
             </button>
@@ -220,9 +391,19 @@ export function CompaniesPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Companies</h1>
-          <p className={styles.subtitle}>Every company gets its own chart of accounts and books.</p>
+        <div className={styles.titles}>
+          <span className={styles.eyebrow}>
+            <Layers size={13} aria-hidden="true" />
+            KBiz360 Group
+            {companies
+              ? ` · ${companies.length} ${companies.length === 1 ? 'company' : 'companies'}`
+              : ''}
+          </span>
+          <h1 className={styles.title}>Group overview</h1>
+          <p className={styles.subtitle}>
+            Cash, profit and unfinished work for every company side by side. Totals are kept per
+            currency, so dollars are never added to rupees.
+          </p>
         </div>
         <Button type="button" variant="primary" onClick={() => setCreateModalOpen(true)}>
           <Plus size={16} /> New company
@@ -230,9 +411,8 @@ export function CompaniesPage() {
       </div>
 
       {/*
-        `loaded` rather than `companies !== null`: a failed request has no data either, and
-        treating the two the same left the error message sitting above a spinner that never
-        stopped.
+        `loaded` rather than `companies !== null`: a failed request has no data either, and treating
+        the two the same left the error message sitting above a spinner that never stopped.
       */}
       {!companiesLoaded ? (
         <Loading label="Loading companies…" />
@@ -255,15 +435,20 @@ export function CompaniesPage() {
         />
       ) : (
         <>
-          {groupStats.length > 0 && (
+          {tiles.length > 0 && (
             <div className={styles.totals}>
-              {groupStats.map((stat) => (
-                <div key={stat.key} className={styles.stat}>
-                  <span className={styles.statLabel}>{stat.label}</span>
-                  <span className={cn(styles.statValue, stat.negative && styles.figureNegative)}>
-                    {stat.value}
-                  </span>
-                </div>
+              {tiles.map((tile, index) => (
+                <KpiTile
+                  key={tile.key}
+                  index={index}
+                  label={tile.label}
+                  icon={tile.icon}
+                  value={tile.value}
+                  format={tile.format}
+                  negative={tile.negative}
+                  trend={tile.trend}
+                  trendColor={tile.trendColor}
+                />
               ))}
             </div>
           )}
@@ -274,29 +459,120 @@ export function CompaniesPage() {
             </p>
           )}
 
+          {(chart || overview) && (
+            <div className={cn(styles.panels, !chart && styles.panelsSingle)}>
+              {chart && (
+                <section className={styles.panel} style={{ '--i': 4 } as CSSProperties}>
+                  <div className={styles.panelHead}>
+                    <h2 className={styles.panelTitle}>Cash &amp; bank by company</h2>
+                    <span className={styles.panelSub}>{chart.currency}</span>
+                    <ChartLegend
+                      className={styles.panelRight}
+                      items={chart.series.map((entry) => ({
+                        label: entry.label,
+                        color: entry.color,
+                        line: true,
+                      }))}
+                    />
+                  </div>
+                  <LineChart
+                    area
+                    height={250}
+                    labels={chart.labels}
+                    tooltipLabels={chart.tooltipLabels}
+                    series={chart.series}
+                    formatValue={(value) =>
+                      formatMoney(value, { currency: chart.currency, country: chart.country })
+                    }
+                    formatAxis={(value) =>
+                      formatCompactMoney(value, {
+                        currency: chart.currency,
+                        country: chart.country,
+                      })
+                    }
+                    caption={`Cash and bank month by month for each ${chart.currency} company`}
+                  />
+                </section>
+              )}
+
+              {overview && (
+                <section className={styles.panel} style={{ '--i': 5 } as CSSProperties}>
+                  <div className={styles.panelHead}>
+                    <h2 className={styles.panelTitle}>Needs attention</h2>
+                    <span className={styles.panelSub}>across the group</span>
+                  </div>
+                  <ul className={styles.attention}>
+                    {attention.map((item) => (
+                      <li key={item.key} className={styles.attentionRow}>
+                        <i
+                          className={cn(styles.stripe, item.bad && styles.stripeBad)}
+                          aria-hidden="true"
+                        />
+                        <div className={styles.attentionText}>
+                          <b>{item.company}</b>
+                          <span>{item.text}</span>
+                        </div>
+                        <Link className={styles.attentionLink} to={item.to}>
+                          Review <ArrowRight size={14} aria-hidden="true" />
+                        </Link>
+                      </li>
+                    ))}
+                    {attention.length === 0 && (
+                      <li className={styles.attentionRow}>
+                        <i className={cn(styles.stripe, styles.stripeGood)} aria-hidden="true" />
+                        <div className={styles.attentionText}>
+                          <b>Nothing outstanding</b>
+                          <span>No drafts, no closed years, every company readable.</span>
+                        </div>
+                        <CircleCheck size={18} className={styles.good} aria-hidden="true" />
+                      </li>
+                    )}
+                  </ul>
+                </section>
+              )}
+            </div>
+          )}
+
+          <div className={styles.listHead}>
+            <h2 className={styles.panelTitle}>Companies</h2>
+            <span className={styles.panelSub}>Open one to work in its books</span>
+          </div>
+
           <div className={styles.grid}>
-            {companies.map((company) => (
-              <div key={company.id} className={styles.card}>
+            {companies.map((company, index) => (
+              <div
+                key={company.id}
+                className={styles.card}
+                style={{ '--i': index + 6 } as CSSProperties}
+              >
                 <div className={styles.cardHeader}>
-                  <span className={styles.cardCode}>{company.code}</span>
+                  <span
+                    className={styles.chip}
+                    style={{ background: companyAccent(company) }}
+                    aria-hidden="true"
+                  >
+                    {companyInitials(company)}
+                  </span>
+                  <div className={styles.cardIdentity}>
+                    <p className={styles.cardName}>{company.name}</p>
+                    <p className={styles.cardMeta}>
+                      {/*
+                        Three companies of two kinds sit in this list. Without the type they are told
+                        apart only by a code someone has to remember the meaning of.
+                      */}
+                      {companyTypeLabel(company.type)} · {company.baseCurrency} · {company.country}
+                    </p>
+                  </div>
                   <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
                 </div>
-                <p className={styles.cardName}>{company.name}</p>
-                <p className={styles.cardMeta}>
-                  {/*
-                    Three companies of two different kinds sit in this list. Without the type they
-                    are told apart only by a code someone has to remember the meaning of.
-                  */}
-                  {companyTypeLabel(company.type)} · {company.baseCurrency} · {company.country}
-                </p>
 
-                {renderFigures(figuresById.get(company.id), company.id, company.country)}
+                {renderFigures(figuresById.get(company.id), company)}
 
                 <div className={styles.cardFooter}>
+                  <span className={styles.cardCode}>{company.code}</span>
                   {/*
                     A real link, and — through .cardLink::after — one whose hit area is the whole
-                    card. The 52x16px of text on its own was the only way into a company, so a
-                    click anywhere else on the card selected text and read as an unresponsive card.
+                    card, so a click anywhere on it opens the company rather than selecting text.
                   */}
                   <Link
                     to={`/companies/${company.id}`}

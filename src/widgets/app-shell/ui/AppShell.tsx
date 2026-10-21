@@ -1,6 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  Building2,
+  FileText,
+  Keyboard,
+  LayoutGrid,
+  LogOut,
+  Moon,
+  Plus,
+  Sun,
+} from 'lucide-react';
 
 import { useCompanyStore } from '@/entities/company';
 import {
@@ -9,9 +19,10 @@ import {
   raisableVoucherTypes,
 } from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
-import { cn, formatCalendarDay } from '@/shared/lib';
-import { useFocusTrap } from '@/shared/hooks';
-import { ErrorBoundary, ToastViewport } from '@/shared/ui';
+import { setTheme } from '@/shared/hooks';
+import { formatCalendarDay } from '@/shared/lib';
+import { CommandPalette, ErrorBoundary, ToastViewport } from '@/shared/ui';
+import type { CommandItem } from '@/shared/ui';
 
 import {
   ButtonBarContext,
@@ -23,29 +34,31 @@ import {
 import type { ButtonBarAction } from '../model/button-bar';
 import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-company-context';
 import { useVoucherTypes } from '../model/use-voucher-types';
-import { ButtonBar } from './ButtonBar';
 import { buildMenus, periodQuery, raiseVoucherPath } from '../model/menus';
-import { MenuBar } from './MenuBar';
+import { buildNav, screenName } from '../model/nav';
+import { ButtonBar } from './ButtonBar';
+import { MobileNav } from './MobileNav';
+import type { MobileSheet } from './MobileNav';
 import { ShortcutSheet } from './ShortcutSheet';
-import { CompanySwitcher } from './CompanySwitcher';
-import { UserMenu } from './UserMenu';
+import { NAV_ICONS } from './nav-icons';
+import { Sidebar } from './Sidebar';
+import { TopBar } from './TopBar';
 import styles from './AppShell.module.css';
 
+/**
+ * The frame every signed-in screen sits in: the sidebar on the left, the bar across the top, the
+ * key strip down the right, and one scrolling workspace in the middle. On a phone the sidebar and
+ * the strip give way to a tab bar along the bottom.
+ */
 export function AppShell() {
   const { companyId } = useParams<{ companyId?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const navPanelRef = useRef<HTMLElement>(null);
 
-  /**
-   * Only ever true below 60rem, where the menu bar is an overlay rather than part of the page.
-   * Above it the bar is always there and this is inert.
-   */
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // Focus stays in the drawer while it is open, page scroll is locked behind it, and focus returns
-  // to the button that opened it. Shared with the modal — see useFocusTrap.
-  useFocusTrap(menuOpen, navPanelRef);
+  /** The search over everything, opened with Ctrl+K or the top bar's search box. */
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Which of the phone's sheets is up, if any. */
+  const [sheet, setSheet] = useState<MobileSheet>(null);
 
   /**
    * The company list, shared by the switcher, the menus and the context strip. The menus need it
@@ -161,6 +174,14 @@ export function AppShell() {
       },
 
       { group: 'Go to', key: 'Alt+O', label: 'Dashboard', onSelect: go(base) },
+      /* Printed beside Masters in the sidebar, so bound here but not drawn in the strip. */
+      {
+        group: 'Go to',
+        key: 'Alt+M',
+        label: 'Masters',
+        onSelect: go(`${base}?tab=accounts`),
+        keyOnly: true,
+      },
       ...(isPortfolio
         ? [
             {
@@ -277,9 +298,26 @@ export function AppShell() {
     shell's Sales key answer instead. Where the bar *draws* Data entry is a separate question, and
     the bar answers it — see PINNED_FIRST.
   */
+  /*
+    The group overview is reachable from everywhere, inside a company or not — it is where the
+    sidebar's first item goes, and Alt+G is printed beside it there.
+  */
+  const globalActions = useMemo<ButtonBarAction[]>(
+    () => [
+      {
+        group: 'Go to',
+        key: 'Alt+G',
+        label: 'Group overview',
+        onSelect: () => navigate('/companies'),
+        keyOnly: true,
+      },
+    ],
+    [navigate],
+  );
+
   const actions = useMemo(
-    () => [...pageActions, ...dataEntry, ...shellActions],
-    [dataEntry, pageActions, shellActions],
+    () => [...pageActions, ...dataEntry, ...shellActions, ...globalActions],
+    [dataEntry, pageActions, shellActions, globalActions],
   );
 
   /**
@@ -312,171 +350,213 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [actions]);
 
+  /*
+    Ctrl+K opens the search from anywhere — even while typing, since it types nothing — and "?"
+    opens the shortcut sheet, except in a field where a question mark is just a question mark.
+  */
   useEffect(() => {
-    if (!menuOpen) return;
-
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (event.key === '?' && !isTypingTarget(event.target) && !hasOpenDialog()) {
+        event.preventDefault();
+        openHelp();
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [menuOpen]);
+  });
+
+  /* The shortcut sheet is a parameter on whatever screen is open, so Back closes it. */
+  function openHelp() {
+    const params = new URLSearchParams(searchParams);
+    params.set('help', 'shortcuts');
+    setSearchParams(params);
+  }
+
+  const nav = useMemo(
+    () => buildNav(companyId, company, location.pathname, location.search, isAdmin),
+    [companyId, company, location.pathname, location.search, isAdmin],
+  );
+  const screen = screenName(location.pathname, location.search, companyId);
+  const logout = useAuthStore((state) => state.logout);
+
+  /**
+   * What the search can reach: every destination the menus carry — each report, register and
+   * master screen, with the same feature rules deciding which exist — plus the companies and a few
+   * actions. The menus stopped being drawn as a bar; they did not stop being the map of the product.
+   */
+  const commands = useMemo<CommandItem[]>(() => {
+    const seen = new Set<string>();
+    const items: CommandItem[] = [];
+    const add = (item: CommandItem) => {
+      if (seen.has(item.id)) return;
+      seen.add(item.id);
+      items.push(item);
+    };
+
+    for (const entry of nav) {
+      const Icon = NAV_ICONS[entry.icon];
+      add({
+        id: `to:${entry.to}`,
+        group: 'Go to',
+        label: entry.label,
+        hint: entry.hint,
+        icon: <Icon />,
+        href: entry.to,
+        onSelect: () => navigate(entry.to),
+      });
+    }
+
+    for (const menu of menus) {
+      if (menu.id === 'help') continue;
+      let section = '';
+      for (const item of menu.items) {
+        section = item.section ?? section;
+        const creates = menu.id === 'transactions' && section === 'Create';
+        add({
+          /* One entry per destination: Financial years sits under two menus and is one place. */
+          id: `to:${item.to}`,
+          group: creates ? 'Create' : menu.label,
+          label: item.label,
+          hint: item.hint,
+          icon: creates ? <Plus /> : <FileText />,
+          href: item.to,
+          onSelect: () => navigate(item.to),
+        });
+      }
+    }
+
+    for (const entry of companies ?? []) {
+      add({
+        id: `company:${entry.id}`,
+        group: 'Switch company',
+        label: entry.name,
+        hint: entry.type === 'ANALYTICS' ? 'Portfolio' : entry.baseCurrency,
+        icon: entry.type === 'ANALYTICS' ? <BriefcaseBusiness /> : <Building2 />,
+        keywords: entry.code,
+        href: `/companies/${entry.id}`,
+        onSelect: () => navigate(`/companies/${entry.id}`),
+      });
+    }
+
+    add({
+      id: 'act:group',
+      group: 'Actions',
+      label: 'Group overview — all companies',
+      icon: <LayoutGrid />,
+      onSelect: () => navigate('/companies'),
+    });
+    add({
+      id: 'act:light',
+      group: 'Actions',
+      label: 'Light theme',
+      icon: <Sun />,
+      onSelect: () => setTheme('light'),
+    });
+    add({
+      id: 'act:dark',
+      group: 'Actions',
+      label: 'Dark theme',
+      icon: <Moon />,
+      onSelect: () => setTheme('dark'),
+    });
+    add({
+      id: 'act:keys',
+      group: 'Actions',
+      label: 'Keyboard shortcuts',
+      hint: '?',
+      icon: <Keyboard />,
+      onSelect: openHelp,
+    });
+    add({
+      id: 'act:logout',
+      group: 'Actions',
+      label: 'Log out',
+      icon: <LogOut />,
+      onSelect: () => {
+        logout().catch(() => {});
+      },
+    });
+    return items;
+    // openHelp reads the search params, so rebuilding on them is what keeps it current.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav, menus, companies, navigate, logout, searchParams]);
 
   return (
     <div className={styles.shell}>
-      {/* Only ever visible below 60rem, where the menus cover the page rather than sitting on it. */}
-      {menuOpen && (
-        <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />
-      )}
+      <Sidebar items={nav} companyId={companyId} companies={companies} onShortcuts={openHelp} />
 
-      <header className={styles.topbar}>
-        <button
-          type="button"
-          className={styles.menuButton}
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation"
-          aria-expanded={menuOpen}
-          aria-controls="app-navigation"
-        >
-          <Menu size={20} />
-        </button>
+      <TopBar
+        company={company}
+        screen={screen}
+        context={readout.context}
+        onSearch={() => setPaletteOpen(true)}
+        onShortcuts={openHelp}
+        onCompanies={() => setSheet('companies')}
+      />
 
-        <div className={styles.brand}>
-          <span className={styles.brandMark}>K</span>
-          <span className={styles.brandName}>KBiz360 OWM</span>
-        </div>
+      <main className={styles.content}>
+        {/*
+          The context strip used to be the only thing naming the company and the year on a printed
+          statement. It is gone from the screen — the top bar's chip says it there — so this line
+          exists for paper alone.
+        */}
+        {company && (
+          <p className={styles.printContext}>
+            {company.name} · {company.code}
+            {period &&
+              ` · Financial year ${period.financialYearLabel} (${formatCalendarDay(period.from, company.country)} – ${formatCalendarDay(period.to, company.country)})`}
+            {` · Figures in ${company.baseCurrency}`}
+            {difference !== null &&
+              (balanced ? ' · Books balanced' : ` · Difference ${difference}`)}
+            {user && ` · ${user.name}, ${today}`}
+          </p>
+        )}
+        {/*
+          Keyed on the path so navigating away clears a caught error. React boundaries do not
+          reset themselves, and without the key one broken screen would follow you around the app.
+        */}
+        <ErrorBoundary key={location.pathname}>
+          <CompanyReadoutProvider value={readout}>
+            <ButtonBarContext.Provider value={buttonBarContext}>
+              <Outlet />
+            </ButtonBarContext.Provider>
+          </CompanyReadoutProvider>
+        </ErrorBoundary>
+      </main>
 
-        <nav
-          id="app-navigation"
-          ref={navPanelRef}
-          className={cn(styles.navPanel, menuOpen && styles.navPanelOpen)}
-          // Announced as a dialog only when it is one; above 60rem it is simply part of the page.
-          {...(menuOpen ? { role: 'dialog', 'aria-modal': true, 'aria-label': 'Navigation' } : {})}
-        >
-          <button
-            type="button"
-            className={styles.drawerClose}
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close navigation"
-          >
-            <X size={18} />
-          </button>
-          <MenuBar menus={menus} onNavigate={() => setMenuOpen(false)} />
-        </nav>
+      <ButtonBar actions={actions} />
 
-        {/* Always present, even when the switcher renders nothing: the topbar pushes this group to
-            the end, so dropping it would slide the user menu left while the list is still loading. */}
-        <div className={styles.topbarEnd}>
-          <CompanySwitcher companyId={companyId} companies={companies} />
-          <UserMenu />
-        </div>
-      </header>
+      <MobileNav
+        companyId={companyId}
+        company={company}
+        companies={companies}
+        create={dataEntry}
+        screenActions={pageActions.filter((action) => !action.keyOnly)}
+        sheet={sheet}
+        onSheet={setSheet}
+        onSearch={() => setPaletteOpen(true)}
+      />
 
-      {/*
-        The context strip. Which company, which year, which period and which currency every figure
-        below is in — stated once for the whole application, because a statement read against the
-        wrong year is not a mistake anyone catches by looking at the figures.
-      */}
-      {company && (
-        <div className={styles.context}>
-          {/*
-            No company name here.
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        items={commands}
+        placeholder="Jump to a page, report, register or company…"
+      />
 
-            It was the first item on this strip while the switcher hid itself on an installation
-            holding one company. The switcher is now the product's only company control and is
-            always drawn, the dashboard header states the name again directly beneath, and the
-            status strip carries it at the foot — so this made four in one screen, two of them
-            within an inch of each other. What is left is the three facts that change what every
-            figure below means and are stated nowhere else.
-          */}
-          {/*
-            The year the company is posting into, read from its financial years rather than from
-            the company record — `financialYearStart` there is the first year it was ever given, and
-            reading it put "2019" above a 2026 balance sheet. See currentFinancialYear, which
-            mirrors the rule the reports API applies.
-
-            The span is the year's own, not "the period these figures cover": a report can be
-            narrowed from its own toolbar, and each one prints the period it was actually run for
-            beneath its title.
-          */}
-          {period && (
-            <span className={styles.contextItem}>
-              Financial year <b>{period.financialYearLabel}</b>{' '}
-              <span className={styles.contextRange}>
-                {formatCalendarDay(period.from, company.country)} –{' '}
-                {formatCalendarDay(period.to, company.country)}
-              </span>
-              {period.financialYearStatus === 'CLOSED' && (
-                <span className={styles.contextClosed}> · closed</span>
-              )}
-            </span>
-          )}
-          <span className={styles.contextItem}>
-            Base currency <b>{company.baseCurrency}</b>
-          </span>
-          {/*
-            Whether debits equal credits, as at the moment this company was opened. Null until the
-            trial balance has been read; never drawn as balanced on an assumption.
-          */}
-          {difference !== null && (
-            <span className={styles.contextItem}>
-              <span className={balanced ? styles.balanced : styles.unbalanced}>
-                {balanced ? 'Books balanced' : `Difference ${difference}`}
-              </span>
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className={styles.body}>
-        <main className={styles.content}>
-          {/*
-            Keyed on the path so navigating away clears a caught error. React boundaries do not
-            reset themselves, and without the key one broken screen would follow you around the app.
-          */}
-          <ErrorBoundary key={location.pathname}>
-            <CompanyReadoutProvider value={readout}>
-              <ButtonBarContext.Provider value={buttonBarContext}>
-                <Outlet />
-              </ButtonBarContext.Provider>
-            </CompanyReadoutProvider>
-          </ErrorBoundary>
-        </main>
-
-        <ButtonBar actions={actions} />
-      </div>
-
-      <ShortcutSheet open={helpOpen} onClose={closeHelp} actions={actions} menus={menus} />
+      <ShortcutSheet open={helpOpen} onClose={closeHelp} actions={actions} />
 
       {/*
         Where the product says what just happened — mounted once, here, so anything under the shell
-        can post to it without a provider in scope. Fixed, so a message never moves the page it is
-        reporting on. Claims --z-toast, which the token file reserved and nothing had used.
+        can post to it without a provider in scope. Fixed, so a message never moves the page.
       */}
       <ToastViewport />
-
-      {/* Application chrome — see the print block in globals.css, which drops it from paper. */}
-      {/*
-        The status strip. Which set of books, how much is unfinished, who is signed in and what day
-        it is — the things worth being able to glance at without them ever asking for attention.
-      */}
-      <div className={styles.status} data-print="hide">
-        <span>{company ? `${company.name} · ${company.code}` : 'No company open'}</span>
-        {period && <span>FY {period.financialYearLabel}</span>}
-        {readout.context !== null && (
-          <span>
-            {readout.context.draftVouchers === 0
-              ? 'No drafts'
-              : `${readout.context.draftVouchers} draft${readout.context.draftVouchers === 1 ? '' : 's'}`}
-          </span>
-        )}
-        <span className={styles.statusEnd}>
-          {company ? `Figures in ${company.baseCurrency}` : 'Choose a company to open its books'}
-        </span>
-        {user && <span>{user.name}</span>}
-        <span className={styles.mono}>{today}</span>
-      </div>
     </div>
   );
 }

@@ -1,102 +1,83 @@
 /*
-  The button bar sits on the same recessed surface as the menu bar, so the two read as one frame
-  around the screen rather than as two unrelated panels.
+  The key strip down the right: what this screen can do, each with the key that does it.
+
+  A narrow column — key above label, centred — so it costs the figures as little width as possible
+  while still being readable at a glance. It sits on the recessed surface so it reads as part of the
+  frame rather than as a panel of the page.
+
+  Below 60rem it is not drawn: a phone has no function keys, the + in the tab bar raises a document,
+  and the screen's own actions are listed in the More sheet instead.
 */
+
 .bar {
+  grid-area: strip;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  width: 10.75rem;
-  flex-shrink: 0;
-  padding: var(--space-2) 0.4375rem;
-  background-color: var(--paper-sunken);
-  border-left: 1px solid var(--border);
+  gap: 0.125rem;
+  width: 5.25rem;
+  min-height: 0;
+  padding: 0.5rem 0.375rem 1rem;
   overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background-color: var(--paper-sunken);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 0.125rem;
 }
 
-/*
-  A heading with a rule running off it, rather than a heading floating over a gap. The rule is what
-  separates one group from the next now that the buttons no longer carry borders of their own.
-*/
 .groupName {
-  display: flex;
-  align-items: center;
-  gap: 0.4375rem;
-  padding: var(--space-3) 0.1875rem var(--space-1);
+  padding: 0.625rem 0 0.125rem;
   font-size: 0.5625rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+  text-align: center;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
 
-.groupName::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background-color: var(--border);
-}
-
-/* The first heading would otherwise start with a gap the panel edge already provides. */
 .group:first-child .groupName {
-  padding-top: var(--space-1);
+  padding-top: 0.25rem;
 }
 
-/*
-  Key first, in a column of its own width, so every label starts on the same pixel — which is what
-  makes Tally's strip readable at a glance rather than a list to be searched.
-
-  No border, no card, no shadow: with twenty actions on screen that is twenty rectangles to look
-  past. The group rules carry the structure and the hover carries the state.
-*/
+/* Key above label, so every key sits on the same centre line down the strip. */
 .action {
   display: grid;
-  grid-template-columns: 2.875rem 1fr;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0.1875rem 0.1875rem 0.1875rem var(--space-2);
+  justify-items: center;
+  gap: 0.0625rem;
+  padding: 0.4375rem 0.125rem;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--ink);
+  color: var(--ink-soft);
   font-family: inherit;
-  font-size: var(--text-sm);
-  text-align: left;
+  font-size: 0.65625rem;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
-  transition: background-color 0.12s ease;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
 }
 
 .action:hover:not(:disabled) {
-  background-color: var(--hover-tint);
+  border-color: var(--border);
+  background-color: var(--paper-card);
+  color: var(--ink);
+  transform: translateX(-2px);
 }
 
 .action:disabled {
   color: var(--ink-faint);
   cursor: not-allowed;
-  /* Not opacity: dimming the whole row takes the key out of AA along with the label. */
-  background-color: transparent;
 }
 
 /*
-  Wraps to a second line before it gives up, rather than cutting off at the first.
-
-  It was a single ellipsised line, which was fine for as long as every document in the product was
-  one short word — Contra, Payment, Petty Cash. A portfolio workspace names its four for what they
-  are, and three of them did not fit: "Capital Intro…", "Business Pr…", "Profit Alloca…". Two of
-  those are unreadable, and the strip is the one place in Tally's layout you are meant to be able to
-  read at a glance rather than hover over.
-
-  Clamped at two lines rather than left to wrap freely, so a company that names a voucher type a
-  sentence cannot push the rest of the bar off the screen; past that it still ellipsises, and the
-  full wording is still on the button's title. Measured across every screen that draws a bar before
-  this changed: these three were the only labels cut off anywhere in the product, so nothing else
-  moves.
+  Clamped at two lines, so "Capital Introduction" is read rather than cut, and a type someone named
+  with a sentence cannot push the strip off the screen. The full wording stays on the title.
 */
 .label {
   display: -webkit-box;
@@ -104,15 +85,14 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  /* A single unbroken word longer than the column still has to stay inside it. */
   overflow-wrap: anywhere;
 }
 
 .key {
-  /* First in the grid, so it reads "F5 Payment" the way it is spoken. */
   order: -1;
+  min-height: 0.875rem;
   font-family: var(--font-mono);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--accent);
 }
@@ -121,91 +101,8 @@
   color: var(--ink-faint);
 }
 
-/*
-  Below 60rem the bar lies flat above the content: a fixed 13rem column beside a phone-width screen
-  leaves nothing for the screen itself. The keys stay printed on it — a Bluetooth keyboard is not
-  unheard of — but the layout stops assuming they are the point.
-*/
 @media (max-width: 60rem) {
   .bar {
-    /* Above the content, not below it: at the foot of a long statement the actions for that
-       statement are a full scroll away, which is the same as not having them.
-
-       One row that scrolls sideways, not a block that wraps. Wrapping, the bar grew with every
-       action added to it — nineteen of them pushed the report six hundred pixels down the page,
-       so the first thing on a phone was a palette of keys a phone does not have. Scrolling, its
-       height is one row whatever the screen is showing. */
-    order: -1;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--space-1);
-    width: auto;
-    /* A flex item defaults to `min-width: auto`, which is its content — so the row of actions
-       widened the page instead of scrolling inside itself, and the whole screen scrolled sideways
-       by the overshoot. This is what makes `overflow-x` above actually contain anything. */
-    min-width: 0;
-    max-width: 100%;
-    border-left: none;
-    /* It sits above the content now, so the rule that separates them belongs underneath it. */
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-    overflow-y: visible;
-  }
-
-  .group {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  /* Each group keeps its own actions together as the row scrolls past. */
-  .group,
-  .action,
-  .groupName {
-    flex-shrink: 0;
-  }
-
-  .groupName {
-    padding: 0 var(--space-1);
-  }
-
-  /* Laid out in a row, each action is its own chip again — the fixed key column only aligns
-     anything when the actions are stacked. */
-  .action {
-    display: flex;
-    justify-content: space-between;
-    border-color: var(--border);
-    background-color: var(--paper-card);
-  }
-
-  /* One line again here. Wrapping only earns its keep in the stacked column, where the width is
-     fixed and the height is free; in a scrolling row a two-line chip is simply a taller row. */
-  .label {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .groupName::after {
-    content: none;
-  }
-
-  .group:first-child .groupName {
-    padding-top: 0;
-  }
-}
-
-/*
-  The compact 36px action is for a narrow *window*, not a small screen. Left unqualified it also
-  applied to a phone, where it outranked the 44px floor in globals.css — a class selector against
-  an element one — and put the whole bar under the minimum target size on the one device that
-  needs it most. Keyed on the pointer, so a mouse keeps the tighter bar and a thumb gets the floor.
-*/
-@media (max-width: 60rem) and (pointer: fine) {
-  .action {
-    min-height: 2.25rem;
+    display: none;
   }
 }

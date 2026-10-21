@@ -241,6 +241,37 @@
   --data-3: #6b4f9e;
   --data-4: #9a7b28;
 
+  /*
+    The chart series of the new interface, in a fixed order that is never cycled: blue, orange,
+    aqua, violet. Validated as a set for colour-blind separation on these surfaces (adjacent pairs
+    clear ΔE 8 in both themes), which is why a fifth series folds into "Other" rather than getting a
+    generated hue. Text never wears these — labels and values stay in --ink, the mark beside them
+    carries the identity.
+  */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #4a3aa7;
+  /* A movement that takes money away, in a chart that also shows one adding it (a waterfall). */
+  --series-negative: #e34948;
+
+  /*
+    One blue, light to dark, for ordered magnitude — ageing buckets, where older is darker. Its
+    lightest step still clears 2:1 against a card, so "not due" never disappears into the surface.
+  */
+  --seq-1: #86b6ef;
+  --seq-2: #5598e7;
+  --seq-3: #2a78d6;
+  --seq-4: #1c5cab;
+  --seq-5: #0d366b;
+
+  /* The faint grid behind a chart. */
+  --chart-grid: #e7e8eb;
+
+  /* Motion. One curve for things arriving, so every screen settles the same way. */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.1);
+
   /* ---- Dark palette values ------------------------------------------
      Defined once, here, and applied by the two selectors further down.
      Plain CSS cannot share a declaration block between a media query and
@@ -295,6 +326,20 @@
   --dk-data-2: #d98f5d;
   --dk-data-3: #a68ad8;
   --dk-data-4: #cfa94c;
+
+  /* The same four hues, stepped for the dark surface rather than flipped. */
+  --dk-series-1: #3987e5;
+  --dk-series-2: #d95926;
+  --dk-series-3: #199e70;
+  --dk-series-4: #9085e9;
+  --dk-series-negative: #e66767;
+  /* Reversed: on a dark card the faint end is the dark one. */
+  --dk-seq-1: #184f95;
+  --dk-seq-2: #1c5cab;
+  --dk-seq-3: #2a78d6;
+  --dk-seq-4: #5598e7;
+  --dk-seq-5: #9ec5f4;
+  --dk-chart-grid: #24262b;
 
   /* ---- 3. Derived ---------------------------------------------------- */
   /* These reference the raw tokens above, so each one resolves against
@@ -358,6 +403,17 @@
     --data-2: var(--dk-data-2);
     --data-3: var(--dk-data-3);
     --data-4: var(--dk-data-4);
+    --series-1: var(--dk-series-1);
+    --series-2: var(--dk-series-2);
+    --series-3: var(--dk-series-3);
+    --series-4: var(--dk-series-4);
+    --series-negative: var(--dk-series-negative);
+    --seq-1: var(--dk-seq-1);
+    --seq-2: var(--dk-seq-2);
+    --seq-3: var(--dk-seq-3);
+    --seq-4: var(--dk-seq-4);
+    --seq-5: var(--dk-seq-5);
+    --chart-grid: var(--dk-chart-grid);
   }
 }
 
@@ -403,6 +459,17 @@
   --data-2: var(--dk-data-2);
   --data-3: var(--dk-data-3);
   --data-4: var(--dk-data-4);
+  --series-1: var(--dk-series-1);
+  --series-2: var(--dk-series-2);
+  --series-3: var(--dk-series-3);
+  --series-4: var(--dk-series-4);
+  --series-negative: var(--dk-series-negative);
+  --seq-1: var(--dk-seq-1);
+  --seq-2: var(--dk-seq-2);
+  --seq-3: var(--dk-seq-3);
+  --seq-4: var(--dk-seq-4);
+  --seq-5: var(--dk-seq-5);
+  --chart-grid: var(--dk-chart-grid);
 }
 
 /* ============================================================================
@@ -459,8 +526,67 @@ textarea:focus-visible {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* A staggered entrance would otherwise sit invisible for its delay before "arriving". */
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Motion
+
+   Keyframes are global by nature, so the shared ones live here and every module refers to them by
+   name. Each starts from a state that is still legible if it never runs: nothing is left at
+   opacity 0 waiting for a script, and the reduced-motion block above collapses all of them.
+   ============================================================================ */
+
+/* A card or row arriving. Pair with `animation-delay: calc(var(--i) * 50ms)` to stagger a list. */
+@keyframes owm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes owm-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A line drawing itself. The path sets --len to its own length. */
+@keyframes owm-draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+}
+
+/* A column growing from its baseline, and a bar growing from its start. */
+@keyframes owm-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes owm-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* A dialog or palette opening, and a sheet sliding up from the bottom of a phone. */
+@keyframes owm-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes owm-sheet-up {
+  from {
+    opacity: 0.4;
+    transform: translateY(40px);
   }
 }
 
@@ -532,6 +658,17 @@ textarea:focus-visible {
     --data-2: #b0663a;
     --data-3: #6b4f9e;
     --data-4: #9a7b28;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #4a3aa7;
+    --series-negative: #e34948;
+    --seq-1: #86b6ef;
+    --seq-2: #5598e7;
+    --seq-3: #2a78d6;
+    --seq-4: #1c5cab;
+    --seq-5: #0d366b;
+    --chart-grid: #d0d0d0;
   }
 
   body {

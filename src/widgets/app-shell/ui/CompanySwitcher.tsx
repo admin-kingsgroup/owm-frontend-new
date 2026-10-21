@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Building2, Check, ChevronDown, LayoutGrid } from 'lucide-react';
+import { Building2, Check, ChevronDown, ChevronsUpDown, LayoutGrid } from 'lucide-react';
 
+import { companyAccent, companyInitials, companyTypeLabel } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { cn } from '@/shared/lib';
 import { useMenuKeys } from '@/shared/hooks';
@@ -20,6 +21,11 @@ interface CompanySwitcherProps {
    * list has not arrived yet; an empty array means it could not be read.
    */
   companies: Company[] | null;
+  /**
+   * `rail` is the sidebar's full-width card — the company's chip, its name and what kind of books it
+   * keeps. `bar` is the compact pill. Same menu, same behaviour.
+   */
+  variant?: 'bar' | 'rail';
 }
 
 /**
@@ -34,7 +40,7 @@ interface CompanySwitcherProps {
  * Switching keeps you on the same screen — switch while reading Reports and you land on the other
  * company's Reports, not its dashboard.
  */
-export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) {
+export function CompanySwitcher({ companyId, companies, variant = 'bar' }: CompanySwitcherProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -95,18 +101,49 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
     <div className={styles.wrapper} ref={wrapperRef}>
       <button
         type="button"
-        className={styles.trigger}
+        className={cn(styles.trigger, variant === 'rail' && styles.railTrigger)}
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
+        title={active ? active.name : 'Select company'}
+        /* Named for the company alone: the kind and currency under it are a caption, not its name. */
+        aria-label={variant === 'rail' ? (active ? active.name : 'Select company') : undefined}
       >
-        <Building2 size={14} className={styles.icon} />
-        <span className={styles.name}>{active ? active.name : 'Select company'}</span>
-        {active && active.status !== 'ACTIVE' && (
-          <span className={styles.triggerInactive}>Deactivated</span>
+        {variant === 'rail' ? (
+          <>
+            {active ? (
+              <span className={styles.chip} style={{ background: companyAccent(active) }}>
+                {companyInitials(active)}
+              </span>
+            ) : (
+              <span className={cn(styles.chip, styles.chipEmpty)}>
+                <Building2 size={15} />
+              </span>
+            )}
+            <span className={styles.railText}>
+              <span className={styles.name}>{active ? active.name : 'Select company'}</span>
+              <span className={styles.railMeta}>
+                {active
+                  ? `${companyTypeLabel(active.type)} · ${active.baseCurrency}`
+                  : `${companies.length} in the group`}
+              </span>
+            </span>
+            {active && active.status !== 'ACTIVE' && (
+              <span className={styles.triggerInactive}>Deactivated</span>
+            )}
+            <ChevronsUpDown size={15} className={styles.chevron} />
+          </>
+        ) : (
+          <>
+            <Building2 size={14} className={styles.icon} />
+            <span className={styles.name}>{active ? active.name : 'Select company'}</span>
+            {active && active.status !== 'ACTIVE' && (
+              <span className={styles.triggerInactive}>Deactivated</span>
+            )}
+            {active && <span className={styles.code}>{active.code}</span>}
+            <ChevronDown size={14} className={cn(styles.chevron, open && styles.chevronOpen)} />
+          </>
         )}
-        {active && <span className={styles.code}>{active.code}</span>}
-        <ChevronDown size={14} className={cn(styles.chevron, open && styles.chevronOpen)} />
       </button>
 
       {open && (
@@ -122,6 +159,13 @@ export function CompanySwitcher({ companyId, companies }: CompanySwitcherProps) 
             >
               <span className={styles.optionCheck}>
                 {company.id === companyId && <Check size={14} />}
+              </span>
+              <span
+                className={styles.optionChip}
+                style={{ background: companyAccent(company) }}
+                aria-hidden="true"
+              >
+                {companyInitials(company)}
               </span>
               <span className={styles.optionName}>{company.name}</span>
               {/* Without this you can switch into a deactivated company and only find out from a
