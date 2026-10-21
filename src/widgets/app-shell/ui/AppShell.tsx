@@ -13,7 +13,6 @@ import { cn, formatCalendarDay } from '@/shared/lib';
 import { useFocusTrap } from '@/shared/hooks';
 import { ErrorBoundary, ToastViewport } from '@/shared/ui';
 import { usePortfolioStore } from '@/entities/owner-portfolio';
-import { MOCK_COMPANIES } from '@/shared/api/mock-erp-data';
 
 import {
   ButtonBarContext,
@@ -77,13 +76,9 @@ export function AppShell() {
    * feature-dependent menu items, the context strip — is chrome, so it simply renders less until
    * the answer is known rather than holding the screen back for it.
    */
-  const selectedPortfolioBusinessId = usePortfolioStore((s) => s.selectedBusinessId);
-  const effectiveCompanyId =
-    companyId || (selectedPortfolioBusinessId !== 'all' ? selectedPortfolioBusinessId : 'biz-travkings');
-
   const company = useMemo(
-    () => companies?.find((entry) => entry.id === effectiveCompanyId) ?? MOCK_COMPANIES[0],
-    [companies, effectiveCompanyId],
+    () => (companyId ? (companies?.find((entry) => entry.id === companyId) ?? null) : null),
+    [companies, companyId],
   );
 
   const here = `${location.pathname}${location.search}`;
@@ -102,28 +97,34 @@ export function AppShell() {
     params.delete('help');
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
-
+  // Checked against the Role union, so a typo is a compile error rather than a menu that is
+  // silently never offered.
+  /* Declared before the menus, which name a register and a Create entry for each of them. */
+  /* The seed version re-reads the list after a masters sync — see useVoucherTypes. */
   const { types: voucherTypes, known: voucherTypesKnown } = useVoucherTypes(
-    effectiveCompanyId,
+    companyId,
     company?.seedVersion,
   );
 
   /**
    * Whether this company measures other people's businesses rather than keeping its own books.
+   *
+   * Read once and shared: the menus, the strip and the data-entry keys all turn on it, and three
+   * separate `company?.type === 'ANALYTICS'` checks is three places for the answer to drift.
    */
   const isPortfolio = company?.type === 'ANALYTICS';
 
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
   const menus = useMemo(
-    () => buildMenus(effectiveCompanyId, company, here, isAdmin, voucherTypes, voucherTypesKnown),
-    [effectiveCompanyId, company, here, isAdmin, voucherTypes, voucherTypesKnown],
+    () => buildMenus(companyId, company, here, isAdmin, voucherTypes, voucherTypesKnown),
+    [companyId, company, here, isAdmin, voucherTypes, voucherTypesKnown],
   );
 
   /**
    * The year actually being posted into, whether the books balance, and the draft backlog — one
    * call, shared with every screen under it. See useCompanyReadout.
    */
-  const readout = useCompanyReadoutState(effectiveCompanyId);
+  const readout = useCompanyReadoutState(companyId);
 
   /* For the status strip. Read here rather than in a child so the strip is one element. */
   const user = useAuthStore((state) => state.user);
@@ -150,8 +151,8 @@ export function AppShell() {
    * each one having to say so. Pages publish theirs first; these always sit at the bottom.
    */
   const shellActions = useMemo<ButtonBarAction[]>(() => {
-    if (!effectiveCompanyId) return [];
-    const base = `/companies/${effectiveCompanyId}`;
+    if (!companyId) return [];
+    const base = `/companies/${companyId}`;
     const go = (to: string) => () => navigate(to);
 
     return [
@@ -257,8 +258,8 @@ export function AppShell() {
       Journal, four documents it does not hold, each pointing at a voucher form that would refuse
       them. Same reasoning as the Create list in buildMenus, which this must agree with.
     */
-    if (!effectiveCompanyId || company === null) return [];
-    const base = `/companies/${effectiveCompanyId}`;
+    if (!companyId || company === null) return [];
+    const base = `/companies/${companyId}`;
 
     return raisableVoucherTypes(
       voucherTypes,
@@ -376,7 +377,7 @@ export function AppShell() {
         {/* Always present, even when the switcher renders nothing: the topbar pushes this group to
             the end, so dropping it would slide the user menu left while the list is still loading. */}
         <div className={styles.topbarEnd}>
-          <CompanySwitcher companyId={effectiveCompanyId} companies={companies} />
+          <CompanySwitcher companyId={companyId} companies={companies} />
           <UserMenu />
         </div>
       </header>

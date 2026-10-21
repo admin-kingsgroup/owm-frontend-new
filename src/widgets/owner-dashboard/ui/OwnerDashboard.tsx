@@ -24,8 +24,6 @@ import { PartnerDistributionSection } from './PartnerDistributionSection';
 import { InvestmentOverviewSection } from './InvestmentOverviewSection';
 import { PerformanceSection } from './PerformanceSection';
 import { TransactionsSection } from './TransactionsSection';
-import { CompanySection } from './CompanySection';
-import { MastersSection } from './MastersSection';
 import { ReportsSection } from './ReportsSection';
 import { BusinessInsightsSection } from './BusinessInsightsSection';
 import { BusinessPerformanceChart } from './BusinessPerformanceChart';
@@ -392,28 +390,9 @@ export function OwnerDashboard({
             />
           )}
 
-          {/* TAB 8: TRANSACTIONS & VOUCHERS */}
+          {/* TAB 8: TRANSACTIONS */}
           {activeTab === 'transactions' && (
-            <TransactionsSection
-              transactions={transactions}
-              initialBusinessId={selectedBusinessId !== 'all' ? selectedBusinessId : 'biz-travkings'}
-            />
-          )}
-
-          {/* TAB: COMPANY SETUP & LEGAL ENTITIES */}
-          {activeTab === 'company' && (
-            <CompanySection
-              selectedBusinessId={selectedBusinessId !== 'all' ? selectedBusinessId : 'biz-travkings'}
-              onSelectBusiness={setSelectedBusinessId}
-            />
-          )}
-
-          {/* TAB: MASTERS & CHART OF ACCOUNTS */}
-          {activeTab === 'masters' && (
-            <MastersSection
-              selectedBusinessId={selectedBusinessId !== 'all' ? selectedBusinessId : 'biz-travkings'}
-              onSelectBusiness={setSelectedBusinessId}
-            />
+            <TransactionsSection transactions={transactions} />
           )}
 
           {/* TAB 9: REPORTS */}
@@ -421,7 +400,6 @@ export function OwnerDashboard({
             <ReportsSection
               businesses={businesses}
               branches={travkingsBranches}
-              initialBusinessId={selectedBusinessId !== 'all' ? selectedBusinessId : 'biz-travkings'}
             />
           )}
 
