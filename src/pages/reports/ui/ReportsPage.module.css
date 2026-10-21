@@ -46,6 +46,13 @@
 .page > section.panel:last-of-type {
   flex: 1;
   min-height: 0;
+  /*
+    Bounded, so it must scroll what it holds. A grid scrolls itself (its .tableWrap, below), but a
+    tree — the group summary — has no scroller of its own, and without this its rows ran on past the
+    foot of the card onto the page behind it. Scrolling here keeps the heading, the period controls
+    and the list of reports where they are, the same as a grid does.
+  */
+  overflow-y: auto;
 }
 
 /* The two-column statements — Balance Sheet, Profit & Loss — reach the bottom too, and their two
@@ -731,6 +738,12 @@
 
   .tableWrap {
     max-height: none;
+    overflow: visible;
+  }
+
+  /* Paper has no scrollbar: the card that scrolls on screen prints every row it holds. */
+  .page > section.panel:last-child,
+  .page > section.panel:last-of-type {
     overflow: visible;
   }
 

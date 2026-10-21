@@ -125,6 +125,19 @@ test.describe('every screen, drawn', () => {
       );
       expect(overflow, `${screen.name} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(0);
 
+      /*
+        Nor may a card spill downwards. A card sized to the pane has to scroll what it holds; one
+        that does not lets its rows run on past its own foot and onto the page behind it — which
+        the group summary did, and which no sideways measurement can see.
+      */
+      const spills = await page.evaluate(() =>
+        [...document.querySelectorAll('main section')]
+          .filter((card) => getComputedStyle(card).overflowY === 'visible')
+          .map((card) => card.scrollHeight - card.clientHeight)
+          .filter((over) => over > 4),
+      );
+      expect(spills, `${screen.name} has a card whose content runs past its foot`).toEqual([]);
+
       expect(faults, `${screen.name} reported ${faults.length} fault(s)`).toEqual([]);
 
       // The readable record, for someone reviewing what a change did.
