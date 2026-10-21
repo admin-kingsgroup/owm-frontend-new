@@ -836,3 +836,349 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* ======================================================================================
+   The new interface.
+
+   The list of reports down the left, the report beside it, and the report's furniture — panels,
+   charts, tiles — in the same card language as the dashboards. Kept here at the foot, after the
+   rules above, so those keep doing what they did and these only change how it looks.
+   ====================================================================================== */
+
+/* The list of reports, and the report beside it. Both fill the pane; the report scrolls on its own. */
+.frame {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  gap: 1.25rem;
+  height: 100%;
+  min-height: 0;
+  max-width: 96rem;
+  margin: 0 auto;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  animation: owm-rise 0.45s var(--ease-out) both;
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.navHeading {
+  padding: 0.75rem 0.625rem 0.25rem;
+  font-size: 0.65625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.navSection:first-child .navHeading {
+  padding-top: 0.25rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.625rem;
+  border-radius: var(--radius-md);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.navItem:hover {
+  background: var(--hover-tint);
+  color: var(--ink);
+}
+
+.navCurrent,
+.navCurrent:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.navKey {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.65625rem;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+/* ---- Heading ---------------------------------------------------------- */
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.header {
+  align-items: flex-end;
+  animation: owm-rise 0.4s var(--ease-out) both;
+}
+
+.title {
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+/* The period and the subject: one card, so the controls read as one thing that shapes the report. */
+.toolbar {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+}
+
+/* ---- Cards ------------------------------------------------------------ */
+
+.panel,
+.chartPanel {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+}
+
+.panel {
+  padding: 1rem 1.125rem;
+}
+
+.twoColumn > .panel:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.panelTitle {
+  font-family: var(--font-display);
+  font-size: 0.90625rem;
+  font-weight: 600;
+  letter-spacing: var(--display-tracking);
+  text-transform: none;
+  color: var(--ink);
+}
+
+.chartHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem 1rem;
+  margin-bottom: var(--space-3);
+}
+
+.chartHead .chartTitle {
+  margin: 0;
+}
+
+/* The headline figures above a statement. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+/* Balance figures as tiles, not boxes of text. */
+.bucket {
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+}
+
+.bucketTotal {
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+/* The sides agree — said once, under the statement, in words. */
+.tie {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--success-fg);
+}
+
+.ageing {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.statementChart {
+  margin-bottom: 0.75rem;
+}
+
+/* ---- Ratios ------------------------------------------------------------ */
+
+.ratioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.ratioCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+  animation: owm-rise 0.5s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+
+.ratioLabel {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.ratioValue {
+  font-family: var(--font-mono);
+  font-size: 1.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.ratioParts {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.ratioHint {
+  margin: 0.375rem 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* ---- Narrower screens -------------------------------------------------- */
+
+@media (max-width: 75rem) {
+  .frame {
+    grid-template-columns: 11.5rem minmax(0, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* On a phone the list is a row of chips that scrolls sideways above the report. */
+@media (max-width: 60rem) {
+  .frame {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+
+  .nav {
+    flex-direction: row;
+    gap: 0.375rem;
+    margin: 0 -1rem;
+    padding: 0 1rem 0.25rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+  }
+
+  .navSection {
+    flex-direction: row;
+    gap: 0.375rem;
+  }
+
+  .navHeading,
+  .navKey {
+    display: none;
+  }
+
+  .navItem {
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--paper-card);
+    white-space: nowrap;
+  }
+
+  .navCurrent,
+  .navCurrent:hover {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper-card);
+  }
+
+  .page {
+    height: auto;
+  }
+
+  /* One under the other at full width — the right-alignment above is for a wide screen only. */
+  .header {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 34rem) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+
+  .title {
+    font-size: 1.375rem;
+  }
+}
+
+@media print {
+  .frame {
+    display: block;
+  }
+
+  .nav,
+  .eyebrow {
+    display: none;
+  }
+
+  .panel,
+  .chartPanel,
+  .ratioCard,
+  .header {
+    animation: none;
+    box-shadow: none;
+  }
+}
+
+/* The nil-figures switch sits under the period line, flush with it. */
+.titles .zeroToggle {
+  align-self: flex-start;
+}

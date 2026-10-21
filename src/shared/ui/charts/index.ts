@@ -6,3 +6,5 @@ export { StackedBars } from './StackedBars';
 export type { StackedBarsProps, StackedBarRow } from './StackedBars';
 export { ChartLegend } from './ChartLegend';
 export type { LegendItem } from './ChartLegend';
+export { Waterfall } from './Waterfall';
+export type { WaterfallProps, WaterfallStep } from './Waterfall';

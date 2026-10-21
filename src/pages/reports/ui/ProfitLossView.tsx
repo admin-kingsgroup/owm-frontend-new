@@ -1,5 +1,8 @@
 import type { ProfitAndLossReport, ReportNode } from '@/entities/report';
-import { ColumnChart } from '@/shared/ui';
+import { TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+
+import { BarChart, ChartLegend, KpiTile } from '@/shared/ui';
+import { formatCompactMoney } from '@/shared/lib';
 
 import { MonthlyFigures } from './MonthlyFigures';
 import { ReportTree } from './ReportTree';
@@ -18,6 +21,16 @@ interface ProfitLossViewProps {
   monthLabel: (month: string) => string;
   /** Opens the ledger behind a row. */
   openLedger: (node: ReportNode) => void;
+  /** A figure in full, nil included — for the tiles. */
+  figure: (value: string | number) => string;
+  /** The company's country, for the chart's short axis figures. */
+  country?: string;
+}
+
+/** A change against the comparison year, as a percentage, where there is one to compare with. */
+function change(now: string, before: string | undefined): number | null {
+  if (before === undefined || Number(before) === 0) return null;
+  return ((Number(now) - Number(before)) / Math.abs(Number(before))) * 100;
 }
 
 /**
@@ -31,16 +44,70 @@ export function ProfitLossView({
   money,
   monthLabel,
   openLedger,
+  figure,
+  country,
 }: ProfitLossViewProps) {
+  const { totals } = profitLoss;
+  const comparing = Boolean(profitLoss.comparison);
+  const net = profitLoss.comparison ? `Net · FY ${profitLoss.period.financialYearLabel}` : 'Net';
+  const priorNet = profitLoss.comparison
+    ? `Net · FY ${profitLoss.comparison.financialYearLabel}`
+    : '';
+
   return (
     <>
+      <div className={styles.tiles}>
+        <KpiTile
+          index={0}
+          label="Income"
+          icon={<TrendingUp />}
+          value={Number(totals.income)}
+          format={figure}
+          delta={comparing ? change(totals.income, totals.priorIncome) : null}
+          hint={comparing ? `vs FY ${profitLoss.comparison?.financialYearLabel}` : undefined}
+        />
+        <KpiTile
+          index={1}
+          label="Expenses"
+          icon={<TrendingDown />}
+          value={Number(totals.expenses)}
+          format={figure}
+          invert
+          delta={comparing ? change(totals.expenses, totals.priorExpenses) : null}
+        />
+        <KpiTile
+          index={2}
+          label="Net profit"
+          icon={<Wallet />}
+          value={Number(totals.netProfit)}
+          format={figure}
+          negative={Number(totals.netProfit) < 0}
+          delta={comparing ? change(totals.netProfit, totals.priorNetProfit) : null}
+          hint={
+            Number(totals.income) !== 0
+              ? `${((Number(totals.netProfit) / Number(totals.income)) * 100).toFixed(1)}% of income`
+              : undefined
+          }
+        />
+      </div>
+
       {profitLoss.monthly.length > 1 && (
         <section className={styles.chartPanel}>
-          <h2 className={styles.chartTitle}>Month by month</h2>
-          <ColumnChart
+          <div className={styles.chartHead}>
+            <h2 className={styles.chartTitle}>Month by month</h2>
+            <ChartLegend
+              items={[
+                { label: 'Income', color: 'var(--series-1)' },
+                { label: 'Expenses', color: 'var(--series-2)' },
+                { label: net, color: 'var(--series-3)' },
+                ...(priorNet ? [{ label: priorNet, color: 'var(--series-4)' }] : []),
+              ]}
+            />
+          </div>
+          <BarChart
             labels={profitLoss.monthly.map((month) => monthLabel(month.month))}
-            formatValue={money}
-            scaleLabel={money}
+            formatValue={figure}
+            formatAxis={(value) => formatCompactMoney(value, { country })}
             caption={
               profitLoss.comparison
                 ? `Income, expenses and net profit each month, against the net profit of FY ${profitLoss.comparison.financialYearLabel}`
@@ -49,33 +116,28 @@ export function ProfitLossView({
             series={[
               {
                 label: 'Income',
-                color: 'var(--data-1)',
+                color: 'var(--series-1)',
                 values: profitLoss.monthly.map((month) => Number(month.income)),
               },
               {
                 label: 'Expenses',
-                color: 'var(--data-2)',
+                color: 'var(--series-2)',
                 values: profitLoss.monthly.map((month) => Number(month.expenses)),
               },
               {
-                /* Named for its year only while there are two of them on the plot. */
-                label: profitLoss.comparison
-                  ? `Net · FY ${profitLoss.period.financialYearLabel}`
-                  : 'Net',
-                color: 'var(--data-3)',
+                label: net,
+                color: 'var(--series-3)',
                 values: profitLoss.monthly.map((month) => Number(month.netProfit)),
               },
               /*
                 Only net is carried over from last year: its income and expenses as well would put
-                six bars in every month and the shape would be lost. Net is the figure that answers
-                "was this month better than the same month last year", and it is drawn beside this
-                year's net so the pair can actually be read against each other.
+                six bars in every month and the shape would be lost.
               */
               ...(profitLoss.comparison
                 ? [
                     {
-                      label: `Net · FY ${profitLoss.comparison.financialYearLabel}`,
-                      color: 'var(--data-4)',
+                      label: priorNet,
+                      color: 'var(--series-4)',
                       values: profitLoss.monthly.map((month) => Number(month.priorNetProfit ?? 0)),
                     },
                   ]
