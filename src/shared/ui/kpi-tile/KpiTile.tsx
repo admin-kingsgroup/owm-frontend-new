@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib';
 
 import { LineChart } from '../charts';
 import { CountUp } from '../count-up';
+import { SkeletonBlock } from '../skeleton';
 import styles from './KpiTile.module.css';
 
 export interface KpiTileProps {
@@ -38,6 +39,8 @@ export interface KpiTileProps {
   /** Its place in a row, for the staggered entrance. */
   index?: number;
   negative?: boolean;
+  /** Still being read: the figure and its line of context shimmer, rather than a dash that reads as "none". */
+  loading?: boolean;
 }
 
 /**
@@ -62,11 +65,25 @@ export function KpiTile({
   to,
   index = 0,
   negative = false,
+  loading = false,
 }: KpiTileProps) {
   const up = delta !== null && delta !== undefined && delta >= 0;
   const good = invert ? !up : up;
 
-  const body = (
+  const body = loading ? (
+    <>
+      <span className={styles.label}>
+        {icon}
+        {label}
+      </span>
+      <span className={styles.value} role="status" aria-busy="true" aria-label={`Loading ${label}`}>
+        <SkeletonBlock width="65%" height="1.5rem" />
+      </span>
+      <span className={styles.hint}>
+        <SkeletonBlock width="85%" height="0.5rem" />
+      </span>
+    </>
+  ) : (
     <>
       <span className={styles.label}>
         {icon}

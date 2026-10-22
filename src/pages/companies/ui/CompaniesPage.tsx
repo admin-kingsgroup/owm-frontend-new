@@ -35,8 +35,10 @@ import {
   IconButton,
   KpiTile,
   LineChart,
-  Loading,
   Modal,
+  PageSkeleton,
+  Skeleton,
+  SkeletonBlock,
 } from '@/shared/ui';
 import { cn, formatCompactMoney, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
 
@@ -106,6 +108,12 @@ export function CompaniesPage() {
     (currency: string) => companies?.find((c) => c.baseCurrency === currency)?.country,
     [companies],
   );
+
+  /**
+   * The list comes back before the figures do. Until they land each card, tile and panel holds its
+   * shape with a shimmer — drawn bare, the cards grew under the reader's eye a moment later.
+   */
+  const figuresLoading = overview === null && figuresError === null;
 
   const figuresById = useMemo(
     () => new Map((overview?.companies ?? []).map((row) => [row.companyId, row])),
@@ -298,6 +306,28 @@ export function CompaniesPage() {
   }
 
   function renderFigures(figures: CompanyOverview | undefined, company: Company) {
+    if (!figures && figuresLoading) {
+      return (
+        <>
+          <div
+            className={styles.figures}
+            role="status"
+            aria-label={`Loading figures for ${company.name}`}
+          >
+            {['Cash & bank', 'Net profit'].map((label) => (
+              <div key={label} className={styles.figure}>
+                <span className={styles.figureLabel}>{label}</span>
+                <SkeletonBlock width="75%" height="1.125rem" />
+              </div>
+            ))}
+          </div>
+          <SkeletonBlock height="52px" />
+          <div className={styles.cardTags}>
+            <SkeletonBlock width="5.5rem" height="1.25rem" radius="var(--radius-full)" />
+          </div>
+        </>
+      );
+    }
     if (!figures) return null;
 
     // A company that cannot be reported on still belongs on the list. Saying why beats showing
@@ -415,7 +445,7 @@ export function CompaniesPage() {
         the two the same left the error message sitting above a spinner that never stopped.
       */}
       {!companiesLoaded ? (
-        <Loading label="Loading companies…" />
+        <PageSkeleton variant="cards" label="Loading companies…" />
       ) : companiesError ? (
         <EmptyState
           icon={<Building2 size={32} />}
@@ -435,6 +465,43 @@ export function CompaniesPage() {
         />
       ) : (
         <>
+          {figuresLoading && (
+            <div className={styles.totals}>
+              {/* The same tiles the figures will fill — currency tiles only for a group of several. */}
+              {(companies.length > 1
+                ? ['Cash & bank', 'Net profit', 'Awaiting posting', 'Open years']
+                : ['Awaiting posting', 'Open years']
+              ).map((label, index) => (
+                <KpiTile
+                  key={label}
+                  loading
+                  index={index}
+                  label={label}
+                  value={null}
+                  format={String}
+                />
+              ))}
+            </div>
+          )}
+
+          {figuresLoading && (
+            <div className={styles.panels}>
+              <section className={styles.panel} style={{ '--i': 4 } as CSSProperties}>
+                <div className={styles.panelHead}>
+                  <h2 className={styles.panelTitle}>Cash &amp; bank by company</h2>
+                </div>
+                <SkeletonBlock height="250px" />
+              </section>
+              <section className={styles.panel} style={{ '--i': 5 } as CSSProperties}>
+                <div className={styles.panelHead}>
+                  <h2 className={styles.panelTitle}>Needs attention</h2>
+                  <span className={styles.panelSub}>across the group</span>
+                </div>
+                <Skeleton lines={5} label="Loading what needs attention…" />
+              </section>
+            </div>
+          )}
+
           {tiles.length > 0 && (
             <div className={styles.totals}>
               {tiles.map((tile, index) => (

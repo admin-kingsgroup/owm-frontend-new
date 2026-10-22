@@ -55,7 +55,7 @@ import type { OutstandingsReport } from '@/entities/outstanding';
 import { reconcileEntry } from '@/entities/voucher';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
-import { Loading, Modal } from '@/shared/ui';
+import { Modal, PageSkeleton } from '@/shared/ui';
 import { formatCalendarDay, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
@@ -838,7 +838,7 @@ export function ReportsPage() {
     return frame(
       <>
         {header}
-        <Loading label="Loading…" />
+        <PageSkeleton variant="table" label="Loading the report…" />
       </>,
     );
 

@@ -39,7 +39,15 @@ import type { VoucherSummary } from '@/entities/voucher';
 import { functionKeyFor, inFunctionKeyOrder } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
 import { cn, formatCalendarDay, formatCompactMoney, formatMoney, localeFor } from '@/shared/lib';
-import { Badge, BarChart, ChartLegend, KpiTile, LineChart, StackedBars } from '@/shared/ui';
+import {
+  Badge,
+  BarChart,
+  ChartLegend,
+  KpiTile,
+  LineChart,
+  Skeleton,
+  StackedBars,
+} from '@/shared/ui';
 import { useCompanyReadout } from '@/widgets/app-shell';
 import { DashboardHeader } from '@/widgets/dashboard-header';
 
@@ -476,6 +484,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           label="Net worth"
           icon={<Gem />}
           value={netWorth === null ? null : Number(netWorth)}
+          loading={loading && netWorth === null}
           format={moneyNumber}
           negative={netWorth !== null && Number(netWorth) < 0}
           hint={
@@ -489,6 +498,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           label="Cash & bank"
           icon={<Landmark />}
           value={cashFlow ? Number(cashFlow.closingBalance) : null}
+          loading={loading && !cashFlow}
           format={moneyNumber}
           suffix={cashFlow ? (cashFlow.closingSide === 'DEBIT' ? 'Dr' : 'Cr') : undefined}
           hint={
@@ -505,6 +515,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           label="Net profit"
           icon={<TrendingUp />}
           value={profitAndLoss ? Number(profitAndLoss.totals.netProfit) : null}
+          loading={loading && !profitAndLoss}
           format={moneyNumber}
           negative={profitAndLoss !== null && Number(profitAndLoss.totals.netProfit) < 0}
           hint={
@@ -522,6 +533,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           label={latestMonth ? monthLabel(latestMonth.month) : 'Latest month'}
           icon={<CalendarDays />}
           value={latestMonth ? Number(latestMonth.netChange) : null}
+          loading={loading && !latestMonth}
           format={moneyNumber}
           negative={latestMonth !== null && Number(latestMonth.netChange) < 0}
           hint={
@@ -615,11 +627,12 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
               </Link>
             </div>
 
-            {recent === null && (
-              <p className={styles.pending}>
-                {loading ? 'Reading the register…' : 'The register could not be read.'}
-              </p>
-            )}
+            {recent === null &&
+              (loading ? (
+                <Skeleton lines={5} label="Reading the register…" />
+              ) : (
+                <p className={styles.pending}>The register could not be read.</p>
+              ))}
 
             {recent !== null && recent.length === 0 && (
               <p className={styles.clear}>Nothing has been filed in this company yet.</p>
@@ -684,11 +697,12 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
               )}
             </div>
 
-            {!balanceSheet && (
-              <p className={styles.pending}>
-                {loading ? 'Reading the books…' : 'The balance sheet could not be read.'}
-              </p>
-            )}
+            {!balanceSheet &&
+              (loading ? (
+                <Skeleton lines={6} label="Reading the books…" />
+              ) : (
+                <p className={styles.pending}>The balance sheet could not be read.</p>
+              ))}
 
             {/*
               The statement's own top-level groups, in its own order and under its own two headings,

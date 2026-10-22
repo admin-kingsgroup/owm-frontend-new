@@ -40,7 +40,7 @@ import { CreateVoucherTypeForm, EditVoucherTypeForm } from '@/features/voucher-t
 import {
   Button,
   Modal,
-  Loading,
+  PageSkeleton,
   Badge,
   EmptyState,
   Panel,
@@ -263,7 +263,7 @@ export function CompanyDashboardPage() {
     worse thing to show than a spinner.
   */
   if (loading && company?.id !== id) {
-    return <Loading label="Loading company…" />;
+    return <PageSkeleton variant="dashboard" heading label="Loading company…" />;
   }
 
   if (error || !company) {

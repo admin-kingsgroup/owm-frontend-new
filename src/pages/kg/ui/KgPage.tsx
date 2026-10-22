@@ -6,7 +6,7 @@ import { getCompany } from '@/entities/company';
 import type { Company } from '@/entities/company';
 import { listBusinesses, listPartners } from '@/entities/kg';
 import type { Business, Partner } from '@/entities/kg';
-import { Loading, EmptyState, Button, Tabs, Input, Select } from '@/shared/ui';
+import { PageSkeleton, EmptyState, Button, Tabs, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
 
 import { PartnersPanel } from './PartnersPanel';
@@ -98,7 +98,7 @@ export function KgPage() {
             {error}
           </p>
         ) : (
-          <Loading label="Loading KG Business…" />
+          <PageSkeleton variant="dashboard" label="Loading KG Business…" />
         )}
       </div>
     );

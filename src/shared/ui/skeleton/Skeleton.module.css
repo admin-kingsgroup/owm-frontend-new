@@ -16,6 +16,17 @@
 .line {
   height: 0.5625rem;
   border-radius: var(--radius-full);
+}
+
+.block {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.line,
+.block {
   background-color: var(--paper-sunken);
   /*
     The sweep is drawn with a gradient on the same two surface tokens, so it follows the theme
@@ -37,12 +48,145 @@
   }
 }
 
+/* ---- Whole-screen placeholders (PageSkeleton) ------------------------- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  /* Faded in, so a load that settles at once never flashes a grey frame. */
+  animation: appear 0.3s ease-out both;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.surface {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-1);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cardText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 75rem) {
+  .panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 34rem) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .row > :nth-child(4) {
+    display: none;
+  }
+}
+
 /*
   Still, for anyone who has asked for less motion — the placeholder is doing its job by holding the
   shape of the page, and the sweep is only saying that the wait is not over.
 */
 @media (prefers-reduced-motion: reduce) {
-  .line {
+  .line,
+  .block,
+  .page {
     animation: none;
   }
 }

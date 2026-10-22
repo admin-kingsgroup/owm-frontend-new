@@ -16,7 +16,16 @@ import { listCurrencies } from '@/entities/currency';
 import type { Currency } from '@/entities/currency';
 import { CreateVoucherForm } from '@/features/voucher';
 import { VoucherActions } from '@/features/voucher';
-import { Button, Modal, Loading, EmptyState, Badge, Table, toast } from '@/shared/ui';
+import {
+  Button,
+  Modal,
+  PageSkeleton,
+  Skeleton,
+  EmptyState,
+  Badge,
+  Table,
+  toast,
+} from '@/shared/ui';
 import {
   cn,
   getErrorMessage,
@@ -338,7 +347,7 @@ export function VouchersPage() {
     releases the hold, so a company that cannot be read reports that rather than spinning for ever.
   */
   if (company === undefined && !error) {
-    return <Loading label="Loading vouchers…" />;
+    return <PageSkeleton variant="table" heading label="Loading vouchers…" />;
   }
 
   const country = loaded?.company?.country;
@@ -404,10 +413,10 @@ export function VouchersPage() {
             <h2 className={styles.cardTitle}>Create</h2>
             <span className={styles.cardSub}>one click, or the key from any screen</span>
           </div>
-          {raisable.length === 0 ? (
-            <p className={styles.quiet}>
-              {setupLoadedOk ? 'No voucher type is switched on.' : 'Reading voucher types…'}
-            </p>
+          {raisable.length === 0 && !setupLoadedOk ? (
+            <Skeleton lines={3} label="Reading voucher types…" />
+          ) : raisable.length === 0 ? (
+            <p className={styles.quiet}>No voucher type is switched on.</p>
           ) : (
             <div className={styles.createGrid}>
               {raisable.map((type, index) => {
@@ -528,7 +537,7 @@ export function VouchersPage() {
         {error && <p className={styles.error}>{error}</p>}
 
         {loading ? (
-          <Loading label="Loading vouchers…" />
+          <PageSkeleton variant="table" label="Loading vouchers…" />
         ) : vouchers.length === 0 && setupIncomplete ? (
           <EmptyState
             title="This company is not set up yet"
@@ -631,7 +640,7 @@ export function VouchersPage() {
           account while the select showed the first one as though it were chosen.
         */}
         {!setupLoadedOk ? (
-          <Loading label="Loading accounts…" />
+          <Skeleton lines={6} label="Loading accounts…" />
         ) : (
           <CreateVoucherForm
             companyId={companyId}
@@ -671,7 +680,7 @@ export function VouchersPage() {
         size="drawer"
       >
         {detailLoading || !selectedVoucher ? (
-          <Loading />
+          <Skeleton lines={8} label="Loading voucher…" />
         ) : (
           <VoucherDetail
             voucher={selectedVoucher}

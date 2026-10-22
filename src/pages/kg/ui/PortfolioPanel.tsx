@@ -25,7 +25,7 @@ import {
   EmptyState,
   KpiTile,
   LineChart,
-  Loading,
+  PageSkeleton,
   Table,
 } from '@/shared/ui';
 import { cn, formatCompactMoney, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
@@ -206,7 +206,7 @@ export function PortfolioPanel({
   return (
     <div className={styles.panel}>
       {error && <p className={styles.error}>{error}</p>}
-      {loading && !view && <Loading label="Loading the portfolio…" />}
+      {loading && !view && <PageSkeleton variant="dashboard" label="Loading the portfolio…" />}
 
       {view && businesses.length === 0 && (
         <EmptyState

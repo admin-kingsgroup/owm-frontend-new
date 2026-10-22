@@ -9,7 +9,7 @@ import {
   setExchangeRate,
 } from '@/entities/currency';
 import type { Currency, ExchangeRate, RateType } from '@/entities/currency';
-import { Button, Input, Loading, Select, Table } from '@/shared/ui';
+import { Button, Input, PageSkeleton, Select, Table } from '@/shared/ui';
 import { getErrorMessage, toCalendarDay } from '@/shared/lib';
 
 import styles from './CurrenciesPanel.module.css';
@@ -148,7 +148,7 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
     return (
       <div className={styles.panel}>
         {head}
-        <Loading label="Loading currencies…" />
+        <PageSkeleton variant="rows" count={3} label="Loading currencies…" />
       </div>
     );
 

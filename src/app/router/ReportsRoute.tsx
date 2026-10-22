@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react';
 
-import { Loading } from '@/shared/ui';
+import { PageSkeleton } from '@/shared/ui';
 
 /*
   The reports screen, fetched when it is first opened rather than with everything else.
@@ -27,7 +27,7 @@ const ReportsPage = lazy(() =>
  */
 export function ReportsRoute() {
   return (
-    <Suspense fallback={<Loading label="Opening reports…" />}>
+    <Suspense fallback={<PageSkeleton variant="table" heading label="Opening reports…" />}>
       <ReportsPage />
     </Suspense>
   );

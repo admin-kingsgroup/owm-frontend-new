@@ -9,7 +9,7 @@ import {
   type OpeningBill,
 } from '@/entities/ledger';
 import { listAccountGroups, partyGroupTest, type AccountGroup } from '@/entities/account-group';
-import { Button, Input, Loading, Table } from '@/shared/ui';
+import { Button, Input, PageSkeleton, Table } from '@/shared/ui';
 import { cn, getErrorMessage } from '@/shared/lib';
 
 import styles from './PartiesPanel.module.css';
@@ -169,7 +169,7 @@ export function PartiesPanel({ companyId }: PartiesPanelProps) {
   const difference = Number(openingBalance) - billTotal;
 
   if (error && !parties) return <p className={styles.error}>{error}</p>;
-  if (!parties) return <Loading label="Loading parties…" />;
+  if (!parties) return <PageSkeleton variant="table" count={6} label="Loading parties…" />;
 
   if (parties.length === 0) {
     return (
