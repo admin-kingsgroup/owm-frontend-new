@@ -25,7 +25,6 @@ export interface Business {
 }
 
 export interface CreateBusinessInput {
-  code: string;
   name: string;
   reportingCurrency: string;
   partners?: Array<{ partnerId: string; profitSharePercent: number }>;

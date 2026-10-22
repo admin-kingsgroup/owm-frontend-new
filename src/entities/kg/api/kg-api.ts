@@ -27,7 +27,7 @@ export async function listPartners(companyId: string): Promise<Partner[]> {
 
 export async function createPartner(
   companyId: string,
-  input: { code: string; name: string },
+  input: { name: string },
 ): Promise<Partner> {
   return unwrap(
     await apiClient.post<ApiSuccessResponse<Partner>>(endpoints.kg.partners(companyId), input),

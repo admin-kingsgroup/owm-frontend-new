@@ -312,14 +312,15 @@
 /* The fields of an add form on one line: a short code, the name, then the rest. */
 .fieldRow {
   display: grid;
-  grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr) minmax(5rem, 8rem);
+  /* Name, then currency. No code column: codes are minted from the name on the server. */
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 14rem);
   gap: 0.5rem;
   align-items: center;
 }
 
-/* The same, ending in the form's button rather than a third field. */
+/* The same, ending in the form's button rather than a second field. */
 .fieldRowAction {
-  grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 @media (max-width: 48rem) {

@@ -45,7 +45,6 @@ export interface VoucherType {
 }
 
 export interface CreateVoucherTypeInput {
-  code: string;
   name: string;
   category: VoucherCategory;
   numberingMethod?: NumberingMethod;

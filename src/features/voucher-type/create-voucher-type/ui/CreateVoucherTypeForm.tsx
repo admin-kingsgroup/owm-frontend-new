@@ -30,7 +30,6 @@ export function CreateVoucherTypeForm({
   onCreated,
   onCancel,
 }: CreateVoucherTypeFormProps) {
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState<VoucherCategory>('JOURNAL');
 
@@ -43,7 +42,7 @@ export function CreateVoucherTypeForm({
     setError(null);
 
     try {
-      const voucherType = await createVoucherType(companyId, { code, name, category });
+      const voucherType = await createVoucherType(companyId, { name, category });
       onCreated(voucherType);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not create voucher type'));
@@ -54,19 +53,8 @@ export function CreateVoucherTypeForm({
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="voucher-type-code">
-          Code
-        </label>
-        <Input
-          id="voucher-type-code"
-          placeholder="BANK_TRANSFER"
-          value={code}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          required
-        />
-      </div>
-
+      {/* No code field: the server mints the code and a short number prefix from the name —
+          "Export Sales" becomes EXPORT_SALES, numbering EXP. */}
       <div className={styles.field}>
         <label className={styles.label} htmlFor="voucher-type-name">
           Name

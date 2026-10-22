@@ -22,6 +22,7 @@ import {
   toast,
 } from '@/shared/ui';
 import { cn, getErrorMessage } from '@/shared/lib';
+import { WORLD_CURRENCIES, currencyLabel } from '@/shared/constants';
 
 import { BusinessWorkspace } from './BusinessWorkspace';
 import styles from './KgPage.module.css';
@@ -60,7 +61,6 @@ export function BusinessesPanel({
   portfolioCurrency,
   onChanged,
 }: BusinessesPanelProps) {
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('INR');
   const [shares, setShares] = useState<ShareRow[]>([]);
@@ -120,7 +120,6 @@ export function BusinessesPanel({
     setError(null);
     try {
       await createBusiness(companyId, {
-        code,
         name,
         reportingCurrency: currency,
         partners: shares.length
@@ -131,7 +130,6 @@ export function BusinessesPanel({
           : undefined,
       });
       onChanged(await listBusinesses(companyId));
-      setCode('');
       setName('');
       setShares([]);
     } catch (err) {
@@ -291,25 +289,25 @@ export function BusinessesPanel({
           <span className={styles.cardSub}>external — it reports its own figures each month</span>
         </div>
         <div className={styles.fieldRow}>
-          <Input
-            placeholder="Code (BIZ01)"
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
-            required
-          />
+          {/* No code field: the server mints one from the name — Kalyan Grocers becomes KAL01. */}
           <Input
             placeholder="Business name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
           />
-          <Input
-            placeholder="INR"
-            maxLength={3}
+          <Select
+            aria-label="Reporting currency"
             value={currency}
-            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            onChange={(event) => setCurrency(event.target.value)}
             required
-          />
+          >
+            {WORLD_CURRENCIES.map((option) => (
+              <option key={option.code} value={option.code}>
+                {currencyLabel(option)}
+              </option>
+            ))}
+          </Select>
         </div>
 
         {partners.length > 0 && (

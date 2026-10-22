@@ -10,3 +10,6 @@ export const COMPANY_DEFAULTS = {
   /** 1-based month the financial year opens on — 4 = April, the Indian convention. */
   financialYearStartMonth: 4,
 } as const;
+
+export { WORLD_CURRENCIES, currencyLabel } from './currencies';
+export type { WorldCurrency } from './currencies';

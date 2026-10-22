@@ -43,7 +43,6 @@ export interface PartnersPanelProps {
  * They never sign in. Their figures reach them as a statement sent on from the Portfolio tab.
  */
 export function PartnersPanel({ companyId, partners, businesses, onChanged }: PartnersPanelProps) {
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +63,8 @@ export function PartnersPanel({ companyId, partners, businesses, onChanged }: Pa
     setBusy(true);
     setError(null);
     try {
-      await createPartner(companyId, { code, name });
+      await createPartner(companyId, { name });
       onChanged(await listPartners(companyId));
-      setCode('');
       setName('');
     } catch (err) {
       setError(getErrorMessage(err, 'Could not add partner'));
@@ -103,12 +101,7 @@ export function PartnersPanel({ companyId, partners, businesses, onChanged }: Pa
           <span className={styles.cardSub}>held once and reused across every business</span>
         </div>
         <div className={cn(styles.fieldRow, styles.fieldRowAction)}>
-          <Input
-            placeholder="Code (AFSHIN)"
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
-            required
-          />
+          {/* No code field: the server mints one from the first name — Afshin becomes AFSHIN. */}
           <Input
             placeholder="Name (Afshin Dhanani)"
             value={name}

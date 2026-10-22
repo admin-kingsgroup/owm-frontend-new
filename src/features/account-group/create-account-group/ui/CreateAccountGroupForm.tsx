@@ -24,7 +24,6 @@ export function CreateAccountGroupForm({
   onCreated,
   onCancel,
 }: CreateAccountGroupFormProps) {
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [parentCode, setParentCode] = useState('');
   const [nature, setNature] = useState<AccountNature>('ASSET');
@@ -40,7 +39,6 @@ export function CreateAccountGroupForm({
 
     try {
       const group = await createAccountGroup(companyId, {
-        code,
         name,
         parentCode: parentCode || undefined,
         nature,
@@ -56,19 +54,7 @@ export function CreateAccountGroupForm({
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="group-code">
-          Code
-        </label>
-        <Input
-          id="group-code"
-          placeholder="MARKETABLE_SECURITIES"
-          value={code}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          required
-        />
-      </div>
-
+      {/* No code field: the server mints one from the name — "Office Expenses" becomes OFFICE_EXPENSES. */}
       <div className={styles.field}>
         <label className={styles.label} htmlFor="group-name">
           Name
