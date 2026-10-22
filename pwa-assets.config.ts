@@ -1,10 +1,11 @@
 import { defineConfig, minimal2023Preset } from '@vite-pwa/assets-generator/config';
 
 /**
- * How brand/kb360-logo.png — the KBiz360 pinwheel app icon — becomes the installed-app icon set
+ * How public/kb360-logo.png — the KBiz360 pinwheel app icon — becomes the installed-app icon set
  * and the favicon. Run with `npm run icons`; every pwa-*.png, maskable-icon-512x512.png,
  * apple-touch-icon-180x180.png and favicon.ico under public/ comes from it, so it is the only one
- * to replace. It lives outside public/ so the 1024px original is not shipped to every visitor.
+ * to replace. The generator writes beside its source, which is why the source is in public/;
+ * vite.config.ts keeps it out of the offline cache, since the app itself never shows it.
  *
  * This is the stock minimal-2023 preset with two changes, both to the maskable and Apple icons.
  * The preset draws those inset, so a platform cropping the icon to its own silhouette never cuts
@@ -16,7 +17,7 @@ import { defineConfig, minimal2023Preset } from '@vite-pwa/assets-generator/conf
 const LOGO_GROUND = '#0c0e14';
 
 export default defineConfig({
-  images: ['brand/kb360-logo.png'],
+  images: ['public/kb360-logo.png'],
   preset: {
     ...minimal2023Preset,
     maskable: {
