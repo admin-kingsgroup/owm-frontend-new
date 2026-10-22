@@ -63,8 +63,14 @@
   gap: 0;
 }
 
-/* The panel is the last thing in its column and a grid inside it needs the bottom corners. */
-.flush > :last-child {
+/*
+  The panel is the last thing in its column and a grid inside it needs the bottom corners.
+
+  Clipped here on the body, not on the grid itself: the grid's root is its own scroller, and
+  `overflow: hidden` there — on a selector that outranks the page's — cut a wide grid off at the
+  edge and a tall one at its max-height, with no way to scroll to the rest of either.
+*/
+.flush {
   border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
   overflow: hidden;
 }

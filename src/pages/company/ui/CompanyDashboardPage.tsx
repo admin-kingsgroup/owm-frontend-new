@@ -471,13 +471,15 @@ export function CompanyDashboardPage() {
               </Button>
             }
           >
-            <AccountGroupTree
-              groups={groups}
-              selectedGroupId={selectedGroupId}
-              onSelect={setSelectedGroupId}
-              onDelete={(group) => setPending({ kind: 'group', group })}
-              deletingGroupId={pending?.kind === 'group' && deleting ? pending.group.id : null}
-            />
+            <div className={styles.groupTreeScroll}>
+              <AccountGroupTree
+                groups={groups}
+                selectedGroupId={selectedGroupId}
+                onSelect={setSelectedGroupId}
+                onDelete={(group) => setPending({ kind: 'group', group })}
+                deletingGroupId={pending?.kind === 'group' && deleting ? pending.group.id : null}
+              />
+            </div>
           </Panel>
 
           <Panel
@@ -494,7 +496,7 @@ export function CompanyDashboardPage() {
             ) : (
               /* A record list — one ledger per row with a handful of named fields — so it becomes
                  a list of cards on a phone rather than a sideways scroll. */
-              <Table surface="plain" stack>
+              <Table surface="plain" stack sticky className={styles.ledgerGrid}>
                 <thead>
                   <tr>
                     <th>ID</th>

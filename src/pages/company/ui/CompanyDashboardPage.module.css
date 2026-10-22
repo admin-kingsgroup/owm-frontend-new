@@ -249,6 +249,57 @@
   }
 }
 
+/*
+  A chart of accounts runs to a hundred-odd ledgers, so each list scrolls within the viewport
+  rather than stretching the page — the ledger grid keeps its headings on top while it does
+  (Table's `sticky`). From 48rem up, which is wherever the ledger grid is still a grid: below it
+  the rows become cards (see Table's `stack`), and a box that scrolls inside a page that scrolls is
+  the worse of two on a phone.
+*/
+@media screen and (min-width: 48.0625rem) {
+  .groupTreeScroll,
+  .ledgerGrid {
+    max-height: calc(100dvh - 16rem);
+    overflow-y: auto;
+  }
+}
+
+/*
+  Scrollbars are hidden app-wide (globals.css), so a list cut off at its max-height has to say
+  there is more some other way: its last rows fade out, and the fade goes once the list is scrolled
+  to the end. Driven by the box's own scroll position, so a list short enough not to scroll has no
+  timeline, no animation, and no fade. A browser without scroll-driven animations simply shows no
+  fade — the list still scrolls.
+*/
+@property --list-fade {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes listFade {
+  from,
+  92% {
+    --list-fade: 2.5rem;
+  }
+
+  to {
+    --list-fade: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media screen and (min-width: 48.0625rem) {
+    .groupTreeScroll,
+    .ledgerGrid {
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);
+      mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);
+      animation: listFade linear both;
+      animation-timeline: scroll(self);
+    }
+  }
+}
+
 .key {
   padding: 0 0.3125rem;
   border: 1px solid var(--border);

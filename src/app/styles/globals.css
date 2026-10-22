@@ -497,6 +497,24 @@ body {
   line-height: 1.5;
 }
 
+/*
+  No visible scrollbars, anywhere. The shell is a set of boxes that each scroll on their own — the
+  page, the sidebar, the shortcut bar, panels, grids, dialogs — and a full Windows scrollbar on
+  every one of them drew more chrome than content. Scrolling itself is untouched: wheel, touchpad,
+  keyboard and touch all still work. Where a box needs to say "there is more", it fades its last
+  rows out instead (see the Masters lists in CompanyDashboardPage.module.css).
+
+  The standard property for Firefox and current Chromium; the pseudo-element for Safari and older
+  Chromium, which ignore it.
+*/
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 a {
   color: inherit;
 }
