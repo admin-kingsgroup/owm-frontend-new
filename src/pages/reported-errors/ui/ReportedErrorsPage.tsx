@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useCompanyStore } from '@/entities/company';
 import { listClientErrors } from '@/entities/client-error';
 import type { ClientError, ClientErrorKind } from '@/entities/client-error';
-import { Button, Select, Loading, EmptyState, Badge, Table } from '@/shared/ui';
+import { Button, Select, PageSkeleton, EmptyState, Badge, Table } from '@/shared/ui';
 import { getErrorMessage, getErrorStatus } from '@/shared/lib';
 import { useButtonBar } from '@/widgets/app-shell';
 
@@ -217,7 +217,7 @@ export function ReportedErrorsPage() {
       </div>
 
       {loading ? (
-        <Loading label="Loading reported errors…" />
+        <PageSkeleton variant="table" label="Loading reported errors…" />
       ) : errors.length === 0 ? (
         <EmptyState
           icon={<AlertTriangle size={32} />}

@@ -14,7 +14,7 @@ import {
   Badge,
   Button,
   Input,
-  Loading,
+  PageSkeleton,
   Table,
   IconButton,
   IconButtonGroup,
@@ -165,7 +165,7 @@ export function FinancialYearsPanel({ companyId }: FinancialYearsPanelProps) {
     return (
       <div className={styles.panel}>
         {head}
-        <Loading label="Loading financial years…" />
+        <PageSkeleton variant="rows" count={3} label="Loading financial years…" />
       </div>
     );
 

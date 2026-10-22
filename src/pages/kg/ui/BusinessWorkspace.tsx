@@ -32,7 +32,7 @@ import {
   Textarea,
   Badge,
   EmptyState,
-  Loading,
+  PageSkeleton,
   Table,
 } from '@/shared/ui';
 import { cn, formatCompactMoney, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
@@ -238,7 +238,7 @@ export function BusinessWorkspace({
     return (
       <div className={styles.workspace}>
         {title}
-        <Loading label={`Loading ${business.name}…`} />
+        <PageSkeleton variant="rows" label={`Loading ${business.name}…`} />
       </div>
     );
 

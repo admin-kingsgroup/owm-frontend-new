@@ -1,3 +1,7 @@
+import type { CSSProperties } from 'react';
+
+import { cn } from '@/shared/lib';
+
 import styles from './Skeleton.module.css';
 
 export interface SkeletonProps {
@@ -19,7 +23,7 @@ const WIDTHS = ['72%', '100%', '88%', '94%', '61%', '100%', '80%', '46%'];
  * The shape of what is coming, while it is coming.
  *
  * For a panel inside a page that has already drawn — the page keeps its layout and one card fills
- * in. A whole route still uses Loading, where there is no shape to hold yet.
+ * in. A whole screen uses PageSkeleton, which draws the frame as well.
  */
 export function Skeleton({ lines = 4, label = 'Loading…' }: SkeletonProps) {
   return (
@@ -33,5 +37,32 @@ export function Skeleton({ lines = 4, label = 'Loading…' }: SkeletonProps) {
         />
       ))}
     </div>
+  );
+}
+
+export interface SkeletonBlockProps {
+  width?: CSSProperties['width'];
+  height?: CSSProperties['height'];
+  /** Round for a chip or avatar, a pill for a badge — defaults to a soft rectangle. */
+  radius?: CSSProperties['borderRadius'];
+  className?: string;
+}
+
+/**
+ * One shimmering shape standing in for one thing — a figure, a chip, a chart. Silent to a screen
+ * reader: whatever holds it says what is loading.
+ */
+export function SkeletonBlock({
+  width = '100%',
+  height = '0.75rem',
+  radius,
+  className,
+}: SkeletonBlockProps) {
+  return (
+    <span
+      className={cn(styles.block, className)}
+      style={{ width, height, borderRadius: radius }}
+      aria-hidden="true"
+    />
   );
 }

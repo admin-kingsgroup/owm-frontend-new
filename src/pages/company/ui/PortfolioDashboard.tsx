@@ -25,7 +25,7 @@ import {
 } from '@/entities/kg';
 import type { Business, PortfolioMonth, PortfolioView } from '@/entities/kg';
 import { cn, formatCompactMoney, formatMoney, getErrorMessage, localeFor } from '@/shared/lib';
-import { BarChart, KpiTile } from '@/shared/ui';
+import { BarChart, KpiTile, Skeleton } from '@/shared/ui';
 import { DashboardHeader } from '@/widgets/dashboard-header';
 
 import styles from './CompanyGateway.module.css';
@@ -197,6 +197,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
         */}
         <KpiTile
           index={0}
+          loading={loading && !view}
           label="Reporting"
           icon={<Building2 />}
           value={measured === null || measured === 0 ? null : reporting}
@@ -228,6 +229,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
         */}
         <KpiTile
           index={1}
+          loading={loading && !view}
           label="Turnover"
           icon={<ChartNoAxesCombined />}
           value={view && reporting > 0 ? Number(view.totals.turnover) : null}
@@ -244,6 +246,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
 
         <KpiTile
           index={2}
+          loading={loading && !view}
           label="Net profit"
           icon={<TrendingUp />}
           value={view && reporting > 0 ? Number(view.totals.netProfit) : null}
@@ -258,6 +261,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
 
         <KpiTile
           index={3}
+          loading={loading && !view}
           label="Capital deployed"
           icon={<Coins />}
           value={view && reporting > 0 ? Number(view.totals.cumulativeCapitalInjected) : null}
@@ -283,7 +287,7 @@ export function PortfolioDashboard({ company }: PortfolioDashboardProps) {
               )}
             </div>
 
-            {loading && !view && <p className={styles.pending}>Reading the portfolio…</p>}
+            {loading && !view && <Skeleton lines={6} label="Reading the portfolio…" />}
 
             {view && view.businesses.length === 0 && (
               <p className={styles.clear}>No business has locked a snapshot for {monthName} yet.</p>
