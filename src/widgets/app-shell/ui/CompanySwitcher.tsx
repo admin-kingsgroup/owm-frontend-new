@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Building2, Check, ChevronDown, ChevronsUpDown, LayoutGrid } from 'lucide-react';
 
@@ -45,10 +45,35 @@ export function CompanySwitcher({ companyId, companies, variant = 'bar' }: Compa
   const location = useLocation();
 
   const [open, setOpen] = useState(false);
+  const [railMenuAt, setRailMenuAt] = useState<{ top: number; left: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useMenuKeys(open, menuRef);
+
+  /*
+    The sidebar scrolls, and a box that scrolls one way clips the other — so a menu positioned inside
+    it is cut off at the rail's edge, codes and all, and in the icon-only rail almost entirely. Fixed
+    to the viewport instead, it can be wider than the rail it opens from. Re-placed on scroll and
+    resize so it stays under the trigger rather than floating where the trigger used to be.
+  */
+  useLayoutEffect(() => {
+    if (!open || variant !== 'rail') return;
+
+    function place() {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (rect) setRailMenuAt({ top: rect.bottom + 8, left: rect.left });
+    }
+
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open, variant]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +125,7 @@ export function CompanySwitcher({ companyId, companies, variant = 'bar' }: Compa
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
       <button
+        ref={triggerRef}
         type="button"
         className={cn(styles.trigger, variant === 'rail' && styles.railTrigger)}
         onClick={() => setOpen((prev) => !prev)}
@@ -147,7 +173,13 @@ export function CompanySwitcher({ companyId, companies, variant = 'bar' }: Compa
       </button>
 
       {open && (
-        <div className={styles.menu} role="menu" aria-label="Switch company" ref={menuRef}>
+        <div
+          className={cn(styles.menu, variant === 'rail' && styles.railMenu)}
+          style={variant === 'rail' && railMenuAt ? railMenuAt : undefined}
+          role="menu"
+          aria-label="Switch company"
+          ref={menuRef}
+        >
           {ordered.map((company) => (
             <button
               key={company.id}

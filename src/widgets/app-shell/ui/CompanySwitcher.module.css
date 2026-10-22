@@ -222,8 +222,13 @@
   white-space: nowrap;
 }
 
-/* The sidebar's dropdown opens as wide as the rail and a little wider, so names are not cut. */
-.railTrigger + .menu {
+/*
+  The sidebar's dropdown is fixed to the viewport (top and left come from the trigger, inline), so
+  the rail's scroll box cannot clip it and it can open wider than the rail. The min-width replaces
+  the 100% above, which against the viewport would mean full-screen.
+*/
+.railMenu {
+  position: fixed;
   min-width: 15rem;
 }
 
