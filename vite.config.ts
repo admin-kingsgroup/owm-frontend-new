@@ -41,6 +41,9 @@ export default defineConfig({
         // The shell only. Accounting figures are never served from the cache — see the note on
         // navigateFallbackDenylist below.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The 1024px logo is only the source `npm run icons` draws every icon from. The app never
+        // shows it, so it is left out rather than downloaded into every install's cache.
+        globIgnores: ['kb360-logo.png'],
         navigateFallback: '/index.html',
         // The API is same-origin (`/api/v1`, proxied by nginx — see DEPLOY.md), so it falls inside
         // the worker's scope. Without this the navigation fallback answers an offline API call with
