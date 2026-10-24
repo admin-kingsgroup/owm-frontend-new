@@ -31,7 +31,6 @@ export function CreateLedgerForm({
   onCreated,
   onCancel,
 }: CreateLedgerFormProps) {
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [accountGroupCode, setAccountGroupCode] = useState(accountGroups[0]?.code ?? '');
   const [ledgerType, setLedgerType] = useState<LedgerType>('GENERAL');
@@ -51,7 +50,6 @@ export function CreateLedgerForm({
 
     try {
       const ledger = await createLedger(companyId, {
-        code,
         name,
         accountGroupCode,
         ledgerType,
@@ -88,19 +86,7 @@ export function CreateLedgerForm({
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="ledger-code">
-          Code
-        </label>
-        <Input
-          id="ledger-code"
-          placeholder="HDFC_BANK"
-          value={code}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          required
-        />
-      </div>
-
+      {/* No code field: the server mints one from the name — "HDFC Bank" becomes HDFC_BANK. */}
       <div className={styles.field}>
         <label className={styles.label} htmlFor="ledger-name">
           Name

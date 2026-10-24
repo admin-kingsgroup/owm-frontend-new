@@ -5,7 +5,7 @@ import { createCompany, getSeedPreview } from '@/entities/company';
 import type { Company, CompanyType, SeedPreview } from '@/entities/company';
 import { Button, Input, Select } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib';
-import { COMPANY_DEFAULTS } from '@/shared/constants';
+import { COMPANY_DEFAULTS, WORLD_CURRENCIES, currencyLabel } from '@/shared/constants';
 
 import styles from './CreateCompanyForm.module.css';
 
@@ -66,7 +66,6 @@ function currentFinancialYear(): { start: string; end: string } {
 
 export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProps) {
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [legalName, setLegalName] = useState('');
   const [type, setType] = useState<CompanyType>('TRADING');
   const [preview, setPreview] = useState<SeedPreview | null>(null);
@@ -111,7 +110,6 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
     try {
       const company = await createCompany({
         name,
-        code,
         type,
         legalName: legalName || undefined,
         financialYearStart,
@@ -144,30 +142,17 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
         />
       </div>
 
-      <div className={styles.row}>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="company-code">
-            Code
-          </label>
-          <Input
-            id="company-code"
-            placeholder="ABC001"
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
-            required
-          />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="company-legal-name">
-            Legal name (optional)
-          </label>
-          <Input
-            id="company-legal-name"
-            placeholder="ABC Enterprises Pvt. Ltd."
-            value={legalName}
-            onChange={(event) => setLegalName(event.target.value)}
-          />
-        </div>
+      {/* No code field: the server mints one from the name (ADB-01), shown once the company exists. */}
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="company-legal-name">
+          Legal name (optional)
+        </label>
+        <Input
+          id="company-legal-name"
+          placeholder="ABC Enterprises Pvt. Ltd."
+          value={legalName}
+          onChange={(event) => setLegalName(event.target.value)}
+        />
       </div>
 
       <div className={styles.row}>
@@ -202,14 +187,18 @@ export function CreateCompanyForm({ onCreated, onCancel }: CreateCompanyFormProp
           <label className={styles.label} htmlFor="company-currency">
             Base currency
           </label>
-          <Input
+          <Select
             id="company-currency"
-            placeholder="INR"
-            maxLength={3}
             value={baseCurrency}
-            onChange={(event) => setBaseCurrency(event.target.value.toUpperCase())}
+            onChange={(event) => setBaseCurrency(event.target.value)}
             required
-          />
+          >
+            {WORLD_CURRENCIES.map((currency) => (
+              <option key={currency.code} value={currency.code}>
+                {currencyLabel(currency)}
+              </option>
+            ))}
+          </Select>
         </div>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="company-country">

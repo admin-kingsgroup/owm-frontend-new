@@ -90,7 +90,6 @@ export interface Company {
 
 export interface CreateCompanyInput {
   name: string;
-  code: string;
   /** Omitted defaults to TRADING on the server. */
   type?: CompanyType;
   legalName?: string;

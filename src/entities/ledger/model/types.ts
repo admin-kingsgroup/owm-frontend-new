@@ -38,7 +38,11 @@ export interface Ledger {
 }
 
 export interface CreateLedgerInput {
-  code: string;
+  /**
+   * Left out by the form — the server mints one from the name. Only an import passes one, because
+   * the file's other rows refer to the ledger by it.
+   */
+  code?: string;
   name: string;
   accountGroupCode: string;
   ledgerType?: LedgerType;

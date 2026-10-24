@@ -11,6 +11,7 @@ import {
 import type { Currency, ExchangeRate, RateType } from '@/entities/currency';
 import { Button, Input, PageSkeleton, Select, Table } from '@/shared/ui';
 import { getErrorMessage, toCalendarDay } from '@/shared/lib';
+import { WORLD_CURRENCIES, currencyLabel } from '@/shared/constants';
 
 import styles from './CurrenciesPanel.module.css';
 
@@ -42,8 +43,6 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
 
   const [addingCurrency, setAddingCurrency] = useState(false);
   const [code, setCode] = useState('');
-  const [symbol, setSymbol] = useState('');
-  const [currencyName, setCurrencyName] = useState('');
 
   const [rateCurrency, setRateCurrency] = useState('');
   const [rateType, setRateType] = useState<RateType>('STANDARD');
@@ -78,23 +77,33 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
     };
   }, [companyId]);
 
+  /**
+   * What can still be added: not one already held, and not the base currency, which a company
+   * expresses by absence and never holds a record for.
+   */
+  const addable = WORLD_CURRENCIES.filter(
+    (currency) =>
+      currency.code !== baseCurrency.toUpperCase() &&
+      !currencies.some((held) => held.code === currency.code),
+  );
+
   async function handleAddCurrency(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
+      const chosen = WORLD_CURRENCIES.find((currency) => currency.code === code);
+      if (!chosen) throw new Error('Choose a currency');
       const created = await createCurrency(companyId, {
-        code: code.toUpperCase(),
-        symbol,
-        name: currencyName,
+        code: chosen.code,
+        symbol: chosen.symbol,
+        name: chosen.name,
       });
       setCurrencies((current) =>
         [...current, created].sort((a, b) => a.code.localeCompare(b.code)),
       );
       setRateCurrency((current) => current || created.code);
       setCode('');
-      setSymbol('');
-      setCurrencyName('');
       setAddingCurrency(false);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not add currency'));
@@ -164,43 +173,26 @@ export function CurrenciesPanel({ companyId, baseCurrency }: CurrenciesPanelProp
 
       {addingCurrency && (
         <form className={styles.form} onSubmit={handleAddCurrency}>
+          {/* Picked, not typed: the code, symbol and name all come from the one choice. */}
           <div className={styles.field}>
             <label className={styles.label} htmlFor="cur-code">
-              Code
+              Currency
             </label>
-            <Input
+            <Select
               id="cur-code"
               value={code}
-              maxLength={3}
-              placeholder="USD"
-              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              onChange={(event) => setCode(event.target.value)}
               required
-            />
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="cur-symbol">
-              Symbol
-            </label>
-            <Input
-              id="cur-symbol"
-              value={symbol}
-              maxLength={5}
-              placeholder="$"
-              onChange={(event) => setSymbol(event.target.value)}
-              required
-            />
-          </div>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="cur-name">
-              Name
-            </label>
-            <Input
-              id="cur-name"
-              value={currencyName}
-              placeholder="US Dollar"
-              onChange={(event) => setCurrencyName(event.target.value)}
-              required
-            />
+            >
+              <option value="" disabled>
+                Choose a currency
+              </option>
+              {addable.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currencyLabel(currency)}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className={styles.formActions}>
             <Button type="submit" disabled={submitting}>

@@ -14,7 +14,11 @@ export interface AccountGroup {
 }
 
 export interface CreateAccountGroupInput {
-  code: string;
+  /**
+   * Left out by the form — the server mints one from the name. Only an import passes one, because
+   * the file's ledgers and child groups refer to the group by it.
+   */
+  code?: string;
   name: string;
   parentCode?: string;
   nature: AccountNature;
