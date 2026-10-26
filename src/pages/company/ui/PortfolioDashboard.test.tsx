@@ -12,6 +12,7 @@ const performance = (patch: Partial<BusinessPerformance> = {}): BusinessPerforma
   businessId: 'b1',
   businessName: 'KG Textiles',
   reportingCurrency: 'INR',
+  figureSource: 'STATEMENT',
   revision: 1,
   turnover: '1200000.00',
   netProfit: '180000.00',

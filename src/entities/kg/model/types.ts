@@ -77,12 +77,18 @@ export interface Snapshot {
   metrics?: SnapshotMetrics;
 }
 
+/** Where a month's figures came from: a locked statement, or a result keyed by hand. */
+export type PeriodFigureSource = 'STATEMENT' | 'KEYED';
+
 export interface BusinessPerformance {
   businessId: string;
   businessName: string;
   reportingCurrency: string;
-  revision: number;
-  turnover: string;
+  figureSource: PeriodFigureSource;
+  /** Absent for a keyed month, which has no snapshot. */
+  revision?: number;
+  /** Absent for a keyed month: the business reports a profit and no sales figure. */
+  turnover?: string;
   netProfit: string;
   netMarginPercent?: string;
   capitalEmployed: string;
@@ -124,6 +130,7 @@ export interface PartnerStatement {
   businesses: Array<{
     businessId: string;
     businessName: string;
+    figureSource: PeriodFigureSource;
     profitSharePercent: string;
     businessNetProfit: string;
     yourProfitShare: string;
@@ -154,7 +161,9 @@ export interface ForecastResult {
 export interface TrajectoryPoint {
   periodYear: number;
   periodMonth: number;
-  turnover: string;
+  figureSource: PeriodFigureSource;
+  /** Absent for a keyed month. */
+  turnover?: string;
   netProfit: string;
   netMarginPercent?: string;
   roiPercent?: string;

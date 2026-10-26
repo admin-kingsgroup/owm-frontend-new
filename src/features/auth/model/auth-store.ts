@@ -2,7 +2,14 @@ import { create } from 'zustand';
 
 import { useCompanyStore } from '@/entities/company';
 import type { User } from '@/entities/user';
-import { getAuthToken, setAuthToken, getErrorMessage } from '@/shared/lib';
+import { onSessionExpired } from '@/shared/api';
+import {
+  getAuthToken,
+  setAuthToken,
+  getRefreshToken,
+  setRefreshToken,
+  getErrorMessage,
+} from '@/shared/lib';
 
 import { login as loginRequest, logout as logoutRequest, fetchCurrentUser } from '../api/auth-api';
 
@@ -28,8 +35,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ status: 'loading', error: null });
 
     try {
-      const { user, accessToken } = await loginRequest(email, password);
+      const { user, accessToken, refreshToken } = await loginRequest(email, password);
       setAuthToken(accessToken);
+      setRefreshToken(refreshToken ?? null);
       /*
         Whoever was here before, their companies are not this person's to see. Cleared on the way
         in rather than only on the way out, because a session does not always end with a sign-out —
@@ -39,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, status: 'authenticated', error: null });
     } catch (error) {
       setAuthToken(null);
+      setRefreshToken(null);
       const message = getErrorMessage(error, 'Invalid email or password');
       set({ user: null, status: 'unauthenticated', error: message });
       throw error;
@@ -47,9 +56,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     try {
-      await logoutRequest();
+      await logoutRequest(getRefreshToken() ?? undefined);
     } finally {
       setAuthToken(null);
+      setRefreshToken(null);
       useCompanyStore.getState().reset();
       set({ user: null, status: 'unauthenticated', error: null });
     }
@@ -68,7 +78,22 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, status: 'authenticated', error: null, hydrated: true });
     } catch {
       setAuthToken(null);
+      setRefreshToken(null);
       set({ user: null, status: 'unauthenticated', hydrated: true });
     }
   },
 }));
+
+/*
+  The API client renews an expired access token on its own; this runs only when that fails — the
+  refresh token expired, was revoked at sign-out elsewhere, or was spent by another copy. The
+  person is sent to sign in again, with nothing of theirs left on screen.
+*/
+onSessionExpired(() => {
+  useCompanyStore.getState().reset();
+  useAuthStore.setState({
+    user: null,
+    status: 'unauthenticated',
+    error: 'Your session has ended. Please sign in again.',
+  });
+});

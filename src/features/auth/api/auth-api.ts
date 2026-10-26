@@ -12,8 +12,9 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data.data;
 }
 
-export async function logout(): Promise<void> {
-  await apiClient.post('/auth/logout');
+/** Sends this device's refresh token so the server revokes it, not just forgets the access token. */
+export async function logout(refreshToken?: string): Promise<void> {
+  await apiClient.post('/auth/logout', refreshToken ? { refreshToken } : undefined);
 }
 
 export async function fetchCurrentUser(): Promise<User> {

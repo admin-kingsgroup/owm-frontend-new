@@ -83,9 +83,18 @@ export function RankingTable({ view, money, limit, linkTo, full = false }: Ranki
                 {row.reportingCurrency === view.portfolioCurrency
                   ? `Reports in ${row.reportingCurrency}`
                   : `Reports in ${row.reportingCurrency} · converted to ${view.portfolioCurrency}`}
+                {row.figureSource === 'KEYED' && ' · keyed result, ranked on return and profit'}
               </span>
             </td>
-            {full && <td data-num>{money(row.turnover)}</td>}
+            {full && (
+              <td data-num>
+                {row.turnover === undefined ? (
+                  <span className={styles.nil}>—</span>
+                ) : (
+                  money(row.turnover)
+                )}
+              </td>
+            )}
             <td data-num className={cn(Number(row.netProfit) < 0 && styles.negative)}>
               {money(row.netProfit)}
             </td>
