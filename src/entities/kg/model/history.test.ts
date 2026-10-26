@@ -6,6 +6,7 @@ import type { TrajectoryPoint } from './types';
 const point = (periodMonth: number, netProfit: number, periodYear = 2026): TrajectoryPoint => ({
   periodYear,
   periodMonth,
+  figureSource: 'STATEMENT',
   turnover: String(netProfit * 10),
   netProfit: String(netProfit),
 });

@@ -33,7 +33,8 @@ export function portfolioMonths(trajectories: TrajectoryPoint[][], limit = 12): 
       };
       byPeriod.set(key, {
         ...month,
-        turnover: month.turnover + Number(point.turnover),
+        // A keyed month reports no turnover; it adds nothing here rather than NaN.
+        turnover: month.turnover + Number(point.turnover ?? 0),
         netProfit: month.netProfit + Number(point.netProfit),
         reported: month.reported + 1,
       });
