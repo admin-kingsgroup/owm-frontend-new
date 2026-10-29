@@ -6,9 +6,10 @@ import { PageSkeleton } from '@/shared/ui';
   The reports screen, fetched when it is first opened rather than with everything else.
 
   Twenty-one statements live behind that one route — every view, every tree, every export — and
-  bundled with the rest they were paid for by the sign-in screen, which needs none of them. It is by
-  a wide margin the largest thing in the app and the only route large enough to be worth separating;
-  splitting the small ones would trade one download for several round trips.
+  bundled with the rest they were paid for by the sign-in screen, which needs none of them. Small
+  routes most users open anyway stay in the main bundle: splitting them would trade one download
+  for several round trips. KG and reported errors are split too (see their routes) — not for size
+  alone, but because most users never open them.
 
   In its own file, not in `routes.tsx`, because Fast Refresh only holds state across an edit when a
   module exports components and nothing else — and `routes.tsx` exports the route table. Same reason
