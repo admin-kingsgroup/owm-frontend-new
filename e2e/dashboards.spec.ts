@@ -52,7 +52,7 @@ test.describe('signing in', () => {
 
     // Named rather than placeheld — the form carries aria-labels, which is what this finds them by.
     await page.getByLabel('Email').fill(ACCOUNT.email);
-    await page.getByLabel('Password').fill(ACCOUNT.password);
+    await page.getByLabel('Password', { exact: true }).fill(ACCOUNT.password);
     await page.getByRole('button', { name: 'Enter OWM' }).click();
 
     // Company selection, not a company. Which set of books is a decision, and it is made here.
@@ -143,7 +143,7 @@ test.describe('signing out and back in', () => {
 
     await page.goto('/');
     await page.getByLabel('Email').fill(ACCOUNT.email);
-    await page.getByLabel('Password').fill(ACCOUNT.password);
+    await page.getByLabel('Password', { exact: true }).fill(ACCOUNT.password);
     await page.getByRole('button', { name: 'Enter OWM' }).click();
     await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
     await page.waitForLoadState('networkidle');
@@ -156,7 +156,7 @@ test.describe('signing out and back in', () => {
     await expect(page.getByRole('button', { name: 'Enter OWM' })).toBeVisible();
 
     await page.getByLabel('Email').fill(ACCOUNT.email);
-    await page.getByLabel('Password').fill(ACCOUNT.password);
+    await page.getByLabel('Password', { exact: true }).fill(ACCOUNT.password);
     await page.getByRole('button', { name: 'Enter OWM' }).click();
     await expect(page.getByRole('heading', { name: 'Group overview', level: 1 })).toBeVisible();
     await page.waitForLoadState('networkidle');

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { Button, Input } from '@/shared/ui';
 
@@ -13,6 +14,7 @@ export function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -41,14 +43,26 @@ export function LoginForm() {
       </label>
       <label className={styles.field}>
         Password
-        <Input
-          className={styles.input}
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
-          required
-        />
+        <div className={styles.passwordWrap}>
+          <Input
+            className={`${styles.input} ${styles.passwordInput}`}
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={password}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
+            required
+          />
+          {/* type="button" so clicking the eye never submits the form. */}
+          <button
+            type="button"
+            className={styles.eye}
+            onClick={() => setShowPassword((shown) => !shown)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
       </label>
       {error && (
         <p className={styles.error} role="alert">
