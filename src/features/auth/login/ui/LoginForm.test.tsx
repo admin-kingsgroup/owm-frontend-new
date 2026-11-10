@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 import { LoginForm } from './LoginForm';
 
@@ -19,14 +19,14 @@ describe('the sign-in form', () => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/email/i)).toBeTruthy();
-    expect(screen.getByLabelText(/password/i)).toBeTruthy();
+    expect(screen.getByLabelText(/^password$/i)).toBeTruthy();
   });
 
   it('keeps the types that decide the keyboard and the masking', () => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/email/i).getAttribute('type')).toBe('email');
-    expect(screen.getByLabelText(/password/i).getAttribute('type')).toBe('password');
+    expect(screen.getByLabelText(/^password$/i).getAttribute('type')).toBe('password');
   });
 
   it('tells a password manager which field is which', () => {
@@ -34,9 +34,20 @@ describe('the sign-in form', () => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/email/i).getAttribute('autocomplete')).toBe('email');
-    expect(screen.getByLabelText(/password/i).getAttribute('autocomplete')).toBe(
+    expect(screen.getByLabelText(/^password$/i).getAttribute('autocomplete')).toBe(
       'current-password',
     );
+  });
+
+  it('lets the reader show and hide the password', () => {
+    render(<LoginForm />);
+    const field = screen.getByLabelText(/^password$/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /show password/i }));
+    expect(field.getAttribute('type')).toBe('text');
+
+    fireEvent.click(screen.getByRole('button', { name: /hide password/i }));
+    expect(field.getAttribute('type')).toBe('password');
   });
 
   it('names the submit action', () => {
