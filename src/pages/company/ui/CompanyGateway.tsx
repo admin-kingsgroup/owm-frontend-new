@@ -243,12 +243,11 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
   }, [company.country]);
 
   /**
-   * Assets less liabilities. Taken from the statement's own totals rather than by adding the rows
-   * up here, so the dashboard cannot drift from the balance sheet by a rounding step.
+   * Assets less what is owed to others, as the server works it out. Not assets less
+   * `totals.liabilities`: that side includes the Capital Account, which is the owner's own money,
+   * and subtracting it left only the year's profit on this tile.
    */
-  const netWorth = balanceSheet
-    ? (Number(balanceSheet.totals.assets) - Number(balanceSheet.totals.liabilities)).toFixed(2)
-    : null;
+  const netWorth = balanceSheet ? balanceSheet.totals.netWorth : null;
 
   /**
    * The last month the books actually moved in — not necessarily this one. Named for the month it
@@ -489,7 +488,7 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
           negative={netWorth !== null && Number(netWorth) < 0}
           hint={
             balanceSheet &&
-            `Assets ${money(balanceSheet.totals.assets)} · liabilities ${money(balanceSheet.totals.liabilities)}`
+            `Assets ${money(balanceSheet.totals.assets)} · owed to others ${money(balanceSheet.totals.outsideLiabilities)}`
           }
           to={`${base}/reports?report=balance-sheet`}
         />

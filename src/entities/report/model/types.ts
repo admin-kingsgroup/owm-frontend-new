@@ -118,6 +118,10 @@ export interface BalanceSheetReport {
     liabilities: string;
     currentPeriodProfit: string;
     difference: string;
+    /** The liabilities side without the Capital Account — what is owed to others. */
+    outsideLiabilities: string;
+    /** Assets less `outsideLiabilities`: capital plus profit on balanced books. */
+    netWorth: string;
     priorAssets?: string;
     priorLiabilities?: string;
     priorCurrentPeriodProfit?: string;
