@@ -48,20 +48,33 @@ const balanceSheet = {
   liabilities: [
     {
       kind: 'group' as const,
+      id: 'l0',
+      code: 'CAPITAL',
+      name: 'Capital Account',
+      debit: '0',
+      credit: '0',
+      balance: '1500000.00',
+      balanceSide: 'CREDIT' as const,
+    },
+    {
+      kind: 'group' as const,
       id: 'l1',
       code: '2200',
       name: 'Loans (Liability)',
       debit: '0',
       credit: '0',
-      balance: '-4290000.00',
+      balance: '290000.00',
       balanceSide: 'CREDIT' as const,
     },
   ],
   totals: {
     assets: '1842650.00',
-    liabilities: '4290000.00',
-    currentPeriodProfit: '0.00',
+    liabilities: '1790000.00',
+    currentPeriodProfit: '52650.00',
     difference: '0.00',
+    // Only the loan is owed to others; capital is the owner's own money.
+    outsideLiabilities: '290000.00',
+    netWorth: '1552650.00',
   },
 };
 
@@ -175,6 +188,15 @@ describe('CompanyGateway', () => {
     expect(screen.getAllByText('Dr').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Cr').length).toBeGreaterThan(0);
     expect(screen.getByText('Net worth')).toBeTruthy();
+  });
+
+  it("does not count the owner's capital as a debt in net worth", async () => {
+    renderGateway();
+
+    // The hint names only what is owed to others (the 2,90,000 loan), never the 17,90,000 that
+    // includes Capital Account — subtracting that left net worth showing just the year's profit.
+    expect(await screen.findByText(/owed to others\s*\S*2,90,000\.00/)).toBeTruthy();
+    expect(screen.queryByText(/17,90,000/)).toBeNull();
   });
 
   it('opens each balance in the report that can actually show it', async () => {
