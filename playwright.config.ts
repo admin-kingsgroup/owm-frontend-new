@@ -13,14 +13,19 @@ import { defineConfig } from '@playwright/test';
  * failures worth catching are failures of the whole page — layout, theme, and the shell around the
  * screen — and a component harness cannot show any of them.
  *
- * Both servers are started here, and the API is given a throwaway in-memory replica set of its own
+ * Both servers are started here, and the API is given a throwaway Postgres server of its own
  * on a port of its own. That matters for more than isolation: account creation is closed to
  * everyone but an administrator, and the *first* account on an empty database is the one that
  * bootstraps as administrator — so a fresh database is what lets these checks sign in at all,
  * without anybody's real credentials being needed or stored.
  */
 const API_PORT = 5099;
-const backendDir = fileURLToPath(new URL('../OWM-ADB Backend', import.meta.url));
+/*
+  Its own port, not Vite's default 5173. The server below refuses to reuse one already running, so
+  any dev server on 5173 — this app's or another project's — would fail the run before it started.
+*/
+const WEB_PORT = 5199;
+const backendDir = fileURLToPath(new URL('../OWM-Backend', import.meta.url));
 
 export default defineConfig({
   testDir: './e2e',
@@ -31,7 +36,7 @@ export default defineConfig({
   timeout: 60_000,
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: `http://localhost:${WEB_PORT}`,
     // Desktop first, which is what this product is. Narrow widths are set per test.
     viewport: { width: 1440, height: 900 },
     screenshot: 'only-on-failure',
@@ -80,15 +85,15 @@ export default defineConfig({
       */
       reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
-      // The in-memory replica set downloads a mongod on first use.
+      // scripts/run-live.mts starts an embedded Postgres, which unpacks its binaries on first use.
       timeout: 240_000,
       stdout: 'ignore',
       stderr: 'pipe',
     },
     {
-      command: 'npm run dev -- --port 5173 --strictPort',
+      command: `npm run dev -- --port ${WEB_PORT} --strictPort`,
       env: { VITE_API_BASE_URL: `http://localhost:${API_PORT}/api/v1` },
-      url: 'http://localhost:5173',
+      url: `http://localhost:${WEB_PORT}`,
       // Same reasoning as the API above: owned by this run, or not used.
       reuseExistingServer: false,
       timeout: 120_000,

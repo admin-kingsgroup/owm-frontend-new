@@ -1,13 +1,23 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { seed } from './seed';
+import { API, seed } from './seed';
 
 let companyId: string;
 let token: string;
+/**
+ * The master set the server is on, read from it rather than written here. It moves with every
+ * seed release, and a number fixed in this file went stale the first time it did.
+ */
+let latest: number;
 
 test.beforeAll(async () => {
   ({ companyId, token } = await seed());
+
+  const response = await fetch(`${API}/companies/${companyId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  latest = (await response.json()).data.currentSeedVersion;
 });
 
 async function signIn(page: Page) {
@@ -28,7 +38,7 @@ async function stampedBehind(page: Page) {
 
     const response = await route.fetch();
     const body = await response.json();
-    const rewrite = (company: Record<string, unknown>) => ({ ...company, seedVersion: 3 });
+    const rewrite = (company: Record<string, unknown>) => ({ ...company, seedVersion: latest - 1 });
     const data = Array.isArray(body.data) ? body.data.map(rewrite) : rewrite(body.data);
     await route.fulfill({ response, json: { ...body, data } });
   });
@@ -61,8 +71,12 @@ test.describe('syncing default masters', () => {
     await page.goto(`/companies/${companyId}?tab=settings`);
 
     // The stamp is older and is said so — the server was asked and there is nothing to receive.
-    await expect(page.getByText('version 3 of 4')).toBeVisible();
-    await expect(page.getByText(/Nothing in version 4 applies to this kind of books/)).toBeVisible();
+    await expect(page.getByText(`version ${latest - 1} of ${latest}`)).toBeVisible();
+    await expect(
+      page.getByText(`Nothing in version ${latest} applies to this kind of books`, {
+        exact: false,
+      }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sync' })).toHaveCount(0);
 
     await page.screenshot({ path: 'e2e/screenshots/_masters-nothing-applies.png', fullPage: true });
@@ -86,7 +100,7 @@ test.describe('syncing default masters', () => {
 
     await page.goto(`/companies/${companyId}?tab=settings`);
 
-    await expect(page.getByText('version 3 of 4')).toBeVisible();
+    await expect(page.getByText(`version ${latest - 1} of ${latest}`)).toBeVisible();
     await expect(
       page.getByText(
         /Waiting for this company: 3 account groups, 2 voucher types and 2 number series\./,
@@ -101,10 +115,19 @@ test.describe('syncing default masters', () => {
 
     // The sync itself is not faked: the server holds the truth about what this company has.
     await expect(page.getByRole('status')).toContainText('Nothing to add');
-    await expect(page.getByText('version 4 · up to date')).toBeVisible();
+    await expect(page.getByText(`version ${latest} · up to date`)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sync' })).toHaveCount(0);
     await expect(page.getByText(/Syncing gives this company/)).toHaveCount(0);
 
     expect(faults, `the panel reported ${faults.length} fault(s)`).toEqual([]);
+  });
+
+  /*
+    A sync refreshes the company, and that read can still be inside `stampedBehind`'s route.fetch
+    when the last assertion passes. Ending the test then fails the run on a request nobody is
+    waiting for, after every check has already passed. Dropping the routes first lets it finish.
+  */
+  test.afterEach(async ({ page }) => {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
   });
 });

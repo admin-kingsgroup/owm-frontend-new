@@ -1,4 +1,4 @@
-const API = process.env.VITE_API_BASE_URL ?? 'http://localhost:5099/api/v1';
+export const API = process.env.VITE_API_BASE_URL ?? 'http://localhost:5099/api/v1';
 
 /** Fixed, so a re-run signs in as the same person rather than filling the database with strangers. */
 export const ACCOUNT = {
