@@ -693,6 +693,11 @@ export function VouchersPage() {
               companyId={companyId}
               voucher={selectedVoucher}
               onChanged={handleVoucherChanged}
+              onDiscarded={() => {
+                // The draft is gone, so the drawer has nothing left to show.
+                setSelectedVoucher(null);
+                booksChanged();
+              }}
               onEdit={(voucher) => {
                 // One dialog at a time: the drawer gives way to the form, and comes back on save.
                 setSelectedVoucher(null);
@@ -759,8 +764,10 @@ function VoucherDetail({
   children: ReactNode;
 }) {
   const money = (value: string) => formatMoney(value, { country });
-  const debit = voucher.entries.reduce((sum, entry) => sum + Number(entry.debit), 0);
-  const credit = voucher.entries.reduce((sum, entry) => sum + Number(entry.credit), 0);
+  // Guarded so a reply that comes back without its lines shows an empty table, not a crashed screen.
+  const entries = voucher.entries ?? [];
+  const debit = entries.reduce((sum, entry) => sum + Number(entry.debit), 0);
+  const credit = entries.reduce((sum, entry) => sum + Number(entry.credit), 0);
   const balanced = Math.abs(debit - credit) < 0.005;
 
   return (
@@ -784,7 +791,7 @@ function VoucherDetail({
           </tr>
         </thead>
         <tbody>
-          {voucher.entries.map((entry) => (
+          {entries.map((entry) => (
             <tr key={entry.id}>
               <td>
                 {entry.ledgerCode}
