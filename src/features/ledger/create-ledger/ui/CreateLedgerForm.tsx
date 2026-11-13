@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { createLedger } from '@/entities/ledger';
-import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
+import {
+  BankDetailsFields,
+  EMPTY_BANK_DETAILS,
+  createLedger,
+  filledBankDetails,
+} from '@/entities/ledger';
+import type { BankDetails, Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
 import type { Currency } from '@/entities/currency';
 import { Button, Checkbox, Input, Select, EmptyState } from '@/shared/ui';
@@ -39,6 +44,7 @@ export function CreateLedgerForm({
 
   const [maintainBillwise, setMaintainBillwise] = useState(false);
   const [currencyCode, setCurrencyCode] = useState('');
+  const [bankDetails, setBankDetails] = useState<BankDetails>(EMPTY_BANK_DETAILS);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +65,8 @@ export function CreateLedgerForm({
         // Omitted rather than sent empty: an empty string is not a currency code, and the account
         // simply stays on the company's base currency.
         ...(currencyCode ? { currencyCode } : {}),
+        // Only a bank ledger has them; anything typed before switching the type away is dropped.
+        ...(ledgerType === 'BANK' ? filledBankDetails(bankDetails) : {}),
       });
       onCreated(ledger);
     } catch (err) {
@@ -165,6 +173,10 @@ export function CreateLedgerForm({
           </Select>
         </div>
       </div>
+
+      {ledgerType === 'BANK' && (
+        <BankDetailsFields idPrefix="create-ledger" value={bankDetails} onChange={setBankDetails} />
+      )}
 
       {currencies.length > 0 && (
         <div className={styles.field}>

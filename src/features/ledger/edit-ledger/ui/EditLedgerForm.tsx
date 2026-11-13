@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { updateLedger } from '@/entities/ledger';
-import type { Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
+import {
+  BankDetailsFields,
+  bankDetailsOf,
+  bankDetailsPatch,
+  updateLedger,
+} from '@/entities/ledger';
+import type { BankDetails, Ledger, LedgerType, BalanceSide } from '@/entities/ledger';
 import type { AccountGroup } from '@/entities/account-group';
 import type { Currency } from '@/entities/currency';
 import { Button, Checkbox, Input, Select } from '@/shared/ui';
@@ -48,6 +53,7 @@ export function EditLedgerForm({
   const [currencyCode, setCurrencyCode] = useState(
     currencies.find((currency) => currency.id === ledger.currencyId)?.code ?? '',
   );
+  const [bankDetails, setBankDetails] = useState<BankDetails>(() => bankDetailsOf(ledger));
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +75,8 @@ export function EditLedgerForm({
         // `null` clears it back to base; a code sets it. A system ledger never sends the field at
         // all, because the server refuses it and the picker is hidden for one.
         ...(ledger.isSystem ? {} : { currencyCode: currencyCode || null }),
+        // A blank field clears it; a ledger that is no longer BANK has all four cleared.
+        ...bankDetailsPatch(bankDetails, ledgerType === 'BANK'),
       });
       onSaved(updated);
     } catch (err) {
@@ -165,6 +173,10 @@ export function EditLedgerForm({
           </Select>
         </div>
       </div>
+
+      {ledgerType === 'BANK' && (
+        <BankDetailsFields idPrefix="edit-ledger" value={bankDetails} onChange={setBankDetails} />
+      )}
 
       {currencies.length > 0 && !ledger.isSystem && (
         <div className={styles.field}>
