@@ -64,7 +64,15 @@ const ledgers = [
 ] as Ledger[];
 
 const currencies = [
-  { id: 'cur-usd', companyId: 'c1', code: 'USD', symbol: '$', name: 'US Dollar', decimalPlaces: 2, isActive: true },
+  {
+    id: 'cur-usd',
+    companyId: 'c1',
+    code: 'USD',
+    symbol: '$',
+    name: 'US Dollar',
+    decimalPlaces: 2,
+    isActive: true,
+  },
 ] as Currency[];
 
 /**
@@ -109,14 +117,22 @@ function upload(input: HTMLInputElement, file: File) {
 
 const ledgerInput = () =>
   screen
-    .getByText(/Ledgers CSV/)
+    .getByText(/Ledgers \(CSV/)
     .closest('label')!
     .querySelector('input')!;
 const groupInput = () =>
   screen
-    .getByText(/Account groups CSV/)
+    .getByText(/Account groups \(CSV/)
     .closest('label')!
     .querySelector('input')!;
+
+/**
+ * Presses Import on the preview a file produced. Nothing is written before this — the preview is
+ * the step between choosing a file and changing the books.
+ */
+async function confirmImport() {
+  fireEvent.click(await screen.findByRole('button', { name: /^Import \d+ row/ }));
+}
 
 beforeEach(() => {
   createLedger.mockResolvedValue({ id: 'new' });
@@ -143,6 +159,7 @@ describe('importing a chart of accounts', () => {
         'code,name,accountGroupCode\nHDFC_BANK,HDFC Bank — renamed,CURRENT_ASSETS\n',
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
     expect(createLedger).not.toHaveBeenCalled();
@@ -161,6 +178,7 @@ describe('importing a chart of accounts', () => {
       ledgerInput(),
       csv('ledgers.csv', 'code,name,accountGroupCode\nPETTY_CASH,Petty Cash,CURRENT_ASSETS\n'),
     );
+    await confirmImport();
 
     await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
     expect(updateLedger).not.toHaveBeenCalled();
@@ -178,6 +196,7 @@ describe('importing a chart of accounts', () => {
       ledgerInput(),
       csv('ledgers.csv', 'code,name,accountGroupCode\nHDFC_BANK,Renamed,CURRENT_ASSETS\n'),
     );
+    await confirmImport();
 
     await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
     const [, , fields] = updateLedger.mock.calls[0] as [string, string, Record<string, unknown>];
@@ -206,6 +225,7 @@ describe('importing a chart of accounts', () => {
         'code,name,accountGroupCode,gstin,pan,contactEmail\nHDFC_BANK,HDFC Bank — 4021,CURRENT_ASSETS,,,\n',
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
     const [, , fields] = updateLedger.mock.calls[0] as [string, string, Record<string, unknown>];
@@ -226,6 +246,7 @@ describe('importing a chart of accounts', () => {
         'code,name,accountGroupCode,gstin,creditDays\nPETTY_CASH,Petty Cash,CURRENT_ASSETS,,\n',
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
     const [, fields] = createLedger.mock.calls[0] as [string, Record<string, unknown>];
@@ -249,6 +270,7 @@ describe('importing a chart of accounts', () => {
         'code,name,accountGroupCode,currencyCode,creditLimit,creditDays\nHDFC_BANK,HDFC Bank — 4021,CURRENT_ASSETS,usd,50000,45\n',
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(updateLedger).toHaveBeenCalledTimes(1));
     const [, , fields] = updateLedger.mock.calls[0] as [string, string, Record<string, unknown>];
@@ -318,9 +340,9 @@ describe('importing a chart of accounts', () => {
     expect(updateLedger).not.toHaveBeenCalled();
   });
 
-  it('keeps the accepted rows when one is refused, and says which failed', async () => {
+  it('keeps the accepted rows when the server refuses one, and says which failed', async () => {
     createLedger
-      .mockRejectedValueOnce(new Error('That group does not exist'))
+      .mockRejectedValueOnce(new Error('Refused by the server'))
       .mockResolvedValueOnce({ id: 'ok' });
 
     panel();
@@ -329,13 +351,14 @@ describe('importing a chart of accounts', () => {
       ledgerInput(),
       csv(
         'ledgers.csv',
-        'code,name,accountGroupCode\nBAD,Bad Row,NOPE\nGOOD,Good Row,CURRENT_ASSETS\n',
+        'code,name,accountGroupCode\nBAD,Bad Row,CURRENT_ASSETS\nGOOD,Good Row,CURRENT_ASSETS\n',
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/1 created/)).toBeTruthy();
-    expect(screen.getByText('That group does not exist')).toBeTruthy();
+    expect(screen.getByText('Refused by the server')).toBeTruthy();
     // Line 2 is the first row under the header, which is what a spreadsheet shows.
     expect(screen.getByText('BAD')).toBeTruthy();
   });
@@ -359,6 +382,7 @@ describe('importing a chart of accounts', () => {
         ].join('\n'),
       ),
     );
+    await confirmImport();
 
     await waitFor(() => expect(createAccountGroup).toHaveBeenCalledTimes(2));
     const order = createAccountGroup.mock.calls.map((call) => (call[1] as { code: string }).code);
@@ -397,10 +421,157 @@ describe('importing a chart of accounts', () => {
 
     panel(onImported);
 
-    upload(ledgerInput(), csv('ledgers.csv', 'code,name,accountGroupCode\nNEW,New,NOPE\n'));
+    upload(
+      ledgerInput(),
+      csv('ledgers.csv', 'code,name,accountGroupCode\nNEW,New,CURRENT_ASSETS\n'),
+    );
+    await confirmImport();
 
     await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Nothing was changed/)).toBeTruthy();
     expect(onImported).not.toHaveBeenCalled();
+  });
+});
+
+describe('previewing an import before anything is written', () => {
+  it('writes nothing until Import is pressed, and nothing at all on Cancel', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv('ledgers.csv', 'code,name,accountGroupCode\nPETTY_CASH,Petty Cash,CURRENT_ASSETS\n'),
+    );
+
+    expect(await screen.findByLabelText('Import preview')).toBeTruthy();
+    expect(screen.getByText(/1 new · 0 to update/)).toBeTruthy();
+    expect(createLedger).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByLabelText('Import preview')).toBeNull();
+    expect(createLedger).not.toHaveBeenCalled();
+    expect(updateLedger).not.toHaveBeenCalled();
+  });
+
+  /*
+    The side used to be "CREDIT, or else DEBIT", so `Cr` became a debit — a supplier owed ₹15,000
+    went in as ₹15,000 owed to the company, the books out by twice the amount and nothing said.
+  */
+  it('reads Dr and Cr as the sides they name', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,openingBalance,openingBalanceType\nSHAH,Shah Suppliers,CURRENT_ASSETS,15000,Cr\n',
+      ),
+    );
+    await confirmImport();
+
+    await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
+    const [, fields] = createLedger.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fields.openingBalanceType).toBe('CREDIT');
+    expect(fields.openingBalance).toBe(15000);
+  });
+
+  it('holds back a row whose side is neither debit nor credit, rather than guessing', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,openingBalance,openingBalanceType\nSHAH,Shah,CURRENT_ASSETS,15000,Credit amt\n',
+      ),
+    );
+
+    expect(await screen.findByText(/must be DEBIT or CREDIT/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Import 0 rows/ })).toHaveProperty('disabled', true);
+  });
+
+  it('asks for the side of a new account opening with a balance', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        'code,name,accountGroupCode,openingBalance\nSHAH,Shah,CURRENT_ASSETS,15000\n',
+      ),
+    );
+
+    expect(
+      await screen.findByText(/Say whether the opening balance is DEBIT or CREDIT/),
+    ).toBeTruthy();
+  });
+
+  it('flags a code that appears twice, and a group that does not exist', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        [
+          'code,name,accountGroupCode',
+          'PETTY,Petty Cash,CURRENT_ASSETS',
+          'PETTY,Petty Cash again,CURRENT_ASSETS',
+          'LOST,Lost,NOPE',
+          '',
+        ].join('\n'),
+      ),
+    );
+
+    expect(await screen.findByText(/already on line 2 of this file/)).toBeTruthy();
+    expect(screen.getByText(/There is no account group NOPE/)).toBeTruthy();
+    expect(screen.getByText(/2 with problems/)).toBeTruthy();
+
+    await confirmImport();
+    await waitFor(() => expect(createLedger).toHaveBeenCalledTimes(1));
+    // The skipped rows are reported alongside what the server did.
+    expect(await screen.findByText(/Skipped: There is no account group NOPE/)).toBeTruthy();
+  });
+
+  it('totals the opening balances and says when debit and credit do not agree', async () => {
+    panel();
+
+    upload(
+      ledgerInput(),
+      csv(
+        'ledgers.csv',
+        [
+          'code,name,accountGroupCode,openingBalance,openingBalanceType',
+          'BANK2,Bank,CURRENT_ASSETS,1000,DEBIT',
+          'SUPP,Supplier,CURRENT_ASSETS,400,CREDIT',
+          '',
+        ].join('\n'),
+      ),
+    );
+
+    const status = await screen.findByText(/Opening balances after this import/);
+    expect(status.textContent).toMatch(/out by/);
+  });
+
+  it('says when an existing group will only have its name changed', async () => {
+    panel();
+
+    upload(
+      groupInput(),
+      csv(
+        'groups.csv',
+        'code,name,parentCode,nature,groupType\nCURRENT_ASSETS,Current Assets,,LIABILITY,BALANCE_SHEET\n',
+      ),
+    );
+
+    expect(await screen.findByText(/Only the name is updated — nature/)).toBeTruthy();
+  });
+
+  it('refuses the old .xls format with advice', async () => {
+    panel();
+
+    upload(ledgerInput(), new File(['x'], 'chart.xls', { type: 'application/vnd.ms-excel' }));
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/save it as \.xlsx or CSV/);
   });
 });

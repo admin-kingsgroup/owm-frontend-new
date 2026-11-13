@@ -6,3 +6,4 @@ export * from './format-record-id';
 export * from './calendar-date';
 export * from './format-money';
 export * from './csv';
+export * from './xlsx';
