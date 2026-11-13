@@ -88,7 +88,9 @@ describe('CreateVoucherForm', () => {
   });
 
   it("shows each account's balance beside it, and follows the account when it changes", () => {
+    // A Payment, because the form opens on Contra and Contra lists only cash and bank accounts.
     renderForm({
+      initialVoucherTypeCode: 'PAYMENT',
       ledgerBalances: new Map([
         ['1402', '12,84,320.00 Dr'],
         ['2201', '42,90,000.00 Cr'],
@@ -149,6 +151,77 @@ describe('CreateVoucherForm', () => {
     expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Receipt/);
   });
 
+  describe('a Contra voucher', () => {
+    const typed = (code: string, name: string, ledgerType: Ledger['ledgerType']): Ledger => ({
+      ...ledger(code, name),
+      ledgerType,
+    });
+    const MIXED = [
+      typed('CASH', 'Cash', 'CASH'),
+      typed('FIN_CHARGES', 'Financial Charges', 'GENERAL'),
+      typed('HDFC', 'HDFC Bank', 'BANK'),
+      typed('ICICI', 'ICICI Bank', 'BANK'),
+    ];
+    const optionsOf = (select: HTMLElement) =>
+      Array.from(select.querySelectorAll('option'), (option) => option.textContent);
+    // Multi-currency is off here, so the only selects on the form are the account pickers.
+    const ledgerSelects = () => screen.getAllByRole('combobox');
+
+    it('offers only cash and bank accounts', () => {
+      renderForm({ ledgers: MIXED, initialVoucherTypeCode: 'CONTRA' });
+      expect(optionsOf(ledgerSelects()[0])).toEqual(['Cash', 'HDFC Bank', 'ICICI Bank']);
+    });
+
+    it('offers every account again on another voucher type', () => {
+      renderForm({ ledgers: MIXED, initialVoucherTypeCode: 'PAYMENT' });
+      expect(optionsOf(ledgerSelects()[0])).toEqual([
+        'Cash',
+        'Financial Charges',
+        'HDFC Bank',
+        'ICICI Bank',
+      ]);
+    });
+
+    it('moves an empty line onto a bank account when switched to Contra', () => {
+      renderForm({
+        ledgers: [typed('FIN_CHARGES', 'Financial Charges', 'GENERAL'), ...MIXED.slice(2)],
+        initialVoucherTypeCode: 'PAYMENT',
+      });
+      expect((ledgerSelects()[0] as HTMLSelectElement).value).toBe('FIN_CHARGES');
+
+      fireEvent.click(screen.getByRole('radio', { name: /Contra/ }));
+      expect((ledgerSelects()[0] as HTMLSelectElement).value).toBe('HDFC');
+    });
+
+    it('keeps a filled-in line on its account, flags it, and will not save it', () => {
+      renderForm({
+        ledgers: [typed('FIN_CHARGES', 'Financial Charges', 'GENERAL'), ...MIXED.slice(2)],
+        initialVoucherTypeCode: 'PAYMENT',
+      });
+      const amounts = screen.getAllByPlaceholderText('0.00');
+      fireEvent.change(amounts[0], { target: { value: '100' } });
+      fireEvent.change(ledgerSelects()[1], { target: { value: 'HDFC' } });
+      fireEvent.change(amounts[3], { target: { value: '100' } });
+
+      fireEvent.click(screen.getByRole('radio', { name: /Contra/ }));
+
+      const first = ledgerSelects()[0] as HTMLSelectElement;
+      expect(first.value).toBe('FIN_CHARGES');
+      expect(first.selectedOptions[0].textContent).toBe('Financial Charges — not cash or bank');
+
+      fireEvent.click(screen.getByRole('button', { name: /Post voucher/ }));
+      expect(screen.getByText(/moves money between cash and bank accounts only/)).toBeTruthy();
+    });
+
+    it('says why the list is empty when the company has no cash or bank account', () => {
+      renderForm({
+        ledgers: [typed('FIN_CHARGES', 'Financial Charges', 'GENERAL')],
+        initialVoucherTypeCode: 'CONTRA',
+      });
+      expect(screen.getByRole('note').textContent).toMatch(/type CASH or BANK/);
+    });
+  });
+
   it('lists each account by its name alone, adding the code only to tell two of a name apart', () => {
     renderForm({
       ledgers: [
@@ -156,6 +229,7 @@ describe('CreateVoucherForm', () => {
         ledger('SUSPENSE', 'Suspense'),
         ledger('SUSPENSE_2', 'suspense '),
       ],
+      initialVoucherTypeCode: 'PAYMENT',
     });
 
     const options = Array.from(
