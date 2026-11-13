@@ -18,9 +18,20 @@ export interface VoucherActionsProps {
    * button.
    */
   onEdit?: (voucher: Voucher) => void;
+  /**
+   * Called instead of `onChanged` when cancelling a draft: the server deletes a draft outright
+   * rather than marking it cancelled, so there is no voucher left to show.
+   */
+  onDiscarded?: (voucher: Voucher) => void;
 }
 
-export function VoucherActions({ companyId, voucher, onChanged, onEdit }: VoucherActionsProps) {
+export function VoucherActions({
+  companyId,
+  voucher,
+  onChanged,
+  onEdit,
+  onDiscarded,
+}: VoucherActionsProps) {
   const [pending, setPending] = useState<'post' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Whether the reader is being asked to confirm cancelling this voucher. */
@@ -44,9 +55,15 @@ export function VoucherActions({ companyId, voucher, onChanged, onEdit }: Vouche
     setError(null);
     try {
       const updated = await cancelVoucher(companyId, voucher.id);
-      onChanged(updated);
       setConfirming(false);
-      toast.success(`Voucher ${voucher.voucherNumber} cancelled.`);
+      if (voucher.status === 'DRAFT') {
+        // A draft is deleted, not kept as cancelled — it never touched the books.
+        (onDiscarded ?? onChanged)(updated);
+        toast.success(`Draft ${voucher.voucherNumber} discarded.`);
+      } else {
+        onChanged(updated);
+        toast.success(`Voucher ${voucher.voucherNumber} cancelled.`);
+      }
     } catch (err) {
       setError(getErrorMessage(err, 'Could not cancel voucher'));
     } finally {
