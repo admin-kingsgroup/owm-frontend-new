@@ -148,4 +148,24 @@ describe('CreateVoucherForm', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Receipt/ }));
     expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Receipt/);
   });
+
+  it('lists each account by its name alone, adding the code only to tell two of a name apart', () => {
+    renderForm({
+      ledgers: [
+        ledger('HDFC_BANK_AC_5010088', 'HDFC Bank - A/c.: 50100884698393'),
+        ledger('SUSPENSE', 'Suspense'),
+        ledger('SUSPENSE_2', 'suspense '),
+      ],
+    });
+
+    const options = Array.from(
+      screen.getAllByRole('combobox')[0].querySelectorAll('option'),
+      (option) => option.textContent,
+    );
+    expect(options).toEqual([
+      'HDFC Bank - A/c.: 50100884698393',
+      'Suspense (SUSPENSE)',
+      'suspense  (SUSPENSE_2)',
+    ]);
+  });
 });

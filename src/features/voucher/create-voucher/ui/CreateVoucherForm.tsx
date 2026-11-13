@@ -204,6 +204,22 @@ export function CreateVoucherForm({
   const [error, setError] = useState<string | null>(null);
 
   const ledgerByCode = new Map(ledgers.map((ledger) => [ledger.code, ledger]));
+
+  /*
+    The picker shows a ledger by its name alone — the code is the system's handle, not what a person
+    looks for. Only the code is unique, though, so when two ledgers share a name the code is added to
+    those two, and only those, to keep them apart.
+  */
+  const nameCounts = new Map<string, number>();
+  for (const ledger of ledgers) {
+    const key = ledger.name.trim().toLowerCase();
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  const ledgerLabel = (ledger: Ledger) =>
+    (nameCounts.get(ledger.name.trim().toLowerCase()) ?? 0) > 1
+      ? `${ledger.name} (${ledger.code})`
+      : ledger.name;
+
   const currencyCodeById = new Map(currencies.map((currency) => [currency.id, currency.code]));
 
   /**
@@ -510,7 +526,7 @@ export function CreateVoucherForm({
                         )}
                         {ledgers.map((ledger) => (
                           <option key={ledger.id} value={ledger.code}>
-                            {ledger.name} ({ledger.code})
+                            {ledgerLabel(ledger)}
                           </option>
                         ))}
                       </Select>
