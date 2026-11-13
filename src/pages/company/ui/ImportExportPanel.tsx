@@ -11,8 +11,16 @@ import type { AccountGroup, AccountNature, GroupType } from '@/entities/account-
 import type { Currency } from '@/entities/currency';
 import { createLedger, listLedgers, updateLedger } from '@/entities/ledger';
 import type { Ledger } from '@/entities/ledger';
-import { Button } from '@/shared/ui';
-import { downloadCsv, getErrorMessage, parseCsv } from '@/shared/lib';
+import { Badge, Button } from '@/shared/ui';
+import {
+  downloadCsv,
+  formatMoney,
+  getErrorMessage,
+  isLegacyXlsFile,
+  isXlsxFile,
+  parseCsv,
+  readXlsxRows,
+} from '@/shared/lib';
 
 import styles from './ImportExportPanel.module.css';
 
@@ -73,6 +81,14 @@ const LEDGER_COLUMNS = [
  */
 const GROUP_COLUMNS = ['code', 'name', 'parentCode', 'nature', 'groupType'] as const;
 
+const NATURES: AccountNature[] = ['ASSET', 'LIABILITY', 'INCOME', 'EXPENSE'];
+const GROUP_TYPES: GroupType[] = ['BALANCE_SHEET', 'PROFIT_LOSS'];
+const LEDGER_TYPES: Ledger['ledgerType'][] = ['GENERAL', 'CASH', 'BANK'];
+
+/** What the two upload inputs take: CSV, or an Excel workbook (its first sheet). */
+const ACCEPTED_FILES =
+  '.csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 /** What became of one line of the file. */
 interface RowOutcome {
   line: number;
@@ -81,6 +97,66 @@ interface RowOutcome {
   error: string | null;
   created: boolean;
 }
+
+/** The fields a ledger row sends — only the ones its file carried. */
+type LedgerFields = Partial<{
+  name: string;
+  accountGroupCode: string;
+  ledgerType: Ledger['ledgerType'];
+  openingBalance: number;
+  openingBalanceType: Ledger['openingBalanceType'];
+  maintainBillwise: boolean;
+  gstin: string | null;
+  pan: string | null;
+  address: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  currencyCode: string | null;
+  creditLimit: number | null;
+  creditDays: number | null;
+}>;
+
+/**
+ * One row of the file as the preview shows it, and as the import will send it.
+ *
+ * Every row is worked out — and checked as far as the screen can check it — before anything is
+ * written, so the reader sees what the file will do while there is still time to fix it. A row
+ * with a `problem` is shown but never sent.
+ */
+interface LedgerPlanRow {
+  line: number;
+  code: string;
+  existingId: string | null;
+  fields: LedgerFields;
+  problem: string | null;
+  /** What the preview table shows: the name, group and opening balance after this import. */
+  name: string;
+  group: string;
+  opening: string;
+}
+
+interface GroupPlanRow {
+  line: number;
+  code: string;
+  existingId: string | null;
+  name: string;
+  parentCode: string;
+  nature: AccountNature;
+  groupType: GroupType;
+  problem: string | null;
+  /** Said beside an update that will not do everything the file asks for. */
+  note: string | null;
+}
+
+type ImportPlan =
+  | {
+      kind: 'ledgers';
+      fileName: string;
+      rows: LedgerPlanRow[];
+      /** Every ledger's opening balance once this file is in — the totals that must agree. */
+      totals: { debit: number; credit: number };
+    }
+  | { kind: 'groups'; fileName: string; rows: GroupPlanRow[] };
 
 /**
  * How many rows are in flight at once.
@@ -114,6 +190,143 @@ async function mapWithLimit<T, R>(
 }
 
 /**
+ * Reads a chosen file into rows, whichever format it is in. Excel is read from its first sheet;
+ * anything else is read as CSV. The old binary `.xls` is refused with advice rather than being
+ * read as text and failing on a header that is nothing but noise.
+ */
+async function readTable(file: File): Promise<string[][]> {
+  if (isXlsxFile(file)) return readXlsxRows(await file.arrayBuffer());
+  if (isLegacyXlsFile(file)) {
+    throw new Error(
+      'That is an old-style Excel file (.xls). Open it in Excel and save it as .xlsx or CSV.',
+    );
+  }
+  return parseCsv(await file.text());
+}
+
+/**
+ * Lines a table's header up with the columns expected, and returns a reader that answers by
+ * column name, so the rest of the import never counts commas. A column that is absent reads as
+ * `undefined` rather than as an empty string — the difference decides whether an update clears a
+ * field or leaves it alone.
+ */
+function readColumns(table: string[][], columns: readonly string[], required: string[]) {
+  const [header, ...body] = table;
+  if (!header) throw new Error('That file is empty.');
+
+  const positions = new Map(
+    columns.map((column) => [
+      column,
+      header.findIndex((cell) => cell.trim().toLowerCase() === column.toLowerCase()),
+    ]),
+  );
+
+  const missing = required.filter((column) => (positions.get(column) ?? -1) === -1);
+  if (missing.length > 0) {
+    throw new Error(
+      `That file has no ${missing.join(', ')} column. Export first and edit that file.`,
+    );
+  }
+
+  const value = (row: string[], column: string) => {
+    const position = positions.get(column) ?? -1;
+    if (position === -1) return undefined;
+    return (row[position] ?? '').trim();
+  };
+
+  // The header is line 1, so the first body row is line 2 — which is what a spreadsheet shows.
+  const rows = body
+    .map((row, offset) => ({ row, line: offset + 2, code: value(row, 'code') ?? '' }))
+    .filter(({ code }) => code !== '');
+
+  return { rows, value };
+}
+
+/** Only the fields the file actually carried, so an absent column leaves its field alone. */
+function present<T extends Record<string, unknown>>(fields: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
+/**
+ * What one cell of an optional field is asking for. Three states, not two: an absent column
+ * leaves the field alone, a present but empty cell asks for it to be cleared, and anything else
+ * sets it.
+ *
+ * The empty case is the one that was wrong, and it made the round trip useless for the books
+ * this panel exists to serve. `gstin: ''` is not "no GSTIN" to the server — it is a GSTIN that
+ * fails its pattern — so a chart exported and read straight back in had every row refused over
+ * columns it had never filled in. Clearing is `null`, which is what the update DTO documents.
+ */
+function clearable(raw: string | undefined): string | null | undefined {
+  if (raw === undefined) return undefined;
+  return raw === '' ? null : raw;
+}
+
+/**
+ * The same three states for a number, refusing a cell that is not one.
+ *
+ * Left to `Number()`, "abc" becomes `NaN`, JSON writes it as `null`, and the server reads that
+ * as a request to clear the field — a typo silently wiping a credit limit. Throwing puts the row
+ * in the problem list with the reason on it, which is the whole point of reporting per row.
+ */
+function clearableNumber(raw: string | undefined, column: string): number | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === '') return null;
+  const parsed = Number(raw.replace(/,/g, ''));
+  if (!Number.isFinite(parsed)) throw new Error(`${column} is not a number: "${raw}"`);
+  return parsed;
+}
+
+/**
+ * The side of an opening balance, read strictly.
+ *
+ * It used to be "CREDIT, or else DEBIT" — so `Cr`, `CR.` or a typo all became Debit, and a
+ * supplier the company owes ₹15,000 went in as ₹15,000 owed *to* it: the books out by twice the
+ * amount, with nothing to say so. The usual spellings are accepted; anything else stops the row.
+ */
+function balanceSide(raw: string | undefined): Ledger['openingBalanceType'] | undefined {
+  if (raw === undefined || raw === '') return undefined;
+  const word = raw.toUpperCase().replace(/[.\s]/g, '');
+  if (word === 'DEBIT' || word === 'DR' || word === 'D') return 'DEBIT';
+  if (word === 'CREDIT' || word === 'CR' || word === 'C') return 'CREDIT';
+  throw new Error(`openingBalanceType must be DEBIT or CREDIT (or Dr / Cr), not "${raw}"`);
+}
+
+function yesNo(raw: string | undefined, column: string): boolean | undefined {
+  if (raw === undefined || raw === '') return undefined;
+  const word = raw.toLowerCase();
+  if (word === 'true' || word === 'yes' || word === 'y' || word === '1') return true;
+  if (word === 'false' || word === 'no' || word === 'n' || word === '0') return false;
+  throw new Error(`${column} must be true or false, not "${raw}"`);
+}
+
+/**
+ * A record being created has nothing to clear, and the create DTO takes no nulls.
+ *
+ * The return type drops `null` as well as dropping the values, so the create call type-checks
+ * against a DTO that never accepted one — rather than being asserted past.
+ */
+function withoutNulls<T extends Record<string, unknown>>(
+  fields: T,
+): { [K in keyof T]?: Exclude<T[K], null> } {
+  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null)) as {
+    [K in keyof T]?: Exclude<T[K], null>;
+  };
+}
+
+/** Marks every repeat of a code after its first, which would otherwise overwrite the first. */
+function firstLineByCode(rows: Array<{ code: string; line: number }>) {
+  const first = new Map<string, number>();
+  for (const row of rows) if (!first.has(row.code)) first.set(row.code, row.line);
+  return (row: { code: string; line: number }) => {
+    const line = first.get(row.code) as number;
+    return line === row.line ? null : `Code ${row.code} is already on line ${line} of this file`;
+  };
+}
+
+/**
  * Getting a chart of accounts in and out of a spreadsheet.
  *
  * Setting up a company by hand is dozens of forms, and every accountant already keeps their chart
@@ -121,15 +334,18 @@ async function mapWithLimit<T, R>(
  * export exists mostly to make the import obvious: take the file out, edit it, put it back, and the
  * columns are self-evidently right because the product wrote them.
  *
+ * A file is read — CSV or Excel — into a preview first, and nothing is written until the reader
+ * presses Import. Each row says whether it creates an account, updates one, or has a problem that
+ * keeps it out; the ledger preview also totals every opening balance as it will stand afterwards,
+ * because debits and credits that do not agree are the mistake an import most often makes.
+ *
  * Rows go in one at a time against the ordinary endpoints rather than through a bulk route, so
  * every row gets the same validation a typed one does. That makes a partial import possible, which
  * is why each row reports its own outcome — a file of forty accounts where two are rejected should
  * leave thirty-eight in place and say which two failed, not refuse the lot.
  *
- * A code that already exists is updated rather than refused. Refusing was defensible while the only
- * thing you could do was create, but it made the export useless for its most obvious purpose:
- * exporting the chart, correcting a column in a spreadsheet, and putting it back. Every row of such
- * a file is a duplicate.
+ * A code that already exists is updated rather than refused, so a chart can be exported, corrected
+ * in a spreadsheet, and put back.
  */
 export function ImportExportPanel({
   companyId,
@@ -140,6 +356,7 @@ export function ImportExportPanel({
   onImported,
 }: ImportExportPanelProps) {
   const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [outcomes, setOutcomes] = useState<RowOutcome[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /*
@@ -151,6 +368,7 @@ export function ImportExportPanel({
 
   const groupCodeById = new Map(groups.map((group) => [group.id, group.code]));
   const currencyCodeById = new Map(currencies.map((currency) => [currency.id, currency.code]));
+  const money = (value: number) => formatMoney(value);
 
   function exportGroups() {
     downloadCsv(
@@ -225,106 +443,238 @@ export function ImportExportPanel({
   }
 
   /**
-   * Reads the file and lines its header up with the columns expected.
+   * Works out what a ledgers file will do, without writing anything.
    *
-   * Returns a reader that answers by column name, so the rest of the import never counts commas.
-   * A column that is absent reads as `undefined` rather than as an empty string — the difference
-   * decides whether an update clears a field or leaves it alone.
+   * The chart is read now rather than taken from the props this panel was given: the props come
+   * from the screen around it, which refreshes after an import — so just after one finishes they
+   * describe the chart as it was before, and the same file previewed twice would plan to create
+   * accounts that already exist.
    */
-  async function readFile(file: File, columns: readonly string[], required: string[]) {
-    const [header, ...body] = parseCsv(await file.text());
-    if (!header) throw new Error('That file is empty.');
+  async function planLedgers(file: File): Promise<ImportPlan> {
+    const { rows, value } = readColumns(await readTable(file), LEDGER_COLUMNS, [
+      'code',
+      'name',
+      'accountGroupCode',
+    ]);
+    const [current, currentGroups] = await Promise.all([
+      listLedgers(companyId),
+      listAccountGroups(companyId),
+    ]);
+    const existing = new Map(current.map((ledger) => [ledger.code, ledger]));
+    const groupByCode = new Map(currentGroups.map((group) => [group.code, group]));
+    const groupCodeOf = new Map(currentGroups.map((group) => [group.id, group.code]));
+    const repeated = firstLineByCode(rows);
 
-    const positions = new Map(
-      columns.map((column) => [
-        column,
-        header.findIndex((cell) => cell.trim().toLowerCase() === column.toLowerCase()),
+    const planned = rows.map(({ line, code, row }): LedgerPlanRow => {
+      const at = (column: string) => value(row, column);
+      const already = existing.get(code) ?? null;
+      const base = {
+        line,
+        code,
+        existingId: already?.id ?? null,
+        name: at('name') || already?.name || '',
+        group:
+          at('accountGroupCode') ||
+          (already ? (groupCodeOf.get(already.accountGroupId) ?? '') : ''),
+        opening: '',
+      };
+
+      try {
+        const duplicate = repeated({ code, line });
+        if (duplicate) throw new Error(duplicate);
+
+        const opening = clearableNumber(at('openingBalance'), 'openingBalance');
+        if (opening !== undefined && opening !== null && opening < 0) {
+          throw new Error('openingBalance cannot be negative — put the side in openingBalanceType');
+        }
+        const side = balanceSide(at('openingBalanceType'));
+        const ledgerType = at('ledgerType')?.toUpperCase() || undefined;
+        if (ledgerType && !LEDGER_TYPES.includes(ledgerType as Ledger['ledgerType'])) {
+          throw new Error(`ledgerType must be GENERAL, CASH or BANK, not "${at('ledgerType')}"`);
+        }
+
+        const fields: LedgerFields = present({
+          /*
+            These four cannot be cleared — the server requires each to be something — so an empty
+            cell reads as "leave it as it was" rather than as a request to blank a ledger's name.
+          */
+          name: at('name') || undefined,
+          accountGroupCode: at('accountGroupCode') || undefined,
+          ledgerType: ledgerType as Ledger['ledgerType'] | undefined,
+          openingBalance: opening ?? undefined,
+          openingBalanceType: side,
+          maintainBillwise: yesNo(at('maintainBillwise'), 'maintainBillwise'),
+          gstin: clearable(at('gstin')),
+          pan: clearable(at('pan')),
+          address: clearable(at('address')),
+          contactEmail: clearable(at('contactEmail')),
+          contactPhone: clearable(at('contactPhone')),
+          // Upper-cased because a currency is known by its code and nobody types it in caps.
+          currencyCode: clearable(at('currencyCode')?.toUpperCase()),
+          creditLimit: clearableNumber(at('creditLimit'), 'creditLimit'),
+          creditDays: clearableNumber(at('creditDays'), 'creditDays'),
+        });
+
+        if (!already && !fields.name) throw new Error('name is empty');
+        if (!already && !fields.accountGroupCode) throw new Error('accountGroupCode is empty');
+        if (fields.accountGroupCode && !groupByCode.has(fields.accountGroupCode)) {
+          throw new Error(
+            `There is no account group ${fields.accountGroupCode} — import or create it first`,
+          );
+        }
+        // A new account's balance with no side would be filed as a debit by default. Asked for
+        // rather than assumed: the wrong side puts the books out by twice the amount.
+        if (!already && (fields.openingBalance ?? 0) > 0 && !fields.openingBalanceType) {
+          throw new Error('Say whether the opening balance is DEBIT or CREDIT');
+        }
+
+        const amount = fields.openingBalance ?? Number(already?.openingBalance ?? 0);
+        const sideAfter = fields.openingBalanceType ?? already?.openingBalanceType ?? 'DEBIT';
+        return {
+          ...base,
+          fields,
+          problem: null,
+          opening: amount > 0 ? `${money(amount)} ${sideAfter === 'CREDIT' ? 'Cr' : 'Dr'}` : '—',
+        };
+      } catch (err) {
+        return { ...base, fields: {}, problem: getErrorMessage(err, 'Cannot be read') };
+      }
+    });
+
+    /*
+      The opening balances as the whole chart will hold them once the accepted rows are in — the
+      accounts this file does not touch included, since the two sides only have to agree across
+      the lot. A row with a problem changes nothing, so its account counts as it stands today.
+    */
+    const after = new Map(
+      current.map((ledger) => [
+        ledger.code,
+        { amount: Number(ledger.openingBalance) || 0, side: ledger.openingBalanceType },
       ]),
     );
-
-    const missing = required.filter((column) => (positions.get(column) ?? -1) === -1);
-    if (missing.length > 0) {
-      throw new Error(
-        `That file has no ${missing.join(', ')} column. Export first and edit that file.`,
-      );
+    for (const row of planned) {
+      if (row.problem) continue;
+      const was = after.get(row.code);
+      after.set(row.code, {
+        amount: row.fields.openingBalance ?? was?.amount ?? 0,
+        side: row.fields.openingBalanceType ?? was?.side ?? 'DEBIT',
+      });
+    }
+    const totals = { debit: 0, credit: 0 };
+    for (const { amount, side } of after.values()) {
+      if (side === 'CREDIT') totals.credit += amount;
+      else totals.debit += amount;
     }
 
-    const value = (row: string[], column: string) => {
-      const position = positions.get(column) ?? -1;
-      if (position === -1) return undefined;
-      return (row[position] ?? '').trim();
-    };
-
-    // The header is line 1, so the first body row is line 2 — which is what a spreadsheet shows.
-    const rows = body
-      .map((row, offset) => ({ row, line: offset + 2, code: value(row, 'code') ?? '' }))
-      .filter(({ code }) => code !== '');
-
-    return { rows, value };
+    return { kind: 'ledgers', fileName: file.name, rows: planned, totals };
   }
 
-  /** Only the fields the file actually carried, so an absent column leaves its field alone. */
-  function present<T extends Record<string, unknown>>(fields: T): Partial<T> {
-    return Object.fromEntries(
-      Object.entries(fields).filter(([, value]) => value !== undefined),
-    ) as Partial<T>;
+  /** Works out what a groups file will do, without writing anything. */
+  async function planGroups(file: File): Promise<ImportPlan> {
+    const { rows, value } = readColumns(await readTable(file), GROUP_COLUMNS, [
+      'code',
+      'name',
+      'nature',
+      'groupType',
+    ]);
+    const current = await listAccountGroups(companyId);
+    const existing = new Map(current.map((group) => [group.code, group]));
+    const codeOf = new Map(current.map((group) => [group.id, group.code]));
+    const repeated = firstLineByCode(rows);
+
+    const planned = rows.map(({ line, code, row }): GroupPlanRow => {
+      const at = (column: string) => value(row, column);
+      const already = existing.get(code) ?? null;
+      const nature = (at('nature') ?? '').toUpperCase() as AccountNature;
+      const groupType = (at('groupType') ?? '').toUpperCase() as GroupType;
+      const parentCode = at('parentCode') ?? '';
+      const planRow: GroupPlanRow = {
+        line,
+        code,
+        existingId: already?.id ?? null,
+        name: at('name') || already?.name || '',
+        parentCode,
+        nature,
+        groupType,
+        problem: repeated({ code, line }),
+        note: null,
+      };
+
+      if (planRow.problem) return planRow;
+      if (!already && !at('name')) return { ...planRow, problem: 'name is empty' };
+      if (!NATURES.includes(nature)) {
+        return {
+          ...planRow,
+          problem: `nature must be ASSET, LIABILITY, INCOME or EXPENSE, not "${at('nature')}"`,
+        };
+      }
+      if (!GROUP_TYPES.includes(groupType)) {
+        return {
+          ...planRow,
+          problem: `groupType must be BALANCE_SHEET or PROFIT_LOSS, not "${at('groupType')}"`,
+        };
+      }
+
+      if (already) {
+        /*
+          The API takes a name and an active flag for an existing group; its nature, parent and
+          type are fixed once it holds postings. Said here rather than reported as a plain
+          "update", which read as though the file's other columns had been applied.
+        */
+        const ignored = [
+          already.nature !== nature && 'nature',
+          already.groupType !== groupType && 'groupType',
+          (already.parentId ? (codeOf.get(already.parentId) ?? '') : '') !== parentCode &&
+            'parentCode',
+        ].filter(Boolean);
+        return {
+          ...planRow,
+          note:
+            ignored.length > 0
+              ? `Only the name is updated — ${ignored.join(', ')} of an existing group cannot be changed by import`
+              : null,
+        };
+      }
+      return planRow;
+    });
+
+    /*
+      A new group's parent must already exist or be a good row of this same file. Worked to a fixed
+      point, so a child of a refused row is refused too rather than failing later on the server.
+    */
+    const placeable = new Set(current.map((group) => group.code));
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (const row of planned) {
+        if (row.problem || placeable.has(row.code)) continue;
+        if (!row.parentCode || placeable.has(row.parentCode)) {
+          placeable.add(row.code);
+          moved = true;
+        }
+      }
+    }
+    for (const row of planned) {
+      if (!row.problem && !placeable.has(row.code)) {
+        row.problem = `Its parent is not in this file and does not exist yet (${row.parentCode})`;
+      }
+    }
+
+    return { kind: 'groups', fileName: file.name, rows: planned };
   }
 
-  /**
-   * What one cell of an optional field is asking for. Three states, not two: an absent column
-   * leaves the field alone, a present but empty cell asks for it to be cleared, and anything else
-   * sets it.
-   *
-   * The empty case is the one that was wrong, and it made the round trip useless for the books
-   * this panel exists to serve. `gstin: ''` is not "no GSTIN" to the server — it is a GSTIN that
-   * fails its pattern — so a chart exported and read straight back in had every row refused over
-   * columns it had never filled in. A personal ledger carries no GSTIN, no PAN and often no email
-   * on any account, so that was every row of it. Clearing is `null`, which is what the update DTO
-   * already documents.
-   */
-  function clearable(raw: string | undefined): string | null | undefined {
-    if (raw === undefined) return undefined;
-    return raw === '' ? null : raw;
-  }
+  async function preview(event: ChangeEvent<HTMLInputElement>, kind: ImportPlan['kind']) {
+    const file = event.target.files?.[0];
+    // Cleared straight away so choosing the same file twice still fires a change.
+    event.target.value = '';
+    if (!file) return;
 
-  /**
-   * The same three states for a number, refusing a cell that is not one.
-   *
-   * Left to `Number()`, "abc" becomes `NaN`, JSON writes it as `null`, and the server reads that
-   * as a request to clear the field — a typo silently wiping a credit limit. Throwing puts the row
-   * in the failed list with the reason on it, which is the whole point of reporting per row.
-   */
-  function clearableNumber(raw: string | undefined, column: string): number | null | undefined {
-    if (raw === undefined) return undefined;
-    if (raw === '') return null;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) throw new Error(`${column} is not a number: "${raw}"`);
-    return parsed;
-  }
-
-  /**
-   * A record being created has nothing to clear, and the create DTO takes no nulls.
-   *
-   * The return type drops `null` as well as dropping the values, so the create call type-checks
-   * against a DTO that never accepted one — rather than being asserted past.
-   */
-  function withoutNulls<T extends Record<string, unknown>>(
-    fields: T,
-  ): { [K in keyof T]?: Exclude<T[K], null> } {
-    return Object.fromEntries(
-      Object.entries(fields).filter(([, value]) => value !== null),
-    ) as { [K in keyof T]?: Exclude<T[K], null> };
-  }
-
-  async function run(work: () => Promise<RowOutcome[]>) {
     setBusy(true);
     setError(null);
     setOutcomes(null);
-
+    setPlan(null);
     try {
-      const results = await work();
-      setOutcomes(results);
-      if (results.some((result) => result.error === null)) onImported();
+      setPlan(kind === 'ledgers' ? await planLedgers(file) : await planGroups(file));
     } catch (err) {
       setError(getErrorMessage(err, 'Could not read that file'));
     } finally {
@@ -332,177 +682,126 @@ export function ImportExportPanel({
     }
   }
 
-  async function importLedgers(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // Cleared straight away so choosing the same file twice still fires a change.
-    event.target.value = '';
-    if (!file) return;
-
-    await run(async () => {
-      const { rows, value } = await readFile(file, LEDGER_COLUMNS, [
-        'code',
-        'name',
-        'accountGroupCode',
-      ]);
-      /*
-        Read now rather than taken from the props this panel was given.
-        
-        The props come from the screen around it, which refreshes after an import — so the moment
-        just after one finishes, they describe the chart as it was before. Importing the same file
-        twice in a row, which is what somebody does when they are not sure the first one worked,
-        found none of its own accounts and tried to create them all again.
-      */
-      const existing = new Map(
-        (await listLedgers(companyId)).map((ledger) => [ledger.code, ledger]),
-      );
-
-      /*
-        Ledgers are independent of one another — each names a group that already exists — so they
-        can go up together. Groups cannot, which is why only this side is parallel.
-      */
-      return mapWithLimit(rows, CONCURRENCY, async ({ line, code, row }) => {
-        const at = (column: string) => value(row, column);
-        const already = existing.get(code);
-
-        try {
-          const opening = at('openingBalance');
-          const side = at('openingBalanceType');
-          const billwise = at('maintainBillwise');
-
-          const fields = present({
-            /*
-              These four cannot be cleared — the server requires each to be something — so an empty
-              cell reads as "leave it as it was" rather than as a request to blank a ledger's name.
-              Creating still refuses a blank name, which is where a missing one actually matters.
-            */
-            name: at('name') || undefined,
-            accountGroupCode: at('accountGroupCode') || undefined,
-            ledgerType: (at('ledgerType') || undefined) as Ledger['ledgerType'] | undefined,
-            openingBalance: opening === undefined || opening === '' ? undefined : Number(opening),
-            openingBalanceType:
-              side === undefined || side === ''
-                ? undefined
-                : ((side.toUpperCase() === 'CREDIT'
-                    ? 'CREDIT'
-                    : 'DEBIT') as Ledger['openingBalanceType']),
-            maintainBillwise:
-              billwise === undefined || billwise === ''
-                ? undefined
-                : billwise.toLowerCase() === 'true',
-            gstin: clearable(at('gstin')),
-            pan: clearable(at('pan')),
-            address: clearable(at('address')),
-            contactEmail: clearable(at('contactEmail')),
-            contactPhone: clearable(at('contactPhone')),
-            // Upper-cased because a currency is known by its code and nobody types it in caps.
-            currencyCode: clearable(at('currencyCode')?.toUpperCase()),
-            creditLimit: clearableNumber(at('creditLimit'), 'creditLimit'),
-            creditDays: clearableNumber(at('creditDays'), 'creditDays'),
-          });
-
-          if (already) {
-            await updateLedger(companyId, already.id, fields);
-            return { line, code, error: null, created: false };
-          }
-
-          const fresh = withoutNulls(fields);
-          await createLedger(companyId, {
-            code,
-            name: fresh.name ?? '',
-            accountGroupCode: fresh.accountGroupCode ?? '',
-            ledgerType: fresh.ledgerType ?? 'GENERAL',
-            ...fresh,
-          });
-          return { line, code, error: null, created: true };
-        } catch (err) {
-          return { line, code, error: getErrorMessage(err, 'Refused'), created: false };
+  async function applyLedgers(rows: LedgerPlanRow[]): Promise<RowOutcome[]> {
+    // Ledgers are independent of one another — each names a group that already exists — so they
+    // can go up together. Groups cannot, which is why only this side is parallel.
+    return mapWithLimit(rows, CONCURRENCY, async ({ line, code, existingId, fields }) => {
+      try {
+        if (existingId) {
+          await updateLedger(companyId, existingId, fields);
+          return { line, code, error: null, created: false };
         }
-      });
-    });
-  }
-
-  async function importGroups(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    await run(async () => {
-      const { rows, value } = await readFile(file, GROUP_COLUMNS, [
-        'code',
-        'name',
-        'nature',
-        'groupType',
-      ]);
-      // Read now, for the same reason as the ledgers above.
-      const existing = new Map(
-        (await listAccountGroups(companyId)).map((group) => [group.code, group.id]),
-      );
-
-      /*
-        A group names its parent, and a file may well carry both. Sent in the order written, a child
-        that comes before its parent is refused for a parent that is about to exist — so the file is
-        walked repeatedly, taking whichever rows can go next, until a pass achieves nothing. What is
-        left after that genuinely has nowhere to hang: a missing parent, or a cycle.
-
-        Sequential for the same reason: each pass depends on what the one before it created.
-      */
-      const results: RowOutcome[] = [];
-      const known = new Set(existing.keys());
-      let pending = rows;
-
-      while (pending.length > 0) {
-        const ready = pending.filter(({ row }) => {
-          const parent = value(row, 'parentCode');
-          return !parent || known.has(parent);
-        });
-        if (ready.length === 0) break;
-
-        for (const { line, code, row } of ready) {
-          const at = (column: string) => value(row, column);
-
-          try {
-            const already = existing.get(code);
-            if (already) {
-              // The API takes a name and an active flag; a group's nature and parent are fixed
-              // once it holds postings, so a file cannot move it.
-              await updateAccountGroup(companyId, already, present({ name: at('name') }));
-              results.push({ line, code, error: null, created: false });
-            } else {
-              const created = await createAccountGroup(companyId, {
-                code,
-                name: at('name') ?? '',
-                parentCode: at('parentCode') || undefined,
-                nature: at('nature') as AccountNature,
-                groupType: at('groupType') as GroupType,
-              });
-              existing.set(code, created.id);
-              results.push({ line, code, error: null, created: true });
-            }
-            known.add(code);
-          } catch (err) {
-            results.push({ line, code, error: getErrorMessage(err, 'Refused'), created: false });
-            // Marked known so its children are attempted and fail on their own terms, rather than
-            // being reported as orphans because of a fault one row above them.
-            known.add(code);
-          }
-        }
-
-        const done = new Set(ready.map((item) => item.line));
-        pending = pending.filter((item) => !done.has(item.line));
-      }
-
-      for (const { line, code } of pending) {
-        results.push({
-          line,
+        const fresh = withoutNulls(fields);
+        await createLedger(companyId, {
           code,
-          error: 'Its parent is not in this file and does not exist yet.',
-          created: false,
+          name: fresh.name ?? '',
+          accountGroupCode: fresh.accountGroupCode ?? '',
+          ledgerType: fresh.ledgerType ?? 'GENERAL',
+          ...fresh,
         });
+        return { line, code, error: null, created: true };
+      } catch (err) {
+        return { line, code, error: getErrorMessage(err, 'Refused'), created: false };
       }
-
-      return results.sort((a, b) => a.line - b.line);
     });
   }
+
+  async function applyGroups(rows: GroupPlanRow[]): Promise<RowOutcome[]> {
+    /*
+      A group names its parent, and a file may well carry both. Sent in the order written, a child
+      that comes before its parent is refused for a parent that is about to exist — so the rows are
+      walked repeatedly, taking whichever can go next, until a pass achieves nothing.
+
+      Sequential for the same reason: each pass depends on what the one before it created.
+    */
+    const results: RowOutcome[] = [];
+    const known = new Set((await listAccountGroups(companyId)).map((group) => group.code));
+    let pending = rows;
+
+    while (pending.length > 0) {
+      const ready = pending.filter((row) => !row.parentCode || known.has(row.parentCode));
+      if (ready.length === 0) break;
+
+      for (const row of ready) {
+        try {
+          if (row.existingId) {
+            await updateAccountGroup(companyId, row.existingId, { name: row.name });
+            results.push({ line: row.line, code: row.code, error: null, created: false });
+          } else {
+            await createAccountGroup(companyId, {
+              code: row.code,
+              name: row.name,
+              parentCode: row.parentCode || undefined,
+              nature: row.nature,
+              groupType: row.groupType,
+            });
+            results.push({ line: row.line, code: row.code, error: null, created: true });
+          }
+        } catch (err) {
+          results.push({
+            line: row.line,
+            code: row.code,
+            error: getErrorMessage(err, 'Refused'),
+            created: false,
+          });
+        }
+        // Known even when refused, so its children are attempted and fail on their own terms
+        // rather than being reported as orphans because of a fault one row above them.
+        known.add(row.code);
+      }
+
+      const done = new Set(ready.map((row) => row.line));
+      pending = pending.filter((row) => !done.has(row.line));
+    }
+
+    for (const row of pending) {
+      results.push({
+        line: row.line,
+        code: row.code,
+        error: 'Its parent is not in this file and does not exist yet.',
+        created: false,
+      });
+    }
+    return results;
+  }
+
+  async function confirmImport() {
+    if (!plan) return;
+    setBusy(true);
+    setError(null);
+
+    try {
+      const skipped: RowOutcome[] = plan.rows
+        .filter((row) => row.problem)
+        .map((row) => ({
+          line: row.line,
+          code: row.code,
+          error: `Skipped: ${row.problem}`,
+          created: false,
+        }));
+
+      const sent =
+        plan.kind === 'ledgers'
+          ? await applyLedgers(plan.rows.filter((row) => !row.problem))
+          : await applyGroups(plan.rows.filter((row) => !row.problem));
+
+      const results = [...sent, ...skipped].sort((a, b) => a.line - b.line);
+      setOutcomes(results);
+      setPlan(null);
+      if (results.some((result) => result.error === null)) onImported();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not import that file'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ready = plan?.rows.filter((row) => !row.problem) ?? [];
+  const toCreate = ready.filter((row) => !row.existingId).length;
+  const toUpdate = ready.length - toCreate;
+  const withProblems = (plan?.rows.length ?? 0) - ready.length;
+  const difference =
+    plan?.kind === 'ledgers' ? Math.round((plan.totals.debit - plan.totals.credit) * 100) / 100 : 0;
 
   const created = outcomes?.filter((outcome) => outcome.error === null && outcome.created) ?? [];
   const updated = outcomes?.filter((outcome) => outcome.error === null && !outcome.created) ?? [];
@@ -540,25 +839,34 @@ export function ImportExportPanel({
       <section className={styles.card}>
         <h2 className={styles.title}>Import</h2>
         <p className={styles.note}>
-          A code that is already in use is updated; anything else is created. A column the file does
-          not carry is left as it was, so a file with three columns corrects three columns — but a
-          column that is there with the cell <strong>empty clears that field</strong>, which is how
-          a value is removed. Rows are independent — the ones that are accepted stay, and the ones
-          that are not are listed below.
+          Choose a CSV or Excel (.xlsx) file — Excel is read from its first sheet. You see a preview
+          first, and nothing is saved until you press Import. A code that is already in use is
+          updated; anything else is created. A column the file does not carry is left as it was, but
+          a column that is there with the cell <strong>empty clears that field</strong>.
         </p>
 
         <div className={styles.actions}>
           <label className={styles.upload}>
-            <input type="file" accept=".csv,text/csv" onChange={importGroups} disabled={busy} />
+            <input
+              type="file"
+              accept={ACCEPTED_FILES}
+              onChange={(event) => preview(event, 'groups')}
+              disabled={busy}
+            />
             <span className={styles.uploadFace}>
-              <Upload size={14} /> {busy ? 'Reading…' : 'Account groups CSV'}
+              <Upload size={14} /> {busy ? 'Reading…' : 'Account groups (CSV / Excel)'}
             </span>
           </label>
 
           <label className={styles.upload}>
-            <input type="file" accept=".csv,text/csv" onChange={importLedgers} disabled={busy} />
+            <input
+              type="file"
+              accept={ACCEPTED_FILES}
+              onChange={(event) => preview(event, 'ledgers')}
+              disabled={busy}
+            />
             <span className={styles.uploadFace}>
-              <Upload size={14} /> {busy ? 'Reading…' : 'Ledgers CSV'}
+              <Upload size={14} /> {busy ? 'Reading…' : 'Ledgers (CSV / Excel)'}
             </span>
           </label>
         </div>
@@ -566,14 +874,111 @@ export function ImportExportPanel({
         <p className={styles.note}>
           Groups need <code>code</code>, <code>name</code>, <code>nature</code> and{' '}
           <code>groupType</code>; ledgers need <code>code</code>, <code>name</code> and{' '}
-          <code>accountGroupCode</code>. A group whose parent is further down the same file is still
-          created — the file is walked until nothing more can be placed.
+          <code>accountGroupCode</code>. Import groups before the ledgers that use them. A group
+          whose parent is further down the same file is still created.
         </p>
 
         {error && (
           <p className={styles.error} role="alert">
             {error}
           </p>
+        )}
+
+        {plan && (
+          <div className={styles.preview} aria-label="Import preview">
+            <p className={styles.previewTitle}>Preview · {plan.fileName}</p>
+            <p className={styles.note}>
+              {toCreate} new · {toUpdate} to update
+              {withProblems > 0 && (
+                <>
+                  {' '}
+                  · <strong>{withProblems} with problems</strong> (will be skipped)
+                </>
+              )}
+            </p>
+
+            {/*
+              The one check that spans the whole file: opening balances must agree, debit to
+              credit, or the trial balance opens with a difference nobody can trace to a voucher.
+            */}
+            {plan.kind === 'ledgers' && (
+              <p className={difference === 0 ? styles.balanceOk : styles.balanceOff} role="status">
+                Opening balances after this import: Dr {money(plan.totals.debit)} · Cr{' '}
+                {money(plan.totals.credit)}
+                {difference === 0
+                  ? ' — balanced'
+                  : ` — out by ${money(Math.abs(difference))}. Debit and credit should be equal.`}
+              </p>
+            )}
+
+            <div className={styles.previewFrame}>
+              <table className={styles.refusals}>
+                <thead>
+                  <tr>
+                    <th>Line</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    {plan.kind === 'ledgers' ? (
+                      <>
+                        <th>Group</th>
+                        <th>Opening</th>
+                      </>
+                    ) : (
+                      <>
+                        <th>Parent</th>
+                        <th>Nature</th>
+                      </>
+                    )}
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.kind === 'ledgers'
+                    ? plan.rows.map((row) => (
+                        <tr key={row.line}>
+                          <td className={styles.line}>{row.line}</td>
+                          <td className={styles.line}>{row.code}</td>
+                          <td>{row.name}</td>
+                          <td className={styles.line}>{row.group}</td>
+                          <td className={styles.line}>{row.opening}</td>
+                          <td>
+                            <RowResult problem={row.problem} existing={Boolean(row.existingId)} />
+                          </td>
+                        </tr>
+                      ))
+                    : plan.rows.map((row) => (
+                        <tr key={row.line}>
+                          <td className={styles.line}>{row.line}</td>
+                          <td className={styles.line}>{row.code}</td>
+                          <td>{row.name}</td>
+                          <td className={styles.line}>{row.parentCode || '—'}</td>
+                          <td className={styles.line}>{row.nature}</td>
+                          <td>
+                            <RowResult
+                              problem={row.problem}
+                              existing={Boolean(row.existingId)}
+                              note={row.note}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.actions}>
+              <Button
+                variant="primary"
+                onClick={confirmImport}
+                disabled={busy || ready.length === 0}
+              >
+                {busy ? 'Importing…' : `Import ${ready.length} row${ready.length === 1 ? '' : 's'}`}
+              </Button>
+              <Button variant="ghost" onClick={() => setPlan(null)} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
 
         {outcomes && (
@@ -606,5 +1011,30 @@ export function ImportExportPanel({
         )}
       </section>
     </div>
+  );
+}
+
+/** What one previewed row will do: create, update, or nothing — with the reason. */
+function RowResult({
+  problem,
+  existing,
+  note,
+}: {
+  problem: string | null;
+  existing: boolean;
+  note?: string | null;
+}) {
+  if (problem) {
+    return (
+      <span className={styles.problem}>
+        <Badge variant="danger">Problem</Badge> {problem}
+      </span>
+    );
+  }
+  return (
+    <span className={styles.problem}>
+      <Badge variant={existing ? 'info' : 'success'}>{existing ? 'Update' : 'New'}</Badge>
+      {note && <span className={styles.rowNote}> {note}</span>}
+    </span>
   );
 }

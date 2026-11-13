@@ -163,3 +163,69 @@
   font-family: var(--font-display);
   letter-spacing: var(--display-tracking);
 }
+
+/* ---- Preview: what a file will do, before anything is written --------- */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--paper-sunken);
+}
+
+.previewTitle {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* A long file scrolls inside the card rather than pushing the Import button off the screen. */
+.previewFrame {
+  max-height: 22rem;
+  overflow: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--paper-card);
+}
+
+.previewFrame th {
+  position: sticky;
+  top: 0;
+}
+
+.balanceOk,
+.balanceOff {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.balanceOk {
+  color: var(--success-fg);
+  background-color: var(--paper-card);
+}
+
+.balanceOff {
+  color: var(--warning-fg);
+  background-color: var(--warning-bg-soft);
+  border: 1px solid var(--warning-bd);
+}
+
+.problem {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.rowNote {
+  font-size: var(--text-xs);
+  color: var(--warning-fg);
+}
