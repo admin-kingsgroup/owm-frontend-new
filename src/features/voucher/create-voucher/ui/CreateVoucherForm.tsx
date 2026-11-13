@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CheckCircle2,
   CircleCheck,
+  Lock,
   Plus,
   Save,
   Scale,
@@ -11,8 +12,13 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { createVoucher, postVoucher } from '@/entities/voucher';
-import type { Voucher, VoucherEntryInput, BillAllocationInput } from '@/entities/voucher';
+import { createVoucher, postVoucher, updateVoucher } from '@/entities/voucher';
+import type {
+  Voucher,
+  VoucherEntry,
+  VoucherEntryInput,
+  BillAllocationInput,
+} from '@/entities/voucher';
 import type { Currency } from '@/entities/currency';
 import { functionKeyFor, inFunctionKeyOrder } from '@/entities/voucher-type';
 import type { VoucherType } from '@/entities/voucher-type';
@@ -50,8 +56,14 @@ export interface CreateVoucherFormProps {
    */
   initialVoucherTypeCode?: string;
   /**
+   * An existing voucher to edit instead of keying a new one. The form opens filled in from it, its
+   * type is fixed (the number belongs to the type's series), and saving edits it in place — a
+   * posted voucher stays posted under the same number, the way Tally edits one.
+   */
+  voucher?: Voucher;
+  /**
    * The voucher as it stands once the form is done with it — posted when Post voucher was pressed
-   * and the post went through, a draft otherwise.
+   * and the post went through, a draft otherwise. In edit mode, the edited voucher.
    */
   onCreated: (voucher: Voucher) => void;
   onCancel: () => void;
@@ -65,6 +77,15 @@ interface EntryRow {
   currencyCode: string;
   exchangeRate: string;
   allocations: AllocationRow[];
+  /*
+    Carried through an edit untouched. The form has no fields for them, but a bank-imported line
+    holds its UTR here, and dropping it on save would break matching it against the statement.
+  */
+  narration: string;
+  instrumentNumber: string;
+  instrumentDate: string;
+  /** Set when the bank has already shown this line; its account and amount are then locked. */
+  reconciledOn: string;
 }
 
 /** Tag names whose own Ctrl+A must be left alone. */
@@ -81,6 +102,10 @@ function newRow(defaultLedgerCode: string): EntryRow {
     currencyCode: '',
     exchangeRate: '',
     allocations: [],
+    narration: '',
+    instrumentNumber: '',
+    instrumentDate: '',
+    reconciledOn: '',
   };
 }
 
@@ -96,6 +121,38 @@ function newAllocation(): AllocationRow {
   };
 }
 
+/**
+ * A saved line as the form edits it.
+ *
+ * A foreign line is reopened in its own currency, at the rate it was posted at — the base figures
+ * are what that rate produced, and re-keying them would convert them a second time. The stored rate
+ * is sent back explicitly, so an edit never quietly re-prices a line at today's rate.
+ */
+function rowFromEntry(entry: VoucherEntry): EntryRow {
+  const row = newRow(entry.ledgerCode);
+  const foreign = entry.currencyCode && entry.fcAmount !== undefined;
+  const signed = foreign ? Number(entry.fcAmount) : Number(entry.debit) - Number(entry.credit);
+
+  return {
+    ...row,
+    debit: signed > 0 ? String(signed) : '',
+    credit: signed < 0 ? String(Math.abs(signed)) : '',
+    currencyCode: foreign ? (entry.currencyCode as string) : '',
+    exchangeRate: foreign ? (entry.exchangeRate ?? '') : '',
+    allocations: (entry.billAllocations ?? []).map((allocation) => ({
+      ...newAllocation(),
+      allocationType: allocation.allocationType,
+      reference: allocation.reference ?? '',
+      amount: String(allocation.amount),
+      dueDate: allocation.dueDate ? allocation.dueDate.slice(0, 10) : '',
+    })),
+    narration: entry.narration ?? '',
+    instrumentNumber: entry.instrumentNumber ?? '',
+    instrumentDate: entry.instrumentDate ? entry.instrumentDate.slice(0, 10) : '',
+    reconciledOn: entry.reconciledOn ?? '',
+  };
+}
+
 export function CreateVoucherForm({
   companyId,
   voucherTypes,
@@ -106,12 +163,20 @@ export function CreateVoucherForm({
   baseCurrency,
   ledgerBalances,
   initialVoucherTypeCode,
+  voucher: editing,
   onCreated,
   onCancel,
 }: CreateVoucherFormProps) {
-  // In the order the keys run — F4, F5, F6 … — so the tabs read the way the hand moves.
-  const activeVoucherTypes = inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
+  /*
+    In the order the keys run — F4, F5, F6 … — so the tabs read the way the hand moves. An edit
+    shows only the voucher's own type, active or not: its number belongs to that type's series, so
+    the type cannot change, and a type switched off since does not make its vouchers uneditable.
+  */
+  const activeVoucherTypes = editing
+    ? voucherTypes.filter((type) => type.id === editing.voucherTypeId)
+    : inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
   const defaultLedgerCode = ledgers[0]?.code ?? '';
+  const editingPosted = editing?.status === 'POSTED';
 
   // The dialog unmounts when it closes, so this is re-read every time it is opened — which is what
   // lets F5 and F6 open the same form on different voucher types.
@@ -120,13 +185,18 @@ export function CreateVoucherForm({
       ? (initialVoucherTypeCode as string)
       : (activeVoucherTypes[0]?.code ?? ''),
   );
-  const [voucherDate, setVoucherDate] = useState(todayAsDateInput);
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [narration, setNarration] = useState('');
-  const [entries, setEntries] = useState<EntryRow[]>([
-    newRow(defaultLedgerCode),
-    newRow(defaultLedgerCode),
-  ]);
+  const [voucherDate, setVoucherDate] = useState(() =>
+    editing ? editing.voucherDate.slice(0, 10) : todayAsDateInput(),
+  );
+  const [referenceNumber, setReferenceNumber] = useState(editing?.referenceNumber ?? '');
+  const [narration, setNarration] = useState(editing?.narration ?? '');
+  const [entries, setEntries] = useState<EntryRow[]>(() =>
+    editing && editing.entries.length >= 2
+      ? editing.entries.map(rowFromEntry)
+      : [newRow(defaultLedgerCode), newRow(defaultLedgerCode)],
+  );
+  /** A reconciled line pins the date too: the bank showed it on a day that must not move. */
+  const anyReconciled = entries.some((row) => row.reconciledOn);
 
   const [submitting, setSubmitting] = useState<'draft' | 'post' | null>(null);
   /** The Post button, which Ctrl+Enter presses — so the browser's own validation runs first. */
@@ -160,7 +230,9 @@ export function CreateVoucherForm({
   }
 
   function removeRow(key: string) {
-    setEntries((rows) => (rows.length > 2 ? rows.filter((row) => row.key !== key) : rows));
+    setEntries((rows) =>
+      rows.length > 2 ? rows.filter((row) => row.key !== key || row.reconciledOn) : rows,
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -194,25 +266,42 @@ export function CreateVoucherForm({
         billAllocations: allocations.length > 0 ? allocations : undefined,
         currencyCode: row.currencyCode || undefined,
         exchangeRate: row.currencyCode && row.exchangeRate ? Number(row.exchangeRate) : undefined,
+        narration: row.narration || undefined,
+        instrumentNumber: row.instrumentNumber || undefined,
+        instrumentDate: row.instrumentDate || undefined,
       };
     });
 
     let voucher: Voucher;
     try {
-      voucher = await createVoucher(companyId, {
-        voucherTypeCode,
-        voucherDate,
-        referenceNumber: referenceNumber || undefined,
-        narration: narration || undefined,
-        entries: payloadEntries,
-      });
+      voucher = editing
+        ? /*
+            Every header field is sent as it stands, empty included — `undefined` means "leave it"
+            to the server, so a reference cleared in the form would otherwise survive the save.
+          */
+          await updateVoucher(companyId, editing.id, {
+            voucherDate,
+            referenceNumber,
+            narration,
+            entries: payloadEntries,
+          })
+        : await createVoucher(companyId, {
+            voucherTypeCode,
+            voucherDate,
+            referenceNumber: referenceNumber || undefined,
+            narration: narration || undefined,
+            entries: payloadEntries,
+          });
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not create voucher'));
+      setError(
+        getErrorMessage(err, editing ? 'Could not save the changes' : 'Could not create voucher'),
+      );
       setSubmitting(null);
       return;
     }
 
-    if (mode === 'post') {
+    // A posted voucher is already in the books — its edit is the whole of the save.
+    if (mode === 'post' && voucher.status === 'DRAFT') {
       try {
         voucher = await postVoucher(companyId, voucher.id);
       } catch (err) {
@@ -314,6 +403,12 @@ export function CreateVoucherForm({
             type="date"
             value={voucherDate}
             onChange={(event) => setVoucherDate(event.target.value)}
+            disabled={anyReconciled}
+            title={
+              anyReconciled
+                ? 'A line is reconciled with the bank statement — un-reconcile it to change the date'
+                : undefined
+            }
             required
           />
         </div>
@@ -376,110 +471,141 @@ export function CreateVoucherForm({
             </tr>
           </thead>
           <tbody>
-            {entries.map((row) => (
-              <Fragment key={row.key}>
-                <tr className={styles.entriesRow}>
-                  <td>
-                    <Select
-                      value={row.ledgerCode}
-                      onChange={(event) => {
-                        const ledgerCode = event.target.value;
-                        // The rate belongs to the old account's currency, so it is cleared with it —
-                        // carrying it over would silently price the new line at the wrong rate.
-                        updateRow(row.key, {
-                          ledgerCode,
-                          currencyCode: currencyCodeForLedger(ledgerCode),
-                          exchangeRate: '',
-                        });
-                      }}
-                      required
-                    >
-                      {ledgers.map((ledger) => (
-                        <option key={ledger.id} value={ledger.code}>
-                          {ledger.name} ({ledger.code})
-                        </option>
-                      ))}
-                    </Select>
-                  </td>
-                  {/* Read-only context, not a field: what this account stands at before the line is
+            {entries.map((row) => {
+              /*
+                The bank has already shown this line, so its account and amount must stay as they
+                are — the server refuses the save otherwise. Locked here so that is plain before
+                anything is typed, rather than discovered on Save.
+              */
+              const locked = Boolean(row.reconciledOn);
+              const lockedHint = locked
+                ? 'Reconciled with the bank statement — un-reconcile it to change this line'
+                : undefined;
+              return (
+                <Fragment key={row.key}>
+                  <tr className={styles.entriesRow}>
+                    <td>
+                      <Select
+                        disabled={locked}
+                        title={lockedHint}
+                        value={row.ledgerCode}
+                        onChange={(event) => {
+                          const ledgerCode = event.target.value;
+                          // The rate belongs to the old account's currency, so it is cleared with it —
+                          // carrying it over would silently price the new line at the wrong rate.
+                          updateRow(row.key, {
+                            ledgerCode,
+                            currencyCode: currencyCodeForLedger(ledgerCode),
+                            exchangeRate: '',
+                          });
+                        }}
+                        required
+                      >
+                        {/*
+                        A saved line can name an account no longer in the list. Without its own
+                        option the select would show — and save — the first ledger instead.
+                      */}
+                        {row.ledgerCode && !ledgerByCode.has(row.ledgerCode) && (
+                          <option value={row.ledgerCode}>{row.ledgerCode} (not available)</option>
+                        )}
+                        {ledgers.map((ledger) => (
+                          <option key={ledger.id} value={ledger.code}>
+                            {ledger.name} ({ledger.code})
+                          </option>
+                        ))}
+                      </Select>
+                      {locked && (
+                        <span className={styles.lockedNote}>
+                          <Lock size={12} /> Reconciled
+                        </span>
+                      )}
+                    </td>
+                    {/* Read-only context, not a field: what this account stands at before the line is
                     posted. A dash while the balances are still being read, or if not readable. */}
-                  <td className={styles.balanceCell}>
-                    {ledgerBalances?.get(row.ledgerCode) ?? '—'}
-                  </td>
-                  <td>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="0.00"
-                      aria-label={`Debit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
-                      value={row.debit}
-                      onChange={(event) =>
-                        updateRow(row.key, { debit: event.target.value, credit: '' })
-                      }
-                    />
-                  </td>
-                  <td>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="0.00"
-                      aria-label={`Credit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
-                      value={row.credit}
-                      onChange={(event) =>
-                        updateRow(row.key, { credit: event.target.value, debit: '' })
-                      }
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.removeRow}
-                      onClick={() => removeRow(row.key)}
-                      disabled={entries.length <= 2}
-                      aria-label="Remove entry"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
-                </tr>
+                    <td className={styles.balanceCell}>
+                      {ledgerBalances?.get(row.ledgerCode) ?? '—'}
+                    </td>
+                    <td>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="0.00"
+                        aria-label={`Debit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
+                        value={row.debit}
+                        disabled={locked}
+                        title={lockedHint}
+                        onChange={(event) =>
+                          updateRow(row.key, { debit: event.target.value, credit: '' })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="0.00"
+                        aria-label={`Credit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
+                        value={row.credit}
+                        disabled={locked}
+                        title={lockedHint}
+                        onChange={(event) =>
+                          updateRow(row.key, { credit: event.target.value, debit: '' })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.removeRow}
+                        onClick={() => removeRow(row.key)}
+                        disabled={entries.length <= 2 || locked}
+                        aria-label="Remove entry"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
 
-                {/*
+                  {/*
                 The per-entry detail — bill allocation and the line's currency — in a row of its own
                 spanning the table, so the four columns above it stay in line. EntryExtras renders
                 nothing at all when neither feature is on, and an empty row would still take space,
                 so the row itself is conditional on the same two flags.
               */}
-                {(billWiseEnabled || multiCurrencyEnabled) && (
-                  <tr className={styles.extrasRowHolder}>
-                    <td colSpan={5}>
-                      <EntryExtras
-                        entryAmount={Number(row.debit) || Number(row.credit) || 0}
-                        billwise={
-                          billWiseEnabled &&
-                          Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
-                        }
-                        allocations={row.allocations}
-                        onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
-                        onAddAllocation={() =>
-                          updateRow(row.key, { allocations: [...row.allocations, newAllocation()] })
-                        }
-                        multiCurrency={multiCurrencyEnabled}
-                        currencies={currencies}
-                        baseCurrency={baseCurrency}
-                        currencyCode={row.currencyCode}
-                        exchangeRate={row.exchangeRate}
-                        onCurrencyChange={(currencyCode) => updateRow(row.key, { currencyCode })}
-                        onExchangeRateChange={(exchangeRate) =>
-                          updateRow(row.key, { exchangeRate })
-                        }
-                      />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
+                  {(billWiseEnabled || multiCurrencyEnabled) && (
+                    <tr className={styles.extrasRowHolder}>
+                      <td colSpan={5}>
+                        <EntryExtras
+                          entryAmount={Number(row.debit) || Number(row.credit) || 0}
+                          billwise={
+                            billWiseEnabled &&
+                            Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
+                          }
+                          allocations={row.allocations}
+                          onAllocationsChange={(allocations) => updateRow(row.key, { allocations })}
+                          onAddAllocation={() =>
+                            updateRow(row.key, {
+                              allocations: [...row.allocations, newAllocation()],
+                            })
+                          }
+                          multiCurrency={multiCurrencyEnabled}
+                          currencies={currencies}
+                          baseCurrency={baseCurrency}
+                          currencyCode={row.currencyCode}
+                          exchangeRate={row.exchangeRate}
+                          onCurrencyChange={(currencyCode) => updateRow(row.key, { currencyCode })}
+                          onExchangeRateChange={(exchangeRate) =>
+                            updateRow(row.key, { exchangeRate })
+                          }
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
 
           {/*
@@ -564,22 +690,37 @@ export function CreateVoucherForm({
 
       {error && <p className={styles.error}>{error}</p>}
 
+      {/*
+        Said before Save is pressed, not after: a posted voucher's edit lands in every report at
+        once, and the audit trail keeps what it said before — the edit log the law asks for.
+      */}
+      {editingPosted && (
+        <p className={styles.editNote}>
+          This voucher is posted. Saving changes the books straight away, under the same number{' '}
+          {editing?.voucherNumber}. The old version is kept in the audit trail.
+        </p>
+      )}
+
       <div className={styles.actions}>
         <span className={styles.acceptHint}>
-          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> posts
+          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> {editingPosted ? 'saves' : 'posts'}
         </span>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          value="draft"
-          variant="ghost"
-          className={styles.draftButton}
-          disabled={submitting !== null || !isBalanced || !voucherTypeCode}
-        >
-          <Save size={15} /> {submitting === 'draft' ? 'Saving…' : 'Save as draft'}
-        </Button>
+        {/* A posted voucher cannot go back to being a draft, so it has no draft button to offer. */}
+        {!editingPosted && (
+          <Button
+            type="submit"
+            value="draft"
+            variant="ghost"
+            className={styles.draftButton}
+            disabled={submitting !== null || !isBalanced || !voucherTypeCode}
+          >
+            <Save size={15} />{' '}
+            {submitting === 'draft' ? 'Saving…' : editing ? 'Save draft' : 'Save as draft'}
+          </Button>
+        )}
         <Button
           ref={postButton}
           type="submit"
@@ -587,7 +728,16 @@ export function CreateVoucherForm({
           variant="primary"
           disabled={submitting !== null || !isBalanced || !voucherTypeCode}
         >
-          <Send size={15} /> {submitting === 'post' ? 'Posting…' : 'Post voucher'}
+          {editingPosted ? <Save size={15} /> : <Send size={15} />}{' '}
+          {editingPosted
+            ? submitting === 'post'
+              ? 'Saving…'
+              : 'Save changes'
+            : submitting === 'post'
+              ? 'Posting…'
+              : editing
+                ? 'Save & post'
+                : 'Post voucher'}
         </Button>
       </div>
     </form>

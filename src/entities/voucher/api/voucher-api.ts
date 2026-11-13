@@ -4,6 +4,7 @@ import type { ApiSuccessResponse } from '@/shared/types';
 import type {
   Voucher,
   CreateVoucherInput,
+  UpdateVoucherInput,
   VoucherListQuery,
   VoucherListResult,
 } from '../model/types';
@@ -32,6 +33,23 @@ export async function createVoucher(
 ): Promise<Voucher> {
   const { data } = await apiClient.post<ApiSuccessResponse<Voucher>>(
     endpoints.vouchers.create(companyId),
+    input,
+  );
+  return data.data;
+}
+
+/**
+ * Edits a voucher in place — a draft, or a posted one the way Tally allows. The server refuses a
+ * cancelled voucher, a closed financial year, and any change to a line already reconciled with
+ * the bank.
+ */
+export async function updateVoucher(
+  companyId: string,
+  id: string,
+  input: UpdateVoucherInput,
+): Promise<Voucher> {
+  const { data } = await apiClient.patch<ApiSuccessResponse<Voucher>>(
+    endpoints.vouchers.byId(companyId, id),
     input,
   );
   return data.data;

@@ -23,6 +23,10 @@ export interface VoucherEntryInput {
   currencyCode?: string;
   /** Overrides the rate table for this line — the actual rate the bank gave. */
   exchangeRate?: number;
+  /** Cheque number, UTR or card reference — what a bank statement is matched against. */
+  instrumentNumber?: string;
+  /** The date on the instrument, when it differs from the voucher's (YYYY-MM-DD or ISO). */
+  instrumentDate?: string;
 }
 
 export interface VoucherEntry {
@@ -41,6 +45,12 @@ export interface VoucherEntry {
   fcAmount?: string;
   exchangeRate?: string;
   narration?: string;
+  instrumentNumber?: string;
+  instrumentDate?: string;
+  /** Set once the line has been ticked off against a bank statement. */
+  reconciledOn?: string;
+  /** The bill-wise breakdown as it was entered, so an edit can send it back unchanged. */
+  billAllocations?: BillAllocationInput[];
 }
 
 export interface VoucherSummary {
@@ -73,6 +83,17 @@ export interface CreateVoucherInput {
   referenceNumber?: string;
   narration?: string;
   entries: VoucherEntryInput[];
+}
+
+/**
+ * An edit of an existing voucher, draft or posted. The type and number never change; a posted
+ * voucher stays posted and its new lines reach every report at once.
+ */
+export interface UpdateVoucherInput {
+  voucherDate?: string;
+  referenceNumber?: string;
+  narration?: string;
+  entries?: VoucherEntryInput[];
 }
 
 export interface VoucherListQuery {
