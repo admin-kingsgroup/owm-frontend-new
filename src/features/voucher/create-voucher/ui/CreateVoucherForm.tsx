@@ -91,6 +91,16 @@ interface EntryRow {
 /** Tag names whose own Ctrl+A must be left alone. */
 const EDITABLE = ['INPUT', 'TEXTAREA', 'SELECT'];
 
+/**
+ * A Contra voucher moves money between the company's own cash and bank accounts — cash deposited,
+ * cash withdrawn, a transfer from one bank to another — and nothing else. Anything with a party,
+ * an income or an expense on one side is a Payment, Receipt or Journal instead.
+ *
+ * Cash and bank are read from the ledger type, the same rule the Cash Book and Bank Book use.
+ */
+const isCashOrBank = (ledger: Ledger) =>
+  ledger.ledgerType === 'CASH' || ledger.ledgerType === 'BANK';
+
 let rowCounter = 0;
 function newRow(defaultLedgerCode: string): EntryRow {
   rowCounter += 1;
@@ -175,8 +185,13 @@ export function CreateVoucherForm({
   const activeVoucherTypes = editing
     ? voucherTypes.filter((type) => type.id === editing.voucherTypeId)
     : inFunctionKeyOrder(voucherTypes.filter((type) => type.isActive));
-  const defaultLedgerCode = ledgers[0]?.code ?? '';
   const editingPosted = editing?.status === 'POSTED';
+
+  /** The ledgers a voucher of this type may use: cash and bank only for a Contra, else all. */
+  const isContraType = (code: string) =>
+    activeVoucherTypes.find((type) => type.code === code)?.category === 'CONTRA';
+  const ledgersFor = (code: string) =>
+    isContraType(code) ? ledgers.filter(isCashOrBank) : ledgers;
 
   // The dialog unmounts when it closes, so this is re-read every time it is opened — which is what
   // lets F5 and F6 open the same form on different voucher types.
@@ -190,6 +205,11 @@ export function CreateVoucherForm({
   );
   const [referenceNumber, setReferenceNumber] = useState(editing?.referenceNumber ?? '');
   const [narration, setNarration] = useState(editing?.narration ?? '');
+  const pickableLedgers = ledgersFor(voucherTypeCode);
+  const pickableCodes = new Set(pickableLedgers.map((ledger) => ledger.code));
+  const isContra = isContraType(voucherTypeCode);
+  const defaultLedgerCode = pickableLedgers[0]?.code ?? '';
+
   const [entries, setEntries] = useState<EntryRow[]>(() =>
     editing && editing.entries.length >= 2
       ? editing.entries.map(rowFromEntry)
@@ -241,6 +261,33 @@ export function CreateVoucherForm({
     setEntries((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
+  /**
+   * Switching type can leave a line on an account the new type does not allow — Payment's default
+   * ledger is rarely a bank. A line with no amount yet is simply moved to the new type's first
+   * account. A line already filled in is left as it is and flagged: silently swapping the account
+   * under an amount someone typed would be worse than asking them to choose.
+   */
+  function chooseVoucherType(code: string) {
+    setVoucherTypeCode(code);
+    const allowed = ledgersFor(code);
+    const allowedCodes = new Set(allowed.map((ledger) => ledger.code));
+    const fallback = allowed[0]?.code ?? '';
+
+    setEntries((rows) =>
+      rows.map((row) =>
+        allowedCodes.has(row.ledgerCode) || row.debit || row.credit || row.reconciledOn
+          ? row
+          : {
+              ...row,
+              ledgerCode: fallback,
+              currencyCode: currencyCodeForLedger(fallback),
+              exchangeRate: '',
+              allocations: [],
+            },
+      ),
+    );
+  }
+
   function addRow() {
     setEntries((rows) => [...rows, newRow(defaultLedgerCode)]);
   }
@@ -259,6 +306,21 @@ export function CreateVoucherForm({
     */
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const mode: 'draft' | 'post' = submitter?.value === 'draft' ? 'draft' : 'post';
+
+    if (isContra) {
+      const wrong = entries
+        .map((row) => ledgerByCode.get(row.ledgerCode))
+        .filter((ledger): ledger is Ledger => Boolean(ledger) && !isCashOrBank(ledger as Ledger));
+      if (wrong.length > 0) {
+        setError(
+          `A Contra voucher moves money between cash and bank accounts only. ` +
+            `${wrong.map((ledger) => ledger.name).join(', ')} ${wrong.length === 1 ? 'is' : 'are'} not ` +
+            `a cash or bank account — choose another account, or use Payment, Receipt or Journal.`,
+        );
+        return;
+      }
+    }
+
     setSubmitting(mode);
     setError(null);
 
@@ -400,7 +462,7 @@ export function CreateVoucherForm({
               role="radio"
               aria-checked={chosen}
               className={cn(styles.type, chosen && styles.typeChosen)}
-              onClick={() => setVoucherTypeCode(type.code)}
+              onClick={() => chooseVoucherType(type.code)}
             >
               {type.name}
               {key && <kbd className={styles.typeKey}>{key}</kbd>}
@@ -460,6 +522,13 @@ export function CreateVoucherForm({
           <Plus size={14} /> Add row
         </Button>
       </div>
+
+      {isContra && pickableLedgers.length === 0 && (
+        <p className={styles.editNote} role="note">
+          A Contra voucher moves money between cash and bank accounts, and this company has none
+          yet. Create a ledger with the type CASH or BANK first.
+        </p>
+      )}
 
       {/*
         A real table, not a grid of divs. Every cell here is an amount belonging to a named account
@@ -521,10 +590,14 @@ export function CreateVoucherForm({
                         A saved line can name an account no longer in the list. Without its own
                         option the select would show — and save — the first ledger instead.
                       */}
-                        {row.ledgerCode && !ledgerByCode.has(row.ledgerCode) && (
-                          <option value={row.ledgerCode}>{row.ledgerCode} (not available)</option>
+                        {row.ledgerCode && !pickableCodes.has(row.ledgerCode) && (
+                          <option value={row.ledgerCode}>
+                            {ledgerByCode.has(row.ledgerCode)
+                              ? `${ledgerLabel(ledgerByCode.get(row.ledgerCode) as Ledger)} — not cash or bank`
+                              : `${row.ledgerCode} (not available)`}
+                          </option>
                         )}
-                        {ledgers.map((ledger) => (
+                        {pickableLedgers.map((ledger) => (
                           <option key={ledger.id} value={ledger.code}>
                             {ledgerLabel(ledger)}
                           </option>
