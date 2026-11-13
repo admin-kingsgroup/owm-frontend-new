@@ -118,11 +118,11 @@ describe('CreateVoucherForm', () => {
     const amounts = screen.getAllByRole('spinbutton');
 
     fireEvent.change(amounts[0], { target: { value: '1000' } });
-    fireEvent.change(amounts[3], { target: { value: '600' } });
+    fireEvent.change(amounts[1], { target: { value: '600' } });
 
     expect(screen.getByText('Difference 400.00')).toBeTruthy();
 
-    fireEvent.change(amounts[3], { target: { value: '1000' } });
+    fireEvent.change(amounts[1], { target: { value: '1000' } });
     expect(screen.getByText('Difference 0.00')).toBeTruthy();
   });
 
@@ -139,7 +139,7 @@ describe('CreateVoucherForm', () => {
     fireEvent.change(amounts[0], { target: { value: '250' } });
     expect(screen.getByRole('status').textContent).toContain('Out by 250.00');
 
-    fireEvent.change(amounts[3], { target: { value: '250' } });
+    fireEvent.change(amounts[1], { target: { value: '250' } });
     expect(post.disabled).toBe(false);
     expect(draft.disabled).toBe(false);
     expect(screen.getByRole('status').textContent).toContain('Balanced');
@@ -149,6 +149,48 @@ describe('CreateVoucherForm', () => {
     renderForm();
     fireEvent.click(screen.getByRole('radio', { name: /Receipt/ }));
     expect(screen.getByRole('radio', { checked: true }).textContent).toMatch(/^Receipt/);
+  });
+
+  describe('the Dr / Cr of each line', () => {
+    const sides = () =>
+      screen
+        .getAllByRole('combobox', { name: /^Debit or credit/ })
+        .map((select) => (select as HTMLSelectElement).value);
+
+    it('starts the first line on Dr and the second on Cr, each with one amount', () => {
+      renderForm({ initialVoucherTypeCode: 'PAYMENT' });
+      expect(sides()).toEqual(['DR', 'CR']);
+      expect(screen.getAllByRole('spinbutton')).toHaveLength(2);
+      expect(screen.getByLabelText('Debit for HDFC Bank')).toBeTruthy();
+      expect(screen.getByLabelText('Credit for HDFC Bank')).toBeTruthy();
+    });
+
+    it('starts a new line on the side that brings the voucher back to balance', () => {
+      renderForm({ initialVoucherTypeCode: 'PAYMENT' });
+      const amounts = screen.getAllByRole('spinbutton');
+      // Salary Dr 50,000 against TDS Cr 5,000: the voucher is 45,000 short on the credit side.
+      fireEvent.change(amounts[0], { target: { value: '50000' } });
+      fireEvent.change(amounts[1], { target: { value: '5000' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Add row/ }));
+      expect(sides()).toEqual(['DR', 'CR', 'CR']);
+
+      fireEvent.change(screen.getAllByRole('spinbutton')[2], { target: { value: '45000' } });
+      expect(screen.getByRole('status').textContent).toContain('Balanced');
+    });
+
+    it('moves a line to the other side when its switch is flipped', () => {
+      renderForm({ initialVoucherTypeCode: 'PAYMENT' });
+      const amounts = screen.getAllByRole('spinbutton');
+      fireEvent.change(amounts[0], { target: { value: '300' } });
+      fireEvent.change(amounts[1], { target: { value: '300' } });
+      expect(screen.getByRole('status').textContent).toContain('Balanced');
+
+      fireEvent.change(screen.getAllByRole('combobox', { name: /^Debit or credit/ })[1], {
+        target: { value: 'DR' },
+      });
+      expect(screen.getByText('Difference 600.00')).toBeTruthy();
+    });
   });
 
   describe('a Contra voucher', () => {
@@ -164,8 +206,8 @@ describe('CreateVoucherForm', () => {
     ];
     const optionsOf = (select: HTMLElement) =>
       Array.from(select.querySelectorAll('option'), (option) => option.textContent);
-    // Multi-currency is off here, so the only selects on the form are the account pickers.
-    const ledgerSelects = () => screen.getAllByRole('combobox');
+    // The account pickers, not the Dr / Cr switch beside each of them.
+    const ledgerSelects = () => screen.getAllByRole('combobox', { name: /^Account, line/ });
 
     it('offers only cash and bank accounts', () => {
       renderForm({ ledgers: MIXED, initialVoucherTypeCode: 'CONTRA' });
@@ -201,7 +243,7 @@ describe('CreateVoucherForm', () => {
       const amounts = screen.getAllByPlaceholderText('0.00');
       fireEvent.change(amounts[0], { target: { value: '100' } });
       fireEvent.change(ledgerSelects()[1], { target: { value: 'HDFC' } });
-      fireEvent.change(amounts[3], { target: { value: '100' } });
+      fireEvent.change(amounts[1], { target: { value: '100' } });
 
       fireEvent.click(screen.getByRole('radio', { name: /Contra/ }));
 

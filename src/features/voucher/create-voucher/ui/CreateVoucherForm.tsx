@@ -69,11 +69,18 @@ export interface CreateVoucherFormProps {
   onCancel: () => void;
 }
 
+/** Which side of the voucher a line is on — Tally's Dr / Cr against each line. */
+type Side = 'DR' | 'CR';
+
 interface EntryRow {
   key: string;
   ledgerCode: string;
-  debit: string;
-  credit: string;
+  /*
+    One amount and the side it is on, rather than a debit box and a credit box. A line is only ever
+    one of the two, and this way the form cannot hold a line with both filled in.
+  */
+  side: Side;
+  amount: string;
   currencyCode: string;
   exchangeRate: string;
   allocations: AllocationRow[];
@@ -101,14 +108,22 @@ const EDITABLE = ['INPUT', 'TEXTAREA', 'SELECT'];
 const isCashOrBank = (ledger: Ledger) =>
   ledger.ledgerType === 'CASH' || ledger.ledgerType === 'BANK';
 
+/** A line as the balance check reads it: its amount in the debit or the credit column. */
+const asDebitCredit = (row: EntryRow) => ({
+  debit: row.side === 'DR' ? row.amount : '',
+  credit: row.side === 'CR' ? row.amount : '',
+  currencyCode: row.currencyCode,
+  exchangeRate: row.exchangeRate,
+});
+
 let rowCounter = 0;
-function newRow(defaultLedgerCode: string): EntryRow {
+function newRow(defaultLedgerCode: string, side: Side = 'DR'): EntryRow {
   rowCounter += 1;
   return {
     key: `row-${rowCounter}`,
     ledgerCode: defaultLedgerCode,
-    debit: '',
-    credit: '',
+    side,
+    amount: '',
     currencyCode: '',
     exchangeRate: '',
     allocations: [],
@@ -145,8 +160,8 @@ function rowFromEntry(entry: VoucherEntry): EntryRow {
 
   return {
     ...row,
-    debit: signed > 0 ? String(signed) : '',
-    credit: signed < 0 ? String(Math.abs(signed)) : '',
+    side: signed < 0 ? 'CR' : 'DR',
+    amount: signed !== 0 ? String(Math.abs(signed)) : '',
     currencyCode: foreign ? (entry.currencyCode as string) : '',
     exchangeRate: foreign ? (entry.exchangeRate ?? '') : '',
     allocations: (entry.billAllocations ?? []).map((allocation) => ({
@@ -213,7 +228,8 @@ export function CreateVoucherForm({
   const [entries, setEntries] = useState<EntryRow[]>(() =>
     editing && editing.entries.length >= 2
       ? editing.entries.map(rowFromEntry)
-      : [newRow(defaultLedgerCode), newRow(defaultLedgerCode)],
+      : // The first line is debited and the second credited — the shape of almost every voucher.
+        [newRow(defaultLedgerCode, 'DR'), newRow(defaultLedgerCode, 'CR')],
   );
   /** A reconciled line pins the date too: the bank showed it on a day that must not move. */
   const anyReconciled = entries.some((row) => row.reconciledOn);
@@ -255,7 +271,9 @@ export function CreateVoucherForm({
     return ledger?.currencyId ? (currencyCodeById.get(ledger.currencyId) ?? '') : '';
   }
 
-  const { totalDebit, totalCredit, isBalanced, awaitingRate } = computeBalance(entries);
+  const { totalDebit, totalCredit, isBalanced, awaitingRate } = computeBalance(
+    entries.map(asDebitCredit),
+  );
 
   function updateRow(key: string, patch: Partial<EntryRow>) {
     setEntries((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -275,7 +293,7 @@ export function CreateVoucherForm({
 
     setEntries((rows) =>
       rows.map((row) =>
-        allowedCodes.has(row.ledgerCode) || row.debit || row.credit || row.reconciledOn
+        allowedCodes.has(row.ledgerCode) || row.amount || row.reconciledOn
           ? row
           : {
               ...row,
@@ -288,8 +306,23 @@ export function CreateVoucherForm({
     );
   }
 
+  /**
+   * A new line starts on the side that brings the voucher back to balance — credit when the debits
+   * are ahead, debit when the credits are. When the two are level it starts opposite the last line.
+   */
   function addRow() {
-    setEntries((rows) => [...rows, newRow(defaultLedgerCode)]);
+    setEntries((rows) => {
+      const { totalDebit: dr, totalCredit: cr } = computeBalance(rows.map(asDebitCredit));
+      const side: Side =
+        Math.abs(dr - cr) >= 0.005
+          ? dr > cr
+            ? 'CR'
+            : 'DR'
+          : rows[rows.length - 1]?.side === 'DR'
+            ? 'CR'
+            : 'DR';
+      return [...rows, newRow(defaultLedgerCode, side)];
+    });
   }
 
   function removeRow(key: string) {
@@ -339,8 +372,8 @@ export function CreateVoucherForm({
 
       return {
         ledgerCode: row.ledgerCode,
-        debit: Number(row.debit) || 0,
-        credit: Number(row.credit) || 0,
+        debit: row.side === 'DR' ? Number(row.amount) || 0 : 0,
+        credit: row.side === 'CR' ? Number(row.amount) || 0 : 0,
         billAllocations: allocations.length > 0 ? allocations : undefined,
         currencyCode: row.currencyCode || undefined,
         exchangeRate: row.currencyCode && row.exchangeRate ? Number(row.exchangeRate) : undefined,
@@ -544,11 +577,9 @@ export function CreateVoucherForm({
               <th scope="col" className={styles.balanceHead}>
                 Current balance
               </th>
+              <th scope="col">Dr / Cr</th>
               <th scope="col" className={styles.amountHead}>
-                Debit
-              </th>
-              <th scope="col" className={styles.amountHead}>
-                Credit
+                Amount
               </th>
               <th scope="col">
                 <span className={styles.srOnly}>Remove</span>
@@ -556,7 +587,8 @@ export function CreateVoucherForm({
             </tr>
           </thead>
           <tbody>
-            {entries.map((row) => {
+            {entries.map((row, index) => {
+              const accountName = ledgerByCode.get(row.ledgerCode)?.name ?? `line ${index + 1}`;
               /*
                 The bank has already shown this line, so its account and amount must stay as they
                 are — the server refuses the save otherwise. Locked here so that is plain before
@@ -571,6 +603,7 @@ export function CreateVoucherForm({
                   <tr className={styles.entriesRow}>
                     <td>
                       <Select
+                        aria-label={`Account, line ${index + 1}`}
                         disabled={locked}
                         title={lockedHint}
                         value={row.ledgerCode}
@@ -615,19 +648,20 @@ export function CreateVoucherForm({
                       {ledgerBalances?.get(row.ledgerCode) ?? '—'}
                     </td>
                     <td>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="0.00"
-                        aria-label={`Debit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
-                        value={row.debit}
+                      {/* A select rather than a toggle: typing D or C on it picks the side. */}
+                      <Select
+                        aria-label={`Debit or credit, ${accountName}`}
+                        className={styles.side}
+                        value={row.side}
                         disabled={locked}
                         title={lockedHint}
                         onChange={(event) =>
-                          updateRow(row.key, { debit: event.target.value, credit: '' })
+                          updateRow(row.key, { side: event.target.value as Side })
                         }
-                      />
+                      >
+                        <option value="DR">Dr</option>
+                        <option value="CR">Cr</option>
+                      </Select>
                     </td>
                     <td>
                       <Input
@@ -635,13 +669,12 @@ export function CreateVoucherForm({
                         min={0}
                         step="0.01"
                         placeholder="0.00"
-                        aria-label={`Credit for ${ledgerByCode.get(row.ledgerCode)?.name ?? 'this line'}`}
-                        value={row.credit}
+                        className={styles.amount}
+                        aria-label={`${row.side === 'DR' ? 'Debit' : 'Credit'} for ${accountName}`}
+                        value={row.amount}
                         disabled={locked}
                         title={lockedHint}
-                        onChange={(event) =>
-                          updateRow(row.key, { credit: event.target.value, debit: '' })
-                        }
+                        onChange={(event) => updateRow(row.key, { amount: event.target.value })}
                       />
                     </td>
                     <td>
@@ -667,7 +700,7 @@ export function CreateVoucherForm({
                     <tr className={styles.extrasRowHolder}>
                       <td colSpan={5}>
                         <EntryExtras
-                          entryAmount={Number(row.debit) || Number(row.credit) || 0}
+                          entryAmount={Number(row.amount) || 0}
                           billwise={
                             billWiseEnabled &&
                             Boolean(ledgerByCode.get(row.ledgerCode)?.maintainBillwise)
@@ -735,8 +768,12 @@ export function CreateVoucherForm({
               ) : (
                 <>
                   <td className={styles.balanceCell} />
-                  <td className={styles.balanceTotal}>{totalDebit.toFixed(2)}</td>
-                  <td className={styles.balanceTotal}>{totalCredit.toFixed(2)}</td>
+                  <td />
+                  {/* Both sides under the one amount column — read down them, and compare. */}
+                  <td className={styles.balanceTotal}>
+                    <span className={styles.totalLine}>Dr {totalDebit.toFixed(2)}</span>
+                    <span className={styles.totalLine}>Cr {totalCredit.toFixed(2)}</span>
+                  </td>
                   <td />
                 </>
               )}
