@@ -33,8 +33,26 @@ export interface Ledger {
   /** A string like every other amount — Decimal128 on the server. */
   creditLimit?: string;
   creditDays?: number;
+  /**
+   * The bank account a BANK ledger stands for. The server stores the number and the code without
+   * spaces or hyphens, in uppercase.
+   */
+  bankAccountHolderName?: string;
+  bankAccountNumber?: string;
+  /** IFSC for an Indian account; SWIFT/BIC or a local routing code elsewhere. */
+  bankCode?: string;
+  /** Bank name and branch, as one line. */
+  bankName?: string;
   isSystem: boolean;
   isActive: boolean;
+}
+
+/** The four bank fields as the form holds them — always strings, empty when not filled in. */
+export interface BankDetails {
+  bankAccountHolderName: string;
+  bankAccountNumber: string;
+  bankCode: string;
+  bankName: string;
 }
 
 export interface CreateLedgerInput {
@@ -57,6 +75,10 @@ export interface CreateLedgerInput {
   contactPhone?: string;
   creditLimit?: number;
   creditDays?: number;
+  bankAccountHolderName?: string;
+  bankAccountNumber?: string;
+  bankCode?: string;
+  bankName?: string;
 }
 
 export interface UpdateLedgerInput {
@@ -76,6 +98,11 @@ export interface UpdateLedgerInput {
   contactPhone?: string | null;
   creditLimit?: number | null;
   creditDays?: number | null;
+  /** Bank details. `null` clears one; omit to leave it as it was. */
+  bankAccountHolderName?: string | null;
+  bankAccountNumber?: string | null;
+  bankCode?: string | null;
+  bankName?: string | null;
   isActive?: boolean;
 }
 
