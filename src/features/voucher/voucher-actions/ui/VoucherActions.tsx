@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Ban } from 'lucide-react';
+import { Send, Ban, Pencil } from 'lucide-react';
 
 import { postVoucher, cancelVoucher } from '@/entities/voucher';
 import type { Voucher } from '@/entities/voucher';
@@ -12,9 +12,15 @@ export interface VoucherActionsProps {
   companyId: string;
   voucher: Voucher;
   onChanged: (voucher: Voucher) => void;
+  /**
+   * Opens the voucher for editing — a draft, or a posted one in place, the way Tally allows. The
+   * form lives with whoever owns this screen, so this only asks for it; leaving it out hides the
+   * button.
+   */
+  onEdit?: (voucher: Voucher) => void;
 }
 
-export function VoucherActions({ companyId, voucher, onChanged }: VoucherActionsProps) {
+export function VoucherActions({ companyId, voucher, onChanged, onEdit }: VoucherActionsProps) {
   const [pending, setPending] = useState<'post' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Whether the reader is being asked to confirm cancelling this voucher. */
@@ -56,6 +62,16 @@ export function VoucherActions({ companyId, voucher, onChanged }: VoucherActions
     <div className={styles.wrapper}>
       {error && <p className={styles.error}>{error}</p>}
       <div className={styles.actions}>
+        {onEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onEdit(voucher)}
+            disabled={pending !== null}
+          >
+            <Pencil size={14} /> Edit voucher
+          </Button>
+        )}
         {voucher.status === 'DRAFT' && (
           <Button type="button" variant="primary" onClick={handlePost} disabled={pending !== null}>
             <Send size={14} /> {pending === 'post' ? 'Posting…' : 'Post voucher'}

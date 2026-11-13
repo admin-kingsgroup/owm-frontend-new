@@ -138,6 +138,8 @@ export function VouchersPage() {
   const [justFiled, setJustFiled] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  /** The voucher open in the edit form, if one is — read in full, lines included. */
+  const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
 
   /*
     The frame holds the only copy of the difference and the draft count, so this screen — the one
@@ -275,7 +277,7 @@ export function VouchersPage() {
    * because this is where the company's currency and country are known.
    */
   useEffect(() => {
-    if (!createModalOpen || !companyId) return;
+    if ((!createModalOpen && !editingVoucher) || !companyId) return;
     const id = companyId;
     const company = setup?.companyId === id ? setup.company : null;
     if (!company) return;
@@ -306,7 +308,7 @@ export function VouchersPage() {
     return () => {
       cancelled = true;
     };
-  }, [createModalOpen, companyId, setup, refreshKey]);
+  }, [createModalOpen, editingVoucher, companyId, setup, refreshKey]);
 
   // Companies start with an empty chart of accounts, so a voucher cannot be raised until the
   // masters it references exist. Empty arrays only mean that once they came back from a
@@ -691,8 +693,50 @@ export function VouchersPage() {
               companyId={companyId}
               voucher={selectedVoucher}
               onChanged={handleVoucherChanged}
+              onEdit={(voucher) => {
+                // One dialog at a time: the drawer gives way to the form, and comes back on save.
+                setSelectedVoucher(null);
+                setEditingVoucher(voucher);
+              }}
             />
           </VoucherDetail>
+        )}
+      </Modal>
+
+      <Modal
+        open={editingVoucher !== null}
+        onClose={() => setEditingVoucher(null)}
+        title={editingVoucher ? `Edit voucher ${editingVoucher.voucherNumber}` : 'Edit voucher'}
+        size="wide"
+      >
+        {!setupLoadedOk || !editingVoucher ? (
+          <Skeleton lines={6} label="Loading accounts…" />
+        ) : (
+          <CreateVoucherForm
+            /* Keyed on the voucher so a second edit starts from what was saved, not the old form. */
+            key={editingVoucher.id}
+            companyId={companyId}
+            voucher={editingVoucher}
+            voucherTypes={voucherTypes}
+            ledgers={ledgers}
+            billWiseEnabled={Boolean(loaded?.company.features.billWiseDetails)}
+            multiCurrencyEnabled={Boolean(loaded?.company.features.multiCurrency)}
+            currencies={loaded?.currencies ?? []}
+            baseCurrency={loaded?.company.baseCurrency ?? ''}
+            ledgerBalances={
+              ledgerBalances?.companyId === companyId ? ledgerBalances.balances : undefined
+            }
+            onCreated={(voucher) => {
+              setEditingVoucher(null);
+              // Back to the voucher just edited, so the reader sees the change they made.
+              setSelectedVoucher(voucher);
+              booksChanged();
+              toast.success(
+                `${voucher.voucherNumber} ${voucher.status === 'POSTED' ? 'updated' : 'saved'}`,
+              );
+            }}
+            onCancel={() => setEditingVoucher(null)}
+          />
         )}
       </Modal>
     </div>

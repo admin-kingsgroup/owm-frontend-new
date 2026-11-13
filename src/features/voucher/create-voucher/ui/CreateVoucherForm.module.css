@@ -553,3 +553,24 @@
     flex: 1;
   }
 }
+
+/* Beside a line the bank has already shown: why its account and amount cannot be changed. */
+.lockedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: var(--text-xs);
+  color: var(--warning-fg);
+}
+
+/* Said before Save on a posted voucher: the edit goes straight into the books. */
+.editNote {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--warning-bd);
+  border-radius: 0.5rem;
+  background-color: var(--warning-bg-soft);
+  color: var(--warning-fg);
+  font-size: 0.8125rem;
+}

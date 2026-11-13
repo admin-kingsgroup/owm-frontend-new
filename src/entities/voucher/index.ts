@@ -7,6 +7,7 @@ export type {
   BillAllocationInput,
   AllocationType,
   CreateVoucherInput,
+  UpdateVoucherInput,
   VoucherListQuery,
   VoucherListResult,
 } from './model/types';
