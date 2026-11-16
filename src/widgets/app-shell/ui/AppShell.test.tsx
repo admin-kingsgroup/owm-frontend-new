@@ -207,6 +207,28 @@ describe('AppShell', () => {
     ).toBe('/companies/c1?tab=accounts');
   });
 
+  it('folds the sidebar to its icons and remembers it for the next visit', () => {
+    window.localStorage.removeItem('owm.sidebarCollapsed');
+    renderShell();
+
+    const fold = within(sidebar()).getByRole('button', { name: 'Collapse menu' });
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(fold);
+
+    const unfold = within(sidebar()).getByRole('button', { name: 'Expand menu' });
+    expect(unfold.getAttribute('aria-expanded')).toBe('false');
+    // Folded, every place is still there — named by its title for a hover and a screen reader.
+    expect(within(sidebar()).getByRole('link', { name: /Reports/ })).toBeTruthy();
+    expect(window.localStorage.getItem('owm.sidebarCollapsed')).toBe('1');
+
+    cleanup();
+    renderShell();
+    expect(within(sidebar()).getByRole('button', { name: 'Expand menu' })).toBeTruthy();
+
+    fireEvent.click(within(sidebar()).getByRole('button', { name: 'Expand menu' }));
+    expect(window.localStorage.getItem('owm.sidebarCollapsed')).toBe('0');
+  });
+
   it('opens the search with Ctrl+K and closes it again with Escape', () => {
     renderShell();
 

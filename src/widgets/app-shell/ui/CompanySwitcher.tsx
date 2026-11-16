@@ -26,6 +26,8 @@ interface CompanySwitcherProps {
    * keeps. `bar` is the compact pill. Same menu, same behaviour.
    */
   variant?: 'bar' | 'rail';
+  /** The rail folded to icons: the chip alone, with the name in its title. */
+  compact?: boolean;
 }
 
 /**
@@ -40,7 +42,12 @@ interface CompanySwitcherProps {
  * Switching keeps you on the same screen — switch while reading Reports and you land on the other
  * company's Reports, not its dashboard.
  */
-export function CompanySwitcher({ companyId, companies, variant = 'bar' }: CompanySwitcherProps) {
+export function CompanySwitcher({
+  companyId,
+  companies,
+  variant = 'bar',
+  compact = false,
+}: CompanySwitcherProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -127,7 +134,11 @@ export function CompanySwitcher({ companyId, companies, variant = 'bar' }: Compa
       <button
         ref={triggerRef}
         type="button"
-        className={cn(styles.trigger, variant === 'rail' && styles.railTrigger)}
+        className={cn(
+          styles.trigger,
+          variant === 'rail' && styles.railTrigger,
+          variant === 'rail' && compact && styles.railCompact,
+        )}
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
