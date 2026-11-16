@@ -62,6 +62,7 @@ import { useButtonBar } from '@/widgets/app-shell';
 import { LedgerStatement } from './LedgerStatement';
 import { SubjectPicker } from './SubjectPicker';
 import { BankReconciliationView } from './BankReconciliationView';
+import { BankStatementSection } from './BankStatementSection';
 import { MonthlySummaryView } from './MonthlySummaryView';
 import { AuditTrailView } from './AuditTrailView';
 import { StatementOfAccountView } from './StatementOfAccountView';
@@ -449,6 +450,21 @@ export function ReportsPage() {
    * a screen that dropped the row while leaving the figures alone would be showing a
    * reconciliation that no longer adds up.
    */
+  /** Re-reads the reconciliation after the statement panel has ticked lines off or un-ticked them. */
+  async function reloadReconciliation() {
+    if (!companyId || !subjectLedgerId) return;
+    try {
+      setReconciliation(
+        await getBankReconciliation(companyId, subjectLedgerId, {
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not refresh the reconciliation'));
+    }
+  }
+
   async function markReconciled(voucherId: string, entryId: string, bankDate: string | null) {
     if (!companyId || !subjectLedgerId) return;
     setReconciling(true);
@@ -955,6 +971,28 @@ export function ReportsPage() {
           onReconcile={markReconciled}
         />
       )}
+      {/*
+        Only a bank account has a statement to upload; a cash account is counted, not reconciled
+        against anyone's paper.
+      */}
+      {tab === 'bank-reconciliation' &&
+        companyId &&
+        subjectLedgerId &&
+        reconciliation &&
+        ledgers.find((ledger) => ledger.id === subjectLedgerId)?.ledgerType === 'BANK' && (
+          <BankStatementSection
+            key={subjectLedgerId}
+            companyId={companyId}
+            ledgerId={subjectLedgerId}
+            ledgerName={reconciliation.ledger.name}
+            ledgers={ledgers
+              .filter((ledger) => ledger.isActive && ledger.id !== subjectLedgerId)
+              .map((ledger) => ({ id: ledger.id, name: ledger.name }))}
+            money={money}
+            day={day}
+            onBooksChanged={() => void reloadReconciliation()}
+          />
+        )}
 
       {tab === 'monthly-summary' && !subjectLedgerId && !subjectGroupId && (
         <p className={styles.empty}>Choose an account to see it month by month.</p>
