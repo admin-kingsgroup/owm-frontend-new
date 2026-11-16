@@ -19,6 +19,19 @@
   height: 100dvh;
   overflow: hidden;
   background-color: var(--paper);
+  /* The rail slides between its two widths rather than jumping. */
+  transition: grid-template-columns 0.22s ease;
+}
+
+/* Folded to icons by the person's choice — the same width the tablet rail uses. */
+.shellCollapsed {
+  grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
 }
 
 .content {

@@ -12,6 +12,8 @@
   min-height: 0;
   padding: 0.875rem 0.75rem;
   overflow-y: auto;
+  /* While the rail slides wider, labels arrive before the room for them — clip, never scroll. */
+  overflow-x: hidden;
   background: var(--sidebar);
   color: var(--sidebar-text);
   border-right: 1px solid var(--sidebar-border);
@@ -130,8 +132,59 @@
   border-top: 1px solid var(--sidebar-border);
 }
 
+/* The fold button sits above the shortcuts, in the same quiet style as the rest of the foot. */
+.toggle {
+  margin-bottom: 2px;
+}
+
+/*
+  Folded by the person: icons only, the same look as the tablet rail below. Labels stay in the
+  markup as each link's title, so a hover still names the place.
+*/
+.collapsed {
+  align-items: center;
+  padding: 0.875rem 0.625rem;
+}
+
+.collapsed .brand {
+  padding: 0.25rem 0 0.875rem;
+}
+
+.collapsed .brandText,
+.collapsed .sectionLabel,
+.collapsed .itemLabel,
+.collapsed .itemKey {
+  display: none;
+}
+
+.collapsed .item {
+  justify-content: center;
+  width: 3rem;
+  height: 2.75rem;
+  padding: 0;
+}
+
+.collapsed .active::before {
+  left: -0.625rem;
+}
+
+.collapsed .section {
+  margin-top: 0.5rem;
+}
+
+.collapsed .foot {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+}
+
 /* A tablet held sideways: icons only. Labels stay in the markup as each link's title. */
 @media (max-width: 75rem) {
+  /* Already icons here, with no room for labels — there is nothing to fold or unfold. */
+  .toggle {
+    display: none;
+  }
+
   .rail {
     align-items: center;
     padding: 0.875rem 0.625rem;

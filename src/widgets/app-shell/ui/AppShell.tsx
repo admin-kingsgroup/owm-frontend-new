@@ -20,7 +20,7 @@ import {
 } from '@/entities/voucher-type';
 import { useAuthStore } from '@/features/auth';
 import { setTheme } from '@/shared/hooks';
-import { formatCalendarDay } from '@/shared/lib';
+import { cn, formatCalendarDay } from '@/shared/lib';
 import { CommandPalette, ErrorBoundary, ToastViewport } from '@/shared/ui';
 import type { CommandItem } from '@/shared/ui';
 
@@ -36,6 +36,7 @@ import { CompanyReadoutProvider, useCompanyReadoutState } from '../model/use-com
 import { useVoucherTypes } from '../model/use-voucher-types';
 import { buildMenus, periodQuery, raiseVoucherPath } from '../model/menus';
 import { buildNav, screenName } from '../model/nav';
+import { readSidebarCollapsed, writeSidebarCollapsed } from '../model/sidebar-collapsed';
 import { ButtonBar } from './ButtonBar';
 import { MobileNav } from './MobileNav';
 import type { MobileSheet } from './MobileNav';
@@ -59,6 +60,14 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   /** Which of the phone's sheets is up, if any. */
   const [sheet, setSheet] = useState<MobileSheet>(null);
+  /** The sidebar folded to icons on a wide screen, by the person's choice. */
+  const [railCollapsed, setRailCollapsed] = useState(readSidebarCollapsed);
+  const toggleRail = useCallback(() => {
+    setRailCollapsed((was) => {
+      writeSidebarCollapsed(!was);
+      return !was;
+    });
+  }, []);
 
   /**
    * The company list, shared by the switcher, the menus and the context strip. The menus need it
@@ -488,8 +497,15 @@ export function AppShell() {
   }, [nav, menus, companies, navigate, logout, searchParams]);
 
   return (
-    <div className={styles.shell}>
-      <Sidebar items={nav} companyId={companyId} companies={companies} onShortcuts={openHelp} />
+    <div className={cn(styles.shell, railCollapsed && styles.shellCollapsed)}>
+      <Sidebar
+        items={nav}
+        companyId={companyId}
+        companies={companies}
+        onShortcuts={openHelp}
+        collapsed={railCollapsed}
+        onToggleCollapsed={toggleRail}
+      />
 
       <TopBar
         company={company}
