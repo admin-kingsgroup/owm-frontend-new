@@ -1,0 +1,167 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  background-color: var(--paper-card);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.muted {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+.error {
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--danger-bg-soft);
+  color: var(--danger-fg);
+  font-size: var(--text-sm);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bar p {
+  flex: 1 1 22rem;
+}
+
+.empty {
+  margin: 0;
+  padding: 1.25rem 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.table {
+  max-height: 32rem;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.description {
+  min-width: 12rem;
+  max-width: 24rem;
+  font-size: var(--text-sm);
+}
+
+.reference {
+  display: block;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
+}
+
+.out {
+  color: var(--danger-fg);
+  white-space: nowrap;
+}
+
+.in {
+  color: var(--success-fg);
+  white-space: nowrap;
+}
+
+/* Match with a book line, or raise a draft: stacked, so the column stays narrow enough to show. */
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 15rem;
+}
+
+.inline {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.select {
+  min-width: 11rem;
+  max-width: 18rem;
+  font-size: var(--text-xs);
+}
+
+.suggested {
+  border-color: var(--accent);
+}
+
+.hint {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.voucher {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.rowActions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.uploads {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.uploads summary {
+  cursor: pointer;
+  color: var(--ink-faint);
+}
+
+.uploads ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uploads li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}

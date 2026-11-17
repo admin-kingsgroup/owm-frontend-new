@@ -43,7 +43,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // The 1024px logo is only the source `npm run icons` draws every icon from. The app never
         // shows it, so it is left out rather than downloaded into every install's cache.
-        globIgnores: ['kb360-logo.png'],
+        // The PDF reader for bank statement uploads is ~1.7 MB and used by a few people a month. It
+        // loads on demand when a PDF is opened instead of riding along in every install's cache.
+        globIgnores: ['kb360-logo.png', 'assets/pdf-*.js', 'assets/pdf.worker*'],
         navigateFallback: '/index.html',
         // The API is same-origin (`/api/v1`, proxied by nginx — see DEPLOY.md), so it falls inside
         // the worker's scope. Without this the navigation fallback answers an offline API call with
