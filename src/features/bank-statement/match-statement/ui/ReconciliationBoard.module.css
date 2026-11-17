@@ -295,7 +295,8 @@
 
 .grid {
   width: 100%;
-  min-width: 61rem;
+  /* 5rem more than before the amount columns widened, so the text columns keep their room. */
+  min-width: 66rem;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -308,8 +309,12 @@
 .colVoucher {
   width: 9.5rem;
 }
+/*
+  Wide enough for the "WITHDRAWAL out" heading (113px) and for amounts to ₹99,99,99,999.99. At
+  6.25rem both were cut off: the heading lost "out", and anything from ₹1 crore lost its paise.
+*/
 .colAmount {
-  width: 6.25rem;
+  width: 7.5rem;
 }
 .colLane {
   width: 11rem;
