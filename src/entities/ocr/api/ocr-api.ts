@@ -2,7 +2,13 @@ import { apiClient, endpoints } from '@/shared/api';
 import type { ApiSuccessResponse } from '@/shared/types';
 
 import { ocrFileType } from '../lib/check-file';
-import type { OcrComparison, OcrExtractOptions, OcrProviders, OcrResult } from '../model/types';
+import type {
+  OcrComparison,
+  OcrExtractOptions,
+  OcrProviders,
+  OcrResult,
+  OcrStatementReading,
+} from '../model/types';
 
 /**
  * Long enough for the server's own provider timeout (45 s by default) plus the upload. The server
@@ -36,6 +42,19 @@ export async function extractDocument(file: File, options: OcrExtractOptions): P
       ...fileRequest(file),
       params: { provider: options.provider, structured: String(options.structured) },
     },
+  );
+  return data.data;
+}
+
+/**
+ * A bank statement photo read into transaction rows, with the server's default provider. Nothing
+ * is stored: the rows are for the statement upload screen to show, check and upload.
+ */
+export async function readStatementPhoto(file: File): Promise<OcrStatementReading> {
+  const { data } = await apiClient.post<ApiSuccessResponse<OcrStatementReading>>(
+    endpoints.ocr.statement(),
+    file,
+    fileRequest(file),
   );
   return data.data;
 }

@@ -89,3 +89,36 @@ export interface OcrExtractOptions {
   provider?: OcrProviderId;
   structured: boolean;
 }
+
+/** One transaction line of a bank statement photo, as the server read it. */
+export interface OcrStatementRow {
+  /** As printed. */
+  date: string | null;
+  /** YYYY-MM-DD, or null when the printed date could not be read as one. */
+  date_iso: string | null;
+  description: string | null;
+  reference: string | null;
+  /** Always positive; which way it moved is `direction`. */
+  amount: string | null;
+  /** Null when the statement did not make it readable — never guessed. */
+  direction: 'withdrawal' | 'deposit' | null;
+  /** Running balance after this line; negative when overdrawn. */
+  balance: string | null;
+}
+
+/** A bank statement photo read into rows. Nothing is stored by reading it. */
+export interface OcrStatementReading {
+  provider: OcrProviderId;
+  extracted_text: string;
+  statement: {
+    bank_name: string | null;
+    account_number: string | null;
+    period_from: string | null;
+    period_to: string | null;
+    opening_balance: string | null;
+    closing_balance: string | null;
+    rows: OcrStatementRow[];
+  };
+  warnings: string[];
+  meta: OcrResult['meta'];
+}

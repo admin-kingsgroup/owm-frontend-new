@@ -85,14 +85,8 @@ export const endpoints = {
     providers: () => '/ocr/providers',
     extract: () => '/ocr/extract',
     compare: () => '/ocr/compare',
-  },
-  /**
-   * A bank statement photo or scan read by OCR and set against an account's open lines. Writes
-   * nothing. Separate from `bankStatements` below, which stores uploaded statement files.
-   */
-  bankStatementOcr: {
-    match: (companyId: string, ledgerId: string) =>
-      `/companies/${companyId}/bank-statement-ocr/${ledgerId}/match`,
+    /** A bank statement photo read into rows for the statement upload. Writes nothing. */
+    statement: () => '/ocr/statement',
   },
   audit: (companyId: string) => `/companies/${companyId}/audit`,
   reconcileEntry: (companyId: string, voucherId: string, entryId: string) =>

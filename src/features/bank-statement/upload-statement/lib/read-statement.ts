@@ -3,6 +3,7 @@ import { isLegacyXlsFile, isXlsxFile, parseCsv, readXlsxRows } from '@/shared/li
 
 import { isCamtXml, parseCamt } from './camt';
 import { readPdfWords, type Progress } from './pdf';
+import { isStatementPhoto, readPhotoStatement } from './photo';
 import type { ReadLines } from './statement-table';
 import { wordsToRows } from './words-to-rows';
 
@@ -104,6 +105,16 @@ export async function readStatementFile(
     return { kind: 'table', format: ocr ? 'PDF_OCR' : 'PDF', rows };
   }
 
+  // A phone photo: read by the server's OCR integration, then checked here like any other file.
+  // Saved as PDF_OCR — text read off a page image — so it carries the same "check the figures" notice.
+  if (isStatementPhoto(file)) {
+    return {
+      kind: 'lines',
+      format: 'PDF_OCR',
+      ...(await readPhotoStatement(file, options.progress)),
+    };
+  }
+
   if (extension === 'xml' || file.type.includes('xml')) {
     options.progress('Reading the XML statement…');
     const text = await file.text();
@@ -137,5 +148,7 @@ export async function readStatementFile(
     return { kind: 'table', format: 'CSV', rows: parseDelimited(await file.text()) };
   }
 
-  throw new Error('That kind of file cannot be read. Use CSV, Excel (.xlsx), camt.053 XML or PDF.');
+  throw new Error(
+    'That kind of file cannot be read. Use CSV, Excel (.xlsx), camt.053 XML, PDF or a photo (JPG, PNG).',
+  );
 }

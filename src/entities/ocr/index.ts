@@ -9,6 +9,8 @@ export type {
   OcrProviderInfo,
   OcrProviders,
   OcrResult,
+  OcrStatementReading,
+  OcrStatementRow,
 } from './model/types';
 export * from './api/ocr-api';
 export {
