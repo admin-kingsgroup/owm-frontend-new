@@ -142,7 +142,10 @@ export function buildMenus(
         items: [
           { label: 'Keyboard shortcuts', to: withHelp(here) },
           ...(isAdmin
-            ? [{ label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' }]
+            ? [
+                { label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' },
+                { label: 'OCR test', to: '/ocr-test', section: 'Diagnostics' },
+              ]
             : []),
         ],
       },
@@ -435,7 +438,10 @@ export function buildMenus(
       items: [
         { label: 'Keyboard shortcuts', to: withHelp(here) },
         ...(isAdmin
-          ? [{ label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' }]
+          ? [
+              { label: 'Reported errors', to: '/reported-errors', section: 'Diagnostics' },
+              { label: 'OCR test', to: '/ocr-test', section: 'Diagnostics' },
+            ]
           : []),
       ],
     },

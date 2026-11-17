@@ -53,6 +53,9 @@ import type { AccountGroup } from '@/entities/account-group';
 import type { Ledger } from '@/entities/ledger';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { reconcileEntry } from '@/entities/voucher';
+import { useAuthStore } from '@/features/auth';
+import { StatementUpload } from '@/features/bank-statement';
+import type { ConfirmedMatch, ReconcileOutcome } from '@/features/bank-statement';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Modal, PageSkeleton } from '@/shared/ui';
@@ -231,6 +234,7 @@ export function ReportsPage() {
   const [ratios, setRatios] = useState<RatioReport | null>(null);
   const [exceptions, setExceptions] = useState<ExceptionReport | null>(null);
   const [reconciling, setReconciling] = useState(false);
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
   /** For the pickers. Small, unchanging within a session, and needed by four of the tabs. */
   const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
@@ -466,6 +470,45 @@ export function ReportsPage() {
     } finally {
       setReconciling(false);
     }
+  }
+
+  /**
+   * Reconciles the statement lines a person confirmed, each on the date the bank showed it, then
+   * re-reads the report once. One at a time and each through the ordinary reconcile call, so every
+   * line is audited exactly as a date typed in by hand — and one refusal does not stop the rest.
+   */
+  async function reconcileConfirmed(matches: ConfirmedMatch[]): Promise<ReconcileOutcome> {
+    const outcome: ReconcileOutcome = { reconciled: [], failed: [] };
+    if (!companyId || !subjectLedgerId) return outcome;
+
+    setReconciling(true);
+    setError(null);
+    try {
+      for (const match of matches) {
+        try {
+          await reconcileEntry(companyId, match.voucherId, match.entryId, match.bankDate);
+          outcome.reconciled.push(match.entryId);
+        } catch (err) {
+          outcome.failed.push({
+            entryId: match.entryId,
+            message: getErrorMessage(err, 'Could not reconcile this line'),
+          });
+        }
+      }
+
+      setReconciliation(
+        await getBankReconciliation(companyId, subjectLedgerId, {
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not refresh the reconciliation'));
+    } finally {
+      setReconciling(false);
+    }
+
+    return outcome;
   }
 
   async function openLedger(node: ReportNode) {
@@ -953,6 +996,22 @@ export function ReportsPage() {
           typeName={typeName}
           saving={reconciling}
           onReconcile={markReconciled}
+          upload={
+            /* Reading a statement sends it to an external OCR provider, which the server allows
+               administrators only — so nobody else is offered a button that would be refused. Keyed
+               by account so switching accounts starts clean. */
+            isAdmin && companyId ? (
+              <StatementUpload
+                key={subjectLedgerId}
+                companyId={companyId}
+                ledgerId={subjectLedgerId}
+                money={money}
+                day={day}
+                typeName={typeName}
+                onReconcile={reconcileConfirmed}
+              />
+            ) : undefined
+          }
         />
       )}
 

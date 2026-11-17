@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { BankReconciliationReport } from '@/entities/report';
 import { cn } from '@/shared/lib';
 
@@ -23,6 +25,11 @@ interface BankReconciliationViewProps {
   onReconcile: (voucherId: string, entryId: string, bankDate: string | null) => void;
   /** True while a mark is being saved, so the row cannot be ticked twice. */
   saving: boolean;
+  /**
+   * The bank-statement upload, shown above the open lines it matches against. Passed in rather
+   * than built here so the page decides who is offered it.
+   */
+  upload?: ReactNode;
 }
 
 /**
@@ -40,6 +47,7 @@ export function BankReconciliationView({
   saving,
   day,
   typeName,
+  upload,
 }: BankReconciliationViewProps) {
   return (
     <section className={styles.panel}>
@@ -80,6 +88,8 @@ export function BankReconciliationView({
         figure against the statement the bank sent. If the two agree, everything still listed is
         simply in transit. If they do not, something is missing from one side or the other.
       </p>
+
+      {upload}
 
       <h2 className={styles.panelTitle}>
         Not yet on the statement
