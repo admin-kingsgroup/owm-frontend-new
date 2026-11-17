@@ -1,4 +1,4 @@
-/** As the server sends them — see the backend's accounting/bank-statements module. */
+/** As the server sends them — see the backend's accounting/bank-statement-ocr module. */
 
 export type StatementMatchStrength = 'strong' | 'possible';
 

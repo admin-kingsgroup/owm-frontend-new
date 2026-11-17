@@ -204,6 +204,16 @@
   background-color: transparent;
 }
 
+/*
+  A tight header is see-through so it blends into the card it sits on. Pinned, that same
+  see-through header floats over the rows scrolling under it and the two sets of text print on top
+  of each other. A sticky header has to be solid, so it takes the card's own colour: it still looks
+  like the tight header, but now it covers what passes beneath it.
+*/
+.tight.sticky thead th {
+  background-color: var(--paper-card);
+}
+
 /* ---- Long text --------------------------------------------------------- */
 /*
   The two ways a column of prose can behave, both opt-in. Everything else stays on one line so the

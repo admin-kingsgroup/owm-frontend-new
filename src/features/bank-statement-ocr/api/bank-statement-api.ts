@@ -19,7 +19,7 @@ export async function matchBankStatement(
   provider?: OcrProviderId,
 ): Promise<BankStatementMatch> {
   const { data } = await apiClient.post<ApiSuccessResponse<BankStatementMatch>>(
-    endpoints.bankStatements.match(companyId, ledgerId),
+    endpoints.bankStatementOcr.match(companyId, ledgerId),
     file,
     {
       headers: { 'Content-Type': ocrFileType(file) ?? 'application/octet-stream' },

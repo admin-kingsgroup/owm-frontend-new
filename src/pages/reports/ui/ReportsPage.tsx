@@ -54,8 +54,8 @@ import type { Ledger } from '@/entities/ledger';
 import type { OutstandingsReport } from '@/entities/outstanding';
 import { reconcileEntry } from '@/entities/voucher';
 import { useAuthStore } from '@/features/auth';
-import { StatementUpload } from '@/features/bank-statement';
-import type { ConfirmedMatch, ReconcileOutcome } from '@/features/bank-statement';
+import { StatementUpload } from '@/features/bank-statement-ocr';
+import type { ConfirmedMatch, ReconcileOutcome } from '@/features/bank-statement-ocr';
 import { getForexGainLoss } from '@/entities/currency';
 import type { ForexGainLossReport } from '@/entities/currency';
 import { Modal, PageSkeleton } from '@/shared/ui';
@@ -65,6 +65,7 @@ import { useButtonBar } from '@/widgets/app-shell';
 import { LedgerStatement } from './LedgerStatement';
 import { SubjectPicker } from './SubjectPicker';
 import { BankReconciliationView } from './BankReconciliationView';
+import { BankStatementSection } from './BankStatementSection';
 import { MonthlySummaryView } from './MonthlySummaryView';
 import { AuditTrailView } from './AuditTrailView';
 import { StatementOfAccountView } from './StatementOfAccountView';
@@ -235,6 +236,8 @@ export function ReportsPage() {
   const [exceptions, setExceptions] = useState<ExceptionReport | null>(null);
   const [reconciling, setReconciling] = useState(false);
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  /** Bumped when the OCR statement match reconciles lines, so the statement board reloads. */
+  const [ocrRound, setOcrRound] = useState(0);
 
   /** For the pickers. Small, unchanging within a session, and needed by four of the tabs. */
   const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
@@ -453,6 +456,21 @@ export function ReportsPage() {
    * a screen that dropped the row while leaving the figures alone would be showing a
    * reconciliation that no longer adds up.
    */
+  /** Re-reads the reconciliation after the statement panel has ticked lines off or un-ticked them. */
+  async function reloadReconciliation() {
+    if (!companyId || !subjectLedgerId) return;
+    try {
+      setReconciliation(
+        await getBankReconciliation(companyId, subjectLedgerId, {
+          from: appliedFrom || undefined,
+          to: appliedTo || undefined,
+        }),
+      );
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not refresh the reconciliation'));
+    }
+  }
+
   async function markReconciled(voucherId: string, entryId: string, bankDate: string | null) {
     if (!companyId || !subjectLedgerId) return;
     setReconciling(true);
@@ -495,6 +513,9 @@ export function ReportsPage() {
           });
         }
       }
+
+      // The statement board keeps its own copy of the open lines; have it read them again.
+      if (outcome.reconciled.length > 0) setOcrRound((round) => round + 1);
 
       setReconciliation(
         await getBankReconciliation(companyId, subjectLedgerId, {
@@ -988,7 +1009,14 @@ export function ReportsPage() {
       {tab === 'bank-reconciliation' && !subjectLedgerId && (
         <p className={styles.empty}>Choose a cash or bank account to reconcile.</p>
       )}
-      {tab === 'bank-reconciliation' && subjectLedgerId && reconciliation && (
+      {/*
+        A cash account is counted, not reconciled against anyone's paper: it keeps the plain list
+        of open lines. A bank account gets the board below, where the books face the statement.
+      */}
+      {tab === 'bank-reconciliation' &&
+        subjectLedgerId &&
+        reconciliation &&
+        ledgers.find((ledger) => ledger.id === subjectLedgerId)?.ledgerType !== 'BANK' && (
         <BankReconciliationView
           report={reconciliation}
           money={money}
@@ -996,24 +1024,48 @@ export function ReportsPage() {
           typeName={typeName}
           saving={reconciling}
           onReconcile={markReconciled}
-          upload={
-            /* Reading a statement sends it to an external OCR provider, which the server allows
-               administrators only — so nobody else is offered a button that would be refused. Keyed
-               by account so switching accounts starts clean. */
-            isAdmin && companyId ? (
-              <StatementUpload
-                key={subjectLedgerId}
-                companyId={companyId}
-                ledgerId={subjectLedgerId}
-                money={money}
-                day={day}
-                typeName={typeName}
-                onReconcile={reconcileConfirmed}
-              />
-            ) : undefined
-          }
         />
       )}
+      {/*
+        Reading a statement photo by OCR sends it to an external provider, which the server allows
+        administrators only — so nobody else is offered a button that would be refused. Keyed by
+        account so switching accounts starts clean.
+      */}
+      {tab === 'bank-reconciliation' &&
+        isAdmin &&
+        companyId &&
+        subjectLedgerId &&
+        reconciliation &&
+        ledgers.find((ledger) => ledger.id === subjectLedgerId)?.ledgerType === 'BANK' && (
+          <StatementUpload
+            key={subjectLedgerId}
+            companyId={companyId}
+            ledgerId={subjectLedgerId}
+            money={money}
+            day={day}
+            typeName={typeName}
+            onReconcile={reconcileConfirmed}
+          />
+        )}
+      {tab === 'bank-reconciliation' &&
+        companyId &&
+        subjectLedgerId &&
+        reconciliation &&
+        ledgers.find((ledger) => ledger.id === subjectLedgerId)?.ledgerType === 'BANK' && (
+          <BankStatementSection
+            key={`${subjectLedgerId}:${ocrRound}`}
+            companyId={companyId}
+            ledgerId={subjectLedgerId}
+            ledgerName={reconciliation.ledger.name}
+            report={reconciliation}
+            ledgers={ledgers
+              .filter((ledger) => ledger.isActive && ledger.id !== subjectLedgerId)
+              .map((ledger) => ({ id: ledger.id, name: ledger.name }))}
+            money={money}
+            day={day}
+            onBooksChanged={() => void reloadReconciliation()}
+          />
+        )}
 
       {tab === 'monthly-summary' && !subjectLedgerId && !subjectGroupId && (
         <p className={styles.empty}>Choose an account to see it month by month.</p>

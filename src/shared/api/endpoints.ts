@@ -86,16 +86,40 @@ export const endpoints = {
     extract: () => '/ocr/extract',
     compare: () => '/ocr/compare',
   },
-  /** A bank statement read by OCR and set against an account's open lines. Writes nothing. */
-  bankStatements: {
+  /**
+   * A bank statement photo or scan read by OCR and set against an account's open lines. Writes
+   * nothing. Separate from `bankStatements` below, which stores uploaded statement files.
+   */
+  bankStatementOcr: {
     match: (companyId: string, ledgerId: string) =>
-      `/companies/${companyId}/bank-statements/${ledgerId}/match`,
+      `/companies/${companyId}/bank-statement-ocr/${ledgerId}/match`,
   },
   audit: (companyId: string) => `/companies/${companyId}/audit`,
   reconcileEntry: (companyId: string, voucherId: string, entryId: string) =>
     `/companies/${companyId}/vouchers/${voucherId}/entries/${entryId}/reconcile`,
   openingBills: (companyId: string, ledgerId: string) =>
     `/companies/${companyId}/ledgers/${ledgerId}/opening-bills`,
+  /** Uploaded bank statements, keyed by the bank ledger they belong to. */
+  bankStatements: {
+    workspace: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}`,
+    match: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}/match`,
+    confirm: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}/confirm`,
+    vouchers: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}/vouchers`,
+    postVouchers: (companyId: string, ledgerId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}/vouchers/post`,
+    line: (
+      companyId: string,
+      ledgerId: string,
+      lineId: string,
+      action: 'match' | 'undo' | 'ignore',
+    ) => `/companies/${companyId}/bank-statements/${ledgerId}/lines/${lineId}/${action}`,
+    statement: (companyId: string, ledgerId: string, statementId: string) =>
+      `/companies/${companyId}/bank-statements/${ledgerId}/statements/${statementId}`,
+  },
   reports: {
     /** Spans companies, so it is not nested under /companies/:companyId. */
     groupOverview: () => '/reports/group-overview',
