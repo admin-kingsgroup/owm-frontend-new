@@ -133,6 +133,7 @@ export function buildNav(
 export function screenName(pathname: string, search: string, companyId?: string): string {
   if (pathname === '/companies') return 'Group overview';
   if (pathname === '/reported-errors') return 'Reported errors';
+  if (pathname === '/ocr-test') return 'OCR test';
   if (!companyId) return '';
   const base = `/companies/${companyId}`;
   const params = new URLSearchParams(search);

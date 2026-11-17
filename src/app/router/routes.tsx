@@ -8,6 +8,7 @@ import { VouchersPage } from '@/pages/vouchers';
 import { AppShell } from '@/widgets/app-shell';
 
 import { KgRoute } from './KgRoute';
+import { OcrTestRoute } from './OcrTestRoute';
 import { ReportedErrorsRoute } from './ReportedErrorsRoute';
 import { RequireAuth } from './RequireAuth';
 import { ReportsRoute } from './ReportsRoute';
@@ -28,6 +29,9 @@ export const routes: RouteObject[] = [
              is open. The endpoint behind it admits administrators only, so it is fetched on first
              open — see ReportedErrorsRoute. */
           { path: '/reported-errors', element: <ReportedErrorsRoute /> },
+          /* The OCR test bench. Administrator-only on the server, and off unless the server turns
+             it on — fetched on first open, see OcrTestRoute. */
+          { path: '/ocr-test', element: <OcrTestRoute /> },
           { path: '/companies/:companyId', element: <CompanyDashboardPage /> },
           { path: '/companies/:companyId/vouchers', element: <VouchersPage /> },
           /* Fetched on first open rather than with everything else — see ReportsRoute. */

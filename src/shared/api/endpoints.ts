@@ -80,6 +80,14 @@ export const endpoints = {
   clientErrors: {
     list: () => '/client-errors',
   },
+  /** OCR test integration. Administrator-only, and off unless the server turns it on. */
+  ocr: {
+    providers: () => '/ocr/providers',
+    extract: () => '/ocr/extract',
+    compare: () => '/ocr/compare',
+    /** A bank statement photo read into rows for the statement upload. Writes nothing. */
+    statement: () => '/ocr/statement',
+  },
   audit: (companyId: string) => `/companies/${companyId}/audit`,
   reconcileEntry: (companyId: string, voucherId: string, entryId: string) =>
     `/companies/${companyId}/vouchers/${voucherId}/entries/${entryId}/reconcile`,

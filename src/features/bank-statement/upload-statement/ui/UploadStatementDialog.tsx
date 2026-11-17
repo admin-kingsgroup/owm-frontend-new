@@ -333,13 +333,14 @@ export function UploadStatementDialog({
             <label className={styles.drop}>
               <input
                 type="file"
-                accept=".csv,.txt,.tsv,.xlsx,.xls,.xml,.pdf"
+                accept=".csv,.txt,.tsv,.xlsx,.xls,.xml,.pdf,.jpg,.jpeg,.png,.heic,.heif"
                 className={styles.fileInput}
                 onChange={(event) => chooseFile(event.target.files?.[0])}
               />
               <span className={styles.dropTitle}>Choose a statement file</span>
               <span className={styles.dropHint}>
-                CSV · Excel (.xlsx) · camt.053 XML · PDF — a scanned PDF is read by OCR
+                CSV · Excel (.xlsx) · camt.053 XML · PDF · photo (JPG, PNG) — scans and photos are
+                read by OCR
               </span>
             </label>
           </>
@@ -518,8 +519,8 @@ export function UploadStatementDialog({
             )}
             {format === 'PDF_OCR' && (
               <p className={styles.warning}>
-                This statement was a scan, read by OCR. Check every amount against the paper before
-                uploading — a misread digit would be matched as if it were true.
+                This statement was a scan or photo, read by OCR. Check every amount against the
+                paper before uploading — a misread digit would be matched as if it were true.
               </p>
             )}
             {framed !== null && (
