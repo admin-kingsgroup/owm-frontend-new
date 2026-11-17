@@ -2,8 +2,9 @@ import { useCallback, useState } from 'react';
 import { Upload } from 'lucide-react';
 
 import type { StatementWorkspace } from '@/entities/bank-statement';
+import type { BankReconciliationReport } from '@/entities/report';
 import {
-  StatementMatchPanel,
+  ReconciliationBoard,
   UploadStatementDialog,
   type LedgerOption,
   type SavedColumnMap,
@@ -16,6 +17,8 @@ interface BankStatementSectionProps {
   ledgerName: string;
   /** Every ledger a voucher raised from the statement could post its other side to. */
   ledgers: LedgerOption[];
+  /** The books' figures for the period, for the balances and the bridge between them. */
+  report: BankReconciliationReport;
   money: (value: string) => string;
   day: (value: string) => string;
   /** Reads the reconciliation report again, after the books' marks have moved. */
@@ -23,7 +26,7 @@ interface BankStatementSectionProps {
 }
 
 /**
- * The statement upload and the matching panel, beneath the reconciliation they feed.
+ * The statement upload and the reconciliation board, where the books and the bank face each other.
  *
  * Composed here rather than inside either feature, because they are two separate actions — reading
  * a file, and settling its lines — that meet only on this screen.
@@ -33,6 +36,7 @@ export function BankStatementSection({
   ledgerId,
   ledgerName,
   ledgers,
+  report,
   money,
   day,
   onBooksChanged,
@@ -54,10 +58,12 @@ export function BankStatementSection({
 
   return (
     <>
-      <StatementMatchPanel
+      <ReconciliationBoard
         companyId={companyId}
         ledgerId={ledgerId}
+        ledgerName={ledgerName}
         ledgers={ledgers}
+        report={report}
         money={money}
         day={day}
         refreshKey={refreshKey}

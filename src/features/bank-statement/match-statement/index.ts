@@ -1,2 +1,2 @@
-export { StatementMatchPanel } from './ui/StatementMatchPanel';
-export type { LedgerOption } from './ui/StatementMatchPanel';
+export { ReconciliationBoard } from './ui/ReconciliationBoard';
+export type { LedgerOption } from './ui/ReconciliationBoard';
