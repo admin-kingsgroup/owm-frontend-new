@@ -87,12 +87,36 @@ export interface StatementSummary {
   createdAt: string;
 }
 
+/** One line of the bank account in the books, as the reconciliation board shows it. */
+export interface BookLine {
+  entryId: string;
+  voucherId: string;
+  voucherNumber: string;
+  voucherDate: string;
+  /** The voucher type's own name: "Receipt", "Payment". */
+  voucherType: string;
+  /** `DRAFT` for a voucher raised from the statement and not posted yet. */
+  voucherStatus: string;
+  /** The voucher's other side — the ledger the money came from or went to. */
+  particulars: string;
+  narration?: string;
+  instrumentNumber?: string;
+  /** Money into the account. */
+  debit: string;
+  /** Money out of the account. */
+  credit: string;
+  /** The day the bank showed it; absent while still open. */
+  reconciledOn?: string;
+}
+
 export interface StatementWorkspace {
   ledger: { id: string; code: string; name: string };
   statements: StatementSummary[];
   lastColumnMap: Record<string, unknown> | null;
   lines: StatementLine[];
   counts: Record<StatementLineStatus, number>;
+  /** Open book lines, plus the ones a statement line is tied to. */
+  bookLines: BookLine[];
 }
 
 export interface LineOutcome {

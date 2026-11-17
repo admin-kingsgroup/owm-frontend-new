@@ -961,7 +961,14 @@ export function ReportsPage() {
       {tab === 'bank-reconciliation' && !subjectLedgerId && (
         <p className={styles.empty}>Choose a cash or bank account to reconcile.</p>
       )}
-      {tab === 'bank-reconciliation' && subjectLedgerId && reconciliation && (
+      {/*
+        A cash account is counted, not reconciled against anyone's paper: it keeps the plain list
+        of open lines. A bank account gets the board below, where the books face the statement.
+      */}
+      {tab === 'bank-reconciliation' &&
+        subjectLedgerId &&
+        reconciliation &&
+        ledgers.find((ledger) => ledger.id === subjectLedgerId)?.ledgerType !== 'BANK' && (
         <BankReconciliationView
           report={reconciliation}
           money={money}
@@ -971,10 +978,6 @@ export function ReportsPage() {
           onReconcile={markReconciled}
         />
       )}
-      {/*
-        Only a bank account has a statement to upload; a cash account is counted, not reconciled
-        against anyone's paper.
-      */}
       {tab === 'bank-reconciliation' &&
         companyId &&
         subjectLedgerId &&
@@ -985,6 +988,7 @@ export function ReportsPage() {
             companyId={companyId}
             ledgerId={subjectLedgerId}
             ledgerName={reconciliation.ledger.name}
+            report={reconciliation}
             ledgers={ledgers
               .filter((ledger) => ledger.isActive && ledger.id !== subjectLedgerId)
               .map((ledger) => ({ id: ledger.id, name: ledger.name }))}

@@ -6,6 +6,7 @@ export type {
   UploadStatementResult,
   MatchCandidate,
   StatementLine,
+  BookLine,
   StatementSummary,
   StatementWorkspace,
   LineOutcome,

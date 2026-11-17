@@ -16,7 +16,9 @@ export async function getStatementWorkspace(
   const { data } = await apiClient.get<ApiSuccessResponse<StatementWorkspace>>(
     endpoints.bankStatements.workspace(companyId, ledgerId),
   );
-  return data.data;
+  // A server from before the books' side was added sends no `bookLines`; show the bank side alone
+  // rather than failing the whole screen.
+  return { ...data.data, bookLines: data.data.bookLines ?? [] };
 }
 
 /** Sends the checked lines of one file. The server stores the new ones and matches them. */
