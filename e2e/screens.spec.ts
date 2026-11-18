@@ -28,6 +28,18 @@ async function signIn(page: Page) {
   }, token);
 }
 
+/**
+ * Saves an import the way a person does: a chosen file is only previewed, and nothing is written
+ * until its Import button is pressed. The checks below were written before that step existed, when
+ * choosing the file was the import.
+ */
+async function confirmImport(page: Page) {
+  await page
+    .locator('[aria-label="Import preview"]')
+    .getByRole('button', { name: /^Import \d+ rows?$/ })
+    .click();
+}
+
 /** The four screens the interface direction is built around, plus the list they hang off. */
 const SCREENS = [
   { name: 'gateway', path: () => `/companies/${companyId}` },
@@ -382,7 +394,9 @@ test.describe('the frame', () => {
     await page.goto(`/companies/${companyId}?tab=import-export`);
     await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
 
-    const chooseLedgers = page.locator('label', { hasText: 'Ledgers CSV' }).locator('input');
+    const chooseLedgers = page
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
+      .locator('input');
     const columns =
       'code,name,accountGroupCode,ledgerType,openingBalance,openingBalanceType,maintainBillwise,gstin,pan,address,contactEmail,contactPhone';
 
@@ -395,6 +409,7 @@ test.describe('the frame', () => {
           '27ABCDE1234F1Z5,ABCDE1234F,"12 Example Road, Mumbai 400001",tenant@example.invalid,+91 90000 11111\n',
       ),
     });
+    await confirmImport(page);
     await expect(page.getByText('1 created')).toBeVisible();
 
     /*
@@ -427,7 +442,7 @@ test.describe('the frame', () => {
     */
     await page.goto(`/companies/${companyId}?tab=import-export`);
     await page
-      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
       .locator('input')
       .setInputFiles({
         name: 'ledgers.csv',
@@ -436,6 +451,7 @@ test.describe('the frame', () => {
           'code,name,accountGroupCode\nE2E_PARTY,Tenant of the corner shop,CURRENT_ASSETS\n',
         ),
       });
+    await confirmImport(page);
     await expect(page.getByText('1 updated')).toBeVisible();
 
     const updated = await read();
@@ -477,8 +493,12 @@ test.describe('the frame', () => {
     await page.goto(`/companies/${companyId}?tab=import-export`);
     await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
 
-    const chooseGroups = page.locator('label', { hasText: 'Account groups CSV' }).locator('input');
-    const chooseLedgers = page.locator('label', { hasText: 'Ledgers CSV' }).locator('input');
+    const chooseGroups = page
+      .locator('label', { hasText: 'Account groups (CSV / Excel)' })
+      .locator('input');
+    const chooseLedgers = page
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
+      .locator('input');
 
     /*
       The child is written above its parent on purpose. A file exported from another product
@@ -497,6 +517,7 @@ test.describe('the frame', () => {
         ].join('\n'),
       ),
     });
+    await confirmImport(page);
     await expect(page.getByText('2 created')).toBeVisible();
 
     // A new account under the group just imported, so the two halves are checked against each other.
@@ -505,6 +526,7 @@ test.describe('the frame', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from('code,name,accountGroupCode\nE2E_LEDGER,Imported Account,E2E_CHILD\n'),
     });
+    await confirmImport(page);
     await expect(page.getByText('1 created')).toBeVisible();
 
     /*
@@ -518,6 +540,7 @@ test.describe('the frame', () => {
         'code,name,accountGroupCode\nE2E_LEDGER,Imported Account renamed,E2E_CHILD\n',
       ),
     });
+    await confirmImport(page);
     await expect(page.getByText('1 updated')).toBeVisible();
 
     // And it reached the books, not just the panel's own tally.
@@ -545,7 +568,7 @@ test.describe('the frame', () => {
     await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
 
     await page
-      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
       .locator('input')
       .setInputFiles({
         name: 'ledgers.csv',
@@ -557,6 +580,7 @@ test.describe('the frame', () => {
       });
 
     // Accepted by the real server, which is the only place the empty cell was ever refused.
+    await confirmImport(page);
     await expect(page.getByText('1 updated')).toBeVisible();
     await expect(page.getByText(/not a valid/)).toHaveCount(0);
   });
@@ -572,7 +596,7 @@ test.describe('the frame', () => {
     await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
 
     await page
-      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
       .locator('input')
       .setInputFiles({
         name: 'ledgers.csv',
@@ -582,6 +606,7 @@ test.describe('the frame', () => {
             'TENANT,Tenant — Bandra flat,LOANS_ADVANCES_ASSET,usd,45\n',
         ),
       });
+    await confirmImport(page);
     await expect(page.getByText('1 updated')).toBeVisible();
 
     const response = await page.request.get(
@@ -609,7 +634,7 @@ test.describe('the frame', () => {
     await expect(page.getByRole('heading', { name: 'Import' })).toBeVisible();
 
     await page
-      .locator('label', { hasText: 'Ledgers CSV' })
+      .locator('label', { hasText: 'Ledgers (CSV / Excel)' })
       .locator('input')
       .setInputFiles({
         name: 'ledgers.csv',
@@ -620,7 +645,9 @@ test.describe('the frame', () => {
         ),
       });
 
+    // Caught in the preview now, before anything is sent — so there is nothing left to import.
     await expect(page.getByText(/creditLimit is not a number/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Import 0 rows' })).toBeDisabled();
   });
 
   test('the gateway reads in the dark theme too', async ({ page }) => {
@@ -783,8 +810,9 @@ test.describe('the frame', () => {
     // Straight to the form, so the masters are still in flight as it opens.
     await page.goto(`/companies/${companyId}/vouchers?new=CONTRA`);
 
+    // By name: the line holds a Dr/Cr switch now as well as the account.
     const firstLine = page.getByRole('dialog').locator('tbody tr').first();
-    await expect(firstLine.locator('select')).toBeVisible();
+    await expect(firstLine.getByLabel('Account, line 1')).toBeVisible();
 
     // The balance is found only if the line holds the code the select is showing.
     await expect(firstLine.locator('td').nth(1)).not.toHaveText('—');

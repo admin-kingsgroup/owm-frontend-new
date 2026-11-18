@@ -381,6 +381,15 @@ a.chip:hover {
   white-space: nowrap;
 }
 
+/*
+  A narration from a bank import is often one unbroken word — DCARDFEE0323OCT26-SEP27+GST — and
+  would otherwise hold the column, or a phone card, open at its full length.
+*/
+.recentVoucher {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .recentNumber {
   display: block;
   font-family: var(--font-mono);

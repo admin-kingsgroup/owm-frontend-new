@@ -339,11 +339,29 @@ test.describe('the data entry strip in a portfolio workspace', () => {
     await type.waitFor({ timeout: 20_000 });
     await expect(type).toHaveText(/^Payment/);
 
-    const accounts = page.locator('table tbody select');
-    await accounts.first().selectOption('KG_FEES');
-    await accounts.nth(1).selectOption('KG_BANK');
-    await page.locator('table tbody input[aria-label^="Debit"]').first().fill('5000');
-    await page.locator('table tbody input[aria-label^="Credit"]').nth(1).fill('5000');
+    /*
+      Each line is one account, a Dr/Cr switch and one amount — the switch names the amount box —
+      so every control is found by its own name rather than by where it sits in the row.
+    */
+    const lines = page.locator('table tbody tr');
+    await page.getByLabel('Account, line 1').selectOption('KG_FEES');
+    await page.getByLabel('Account, line 2').selectOption('KG_BANK');
+    await lines
+      .nth(0)
+      .getByLabel(/^Debit or credit/)
+      .selectOption('DR');
+    await lines
+      .nth(1)
+      .getByLabel(/^Debit or credit/)
+      .selectOption('CR');
+    await lines
+      .nth(0)
+      .getByLabel(/^Debit for/)
+      .fill('5000');
+    await lines
+      .nth(1)
+      .getByLabel(/^Credit for/)
+      .fill('5000');
     // Post voucher files it and posts it in one go — no separate post step left for the API.
     await page.getByRole('button', { name: /Post voucher/ }).click();
 

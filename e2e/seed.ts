@@ -555,3 +555,117 @@ export async function seedInvented(token: string): Promise<string> {
 
   return companyId;
 }
+
+/**
+ * A company whose text is as long and as unbroken as a real bank statement's.
+ *
+ * Every other seed writes narrations a person would type — "Salary for June" — and those wrap at a
+ * space. What arrives from a bank or card import does not: `DCARDFEE0323OCT26-SEP27+GST` is one
+ * word as far as the browser is concerned, and a word cannot be broken unless the layout says so.
+ * That is how the dashboard's Recently filed cards ran off a phone screen while every check here
+ * passed. Its own company, so the screens that are compared against a picture do not move.
+ */
+export async function seedLongText(token: string): Promise<string> {
+  const existing = await call('/companies', { token });
+  const already = existing.body?.data?.find(
+    (company: { code: string }) => company.code === 'SHOTLONG',
+  );
+  if (already) return already.id;
+
+  const year = new Date().getUTCFullYear();
+  const created = await call('/companies', {
+    method: 'POST',
+    token,
+    body: {
+      name: 'Arunachalam Dhanasekaran Bhaskaran Family Trust - INR',
+      code: 'SHOTLONG',
+      type: 'PERSONAL',
+      financialYearStart: `${year}-01-01`,
+      financialYearEnd: `${year}-12-31`,
+      baseCurrency: 'INR',
+      country: 'IN',
+      timezone: 'Asia/Kolkata',
+    },
+  });
+  if (created.status !== 201) {
+    throw new Error(`Could not create the long-text company: ${JSON.stringify(created.body)}`);
+  }
+  const companyId = created.body.data.id;
+
+  const groups = await call(`/companies/${companyId}/account-groups`, { token });
+  const groupCode = (...fragments: string[]) =>
+    groups.body.data.find((group: { code: string }) =>
+      fragments.some((fragment) => group.code.includes(fragment)),
+    )?.code;
+
+  const ledger = async (
+    code: string,
+    name: string,
+    accountGroupCode: string | undefined,
+    ledgerType: 'GENERAL' | 'BANK' = 'GENERAL',
+  ) => {
+    if (!accountGroupCode) throw new Error(`No account group found for ${code}`);
+    const made = await call(`/companies/${companyId}/ledgers`, {
+      method: 'POST',
+      token,
+      body: { code, name, accountGroupCode, ledgerType },
+    });
+    if (made.status !== 201)
+      throw new Error(`Could not create ${code}: ${JSON.stringify(made.body)}`);
+  };
+
+  await ledger(
+    'HDFC_SAVINGS_50100234567890',
+    'HDFCBANKSAVINGSACCOUNT-50100234567890-ARUNACHALAM',
+    groupCode('BANK_ACCOUNTS'),
+    'BANK',
+  );
+  await ledger('SALARY', 'Salary Income', groupCode('DIRECT_INCOME', 'INCOME'));
+  await ledger(
+    'CARD_FEES',
+    'Credit card annual fees, late charges and goods & services tax on them',
+    groupCode('HOUSEHOLD', 'EXPENSES'),
+  );
+
+  const voucher = async (
+    voucherTypeCode: string,
+    narration: string,
+    entries: Array<{ ledgerCode: string; debit: number; credit: number }>,
+    { post = true }: { post?: boolean } = {},
+  ) => {
+    const raised = await call(`/companies/${companyId}/vouchers`, {
+      method: 'POST',
+      token,
+      body: { voucherTypeCode, voucherDate: `${year}-06-15`, narration, entries },
+    });
+    if (!raised.body?.data?.id) {
+      throw new Error(`Could not raise "${narration}": ${JSON.stringify(raised.body)}`);
+    }
+    if (post) {
+      await call(`/companies/${companyId}/vouchers/${raised.body.data.id}/post`, {
+        method: 'POST',
+        token,
+      });
+    }
+  };
+
+  await voucher('RECEIPT', 'NEFT-HDFCN52026101912345678-ARUNACHALAMDHANASEKARAN-SALARYCREDITOCT', [
+    { ledgerCode: 'HDFC_SAVINGS_50100234567890', debit: 12345678.9, credit: 0 },
+    { ledgerCode: 'SALARY', debit: 0, credit: 12345678.9 },
+  ]);
+  await voucher('PAYMENT', 'DCARDFEE0323OCT26-SEP27+GST', [
+    { ledgerCode: 'CARD_FEES', debit: 354, credit: 0 },
+    { ledgerCode: 'HDFC_SAVINGS_50100234567890', debit: 0, credit: 354 },
+  ]);
+  await voucher(
+    'PAYMENT',
+    'EBA/PUR_EPRIME999/20261019162959',
+    [
+      { ledgerCode: 'CARD_FEES', debit: 999, credit: 0 },
+      { ledgerCode: 'HDFC_SAVINGS_50100234567890', debit: 0, credit: 999 },
+    ],
+    { post: false },
+  );
+
+  return companyId;
+}
