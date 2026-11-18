@@ -809,6 +809,16 @@ textarea:focus-visible {
     padding: 0.3125rem 0;
     border: none;
     text-align: right;
+    /*
+      A value is a flex item here, and a flex item will not shrink below its longest word. A bank
+      reference or an imported ledger name is often one word forty characters long, which held the
+      card — and the page — open past the edge of the screen. This lets it break instead.
+    */
+    overflow-wrap: anywhere;
+  }
+
+  table[data-stack] td > * {
+    min-width: 0;
   }
 
   table[data-stack] td::before {

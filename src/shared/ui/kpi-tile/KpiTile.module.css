@@ -55,7 +55,29 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  white-space: nowrap;
+  /*
+    Wraps rather than clips, as a last resort. The tile hides its overflow, so a figure too long for
+    it used to lose its last digits silently — 1,23,45,678.90 read as 1,23,45,678. on a small phone.
+    A hidden digit misreports an amount; a wrapped one only looks untidy. The size rule below is
+    what keeps it from coming to that.
+  */
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+/*
+  The figure is sized to the tile, not the screen: two tiles side by side on a 320px phone are
+  narrower than one on a tablet, and a crore with paise has to fit either. Capped at the sizes the
+  tile always used, so nothing grows on a wide screen.
+*/
+@supports (container-type: inline-size) {
+  .tile {
+    container-type: inline-size;
+  }
+
+  .value {
+    font-size: clamp(0.875rem, 11cqi, 1.5rem);
+  }
 }
 
 .negative {
@@ -106,5 +128,11 @@
 
   .value {
     font-size: 1.125rem;
+  }
+
+  @supports (container-type: inline-size) {
+    .value {
+      font-size: clamp(0.875rem, 11cqi, 1.125rem);
+    }
   }
 }

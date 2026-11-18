@@ -660,10 +660,16 @@ export function CompanyGateway({ company, voucherTypes }: CompanyGatewayProps) {
                         {formatCalendarDay(voucher.voucherDate, company.country)}
                       </td>
                       <td data-label="Voucher">
-                        <span className={styles.recentNumber}>{voucher.voucherNumber}</span>
-                        {voucher.narration && (
-                          <span className={styles.recentNarration}>{voucher.narration}</span>
-                        )}
+                        {/*
+                          One box, not two: stacked on a phone the cell is a flex row, and two
+                          children would sit side by side with the narration refusing to wrap.
+                        */}
+                        <div className={styles.recentVoucher}>
+                          <span className={styles.recentNumber}>{voucher.voucherNumber}</span>
+                          {voucher.narration && (
+                            <span className={styles.recentNarration}>{voucher.narration}</span>
+                          )}
+                        </div>
                       </td>
                       {/* Named from the company's own types — blank where the type is gone. */}
                       <td className={styles.recentType} data-label="Type">
