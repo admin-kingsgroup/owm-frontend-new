@@ -879,3 +879,170 @@ textarea:focus-visible {
     min-width: 2.75rem;
   }
 }
+
+/* ============================================================================
+   Dropdown lists
+
+   Every <select> in the app — the shared Select and the report pickers alike — opens into the
+   same card: rounded, shadowed, a soft blue row under the pointer and the chosen row marked.
+
+   Done with the browser's own customisable select (`appearance: base-select`) rather than a
+   home-made list, so typing a letter to jump, the arrow keys, form submission and screen readers
+   all keep working exactly as before. A browser that does not support it simply shows the plain
+   list it always did — nothing breaks.
+
+   Mouse and trackpad only: on a phone the system's own picker sheet is the better control, so
+   touch screens keep it.
+   ============================================================================ */
+@supports (appearance: base-select) {
+  @media screen and (pointer: fine) {
+    select,
+    ::picker(select) {
+      appearance: base-select;
+    }
+
+    /* The button part. Flex so the chosen text sits in the middle of the box at any height. */
+    select {
+      display: flex;
+      align-items: center;
+    }
+
+    /* The same thin chevron the shared Select draws, instead of the browser's filled triangle. */
+    select::picker-icon {
+      content: '';
+      inline-size: 1rem;
+      block-size: 1rem;
+      background-color: var(--ink-faint);
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+      transition: rotate 0.15s ease;
+    }
+
+    select:open::picker-icon {
+      background-color: var(--accent);
+    }
+
+    /* While only the "Choose…" prompt is showing, the box reads as empty. */
+    select:has(option[value='']:checked) {
+      color: var(--ink-faint);
+    }
+
+    select:open::picker-icon {
+      rotate: 180deg;
+    }
+
+    /* The list itself. */
+    ::picker(select) {
+      margin-block: 0.25rem;
+      padding: 0.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--paper-card);
+      color: var(--ink);
+      box-shadow: var(--shadow-2);
+      max-block-size: min(20rem, 50vh);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      opacity: 0;
+      translate: 0 -0.25rem;
+      transition:
+        opacity 0.15s ease,
+        translate 0.15s ease,
+        display 0.15s allow-discrete,
+        overlay 0.15s allow-discrete;
+    }
+
+    select:open::picker(select) {
+      opacity: 1;
+      translate: 0 0;
+    }
+
+    @starting-style {
+      select:open::picker(select) {
+        opacity: 0;
+        translate: 0 -0.25rem;
+      }
+    }
+
+    select option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.625rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+    }
+
+    select option:hover,
+    select option:focus-visible {
+      outline: none;
+      background: rgba(var(--accent-rgb), 0.08);
+    }
+
+    select option:checked {
+      color: var(--accent);
+      font-weight: 600;
+      background: rgba(var(--accent-rgb), 0.1);
+    }
+
+    /* The tick for the chosen row, moved to the right-hand end where it does not push the names
+       out of line with each other. */
+    select option::checkmark {
+      order: 1;
+      margin-inline-start: auto;
+    }
+
+    /* "Choose a ledger…" and the like: a prompt, not a choice, so it reads quieter and never gets
+       the chosen-row tick or colour. */
+    select option[value=''] {
+      color: var(--ink-faint);
+      font-weight: 400;
+    }
+
+    select option[value='']:checked {
+      background: none;
+    }
+
+    select option[value='']:hover,
+    select option[value='']:focus-visible {
+      background: rgba(var(--accent-rgb), 0.08);
+    }
+
+    select option[value='']::checkmark {
+      display: none;
+    }
+
+    select option:disabled {
+      color: var(--ink-faint);
+      cursor: not-allowed;
+      background: none;
+    }
+
+    /* Group headings (e.g. Ledgers / Groups in the report picker) in the same small capitals as the
+       field labels, with the rows under them back to normal type. */
+    select optgroup {
+      padding-block-start: 0.25rem;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+    }
+
+    select optgroup option {
+      font-size: 0.875rem;
+      font-weight: 400;
+      letter-spacing: normal;
+      text-transform: none;
+      color: var(--ink);
+    }
+
+    select optgroup option:checked {
+      font-weight: 600;
+      color: var(--accent);
+    }
+  }
+}

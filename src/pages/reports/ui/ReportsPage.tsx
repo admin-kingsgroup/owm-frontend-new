@@ -830,7 +830,6 @@ export function ReportsPage() {
           key={`${appliedFrom}|${appliedTo}|${appliedCompare}`}
           applied={{ from: appliedFrom, to: appliedTo, compare: appliedCompare }}
           canCompare={isComparable(tab)}
-          day={day}
           onApply={applyPeriod}
         />
       )}

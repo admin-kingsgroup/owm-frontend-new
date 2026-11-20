@@ -40,4 +40,44 @@
   transform: translateY(-50%);
   color: var(--ink-faint);
   pointer-events: none;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.wrapper:hover .icon {
+  color: var(--ink-soft);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--ink-faint);
+}
+
+/* The styled list (see "Dropdown lists" in globals.css). This control already draws its own
+   chevron, so the browser's one is hidden, and ours turns over while the list is open. */
+@supports (appearance: base-select) {
+  @media screen and (pointer: fine) {
+    /* `appearance: none` above would otherwise win over the global rule, being a class. */
+    .select {
+      appearance: base-select;
+      display: flex;
+      align-items: center;
+    }
+
+    .select::picker-icon {
+      display: none;
+    }
+
+    .select:open {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    /* One transform, not `rotate` beside it: the separate property is applied before the centring
+       translate, which would then push the chevron down instead of up. */
+    .select:open + .icon {
+      transform: translateY(-50%) rotate(180deg);
+      color: var(--accent);
+    }
+  }
 }
